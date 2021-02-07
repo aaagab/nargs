@@ -1,0 +1,16 @@
+{
+    "alias": "nargs",
+    "authors": [
+        "Gabriel Auger"
+    ],
+    "deps": [],
+    "description": "Command-line Arguments Parser",
+    "filen_main": "main.py",
+    "installer": "gpm",
+    "licenses": [
+        "MIT"
+    ],
+    "name": "Nested Arguments",
+    "uuid4": "89d8676a-6b02-43fa-8694-e97de5680cd0",
+    "version": "0.0.0"
+}
