@@ -1,0 +1,11 @@
+__pycache__/
+.env/
+.pytest_cache/
+.vscode
+.git/
+.gitignore
+/archives/ 
+/.etconf/
+/.gitattributes
+/todo.txt
+.directory
