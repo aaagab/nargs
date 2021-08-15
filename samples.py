@@ -50,7 +50,6 @@ if __name__ == "__main__":
 
     # mydump='{"prog": {"long_alias": "--prog", "short_alias": "-p", "auto_aliases": true, "enabled": true, "examples": ["prog.py --arg-one -a -b -c"], "hint": "this is my program", "info": null, "type": "str", "label": null, "repeat": "replace", "required": true, "show": true, "value_min": 2, "value_max": null, "value_required": true, "default": null, "in": null, "is_builtin": false, "args": {"arg_one": {"long_alias": "--arg-one", "short_alias": "-a", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": "str", "label": "VALUE", "repeat": "append", "required": false, "show": true, "value_min": 3, "value_max": 4, "value_required": false, "default": ["1", "3", "4"], "in": null, "is_builtin": false, "args": {"a": {"long_alias": "--a", "short_alias": "-a", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "args": {"b": {"long_alias": "--b", "short_alias": "-b", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "default_alias": "--b", "args": {"c": {"long_alias": "--c", "short_alias": "-c", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "default_alias": "--c", "args": {}}}}}}, "b": {"long_alias": "--b", "short_alias": "-b", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "args": {"c": {"long_alias": "--c", "short_alias": "-c", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "default_alias": "--c", "args": {}}}}, "c": {"long_alias": "--c", "short_alias": "-c", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "args": {}}, "nested_arg": {"long_alias": "--nested-arg", "short_alias": "-n", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "args": {"nested_nested_arg": {"long_alias": "--nested-nested-arg", "short_alias": "-n", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "args": {}}}}}}, "examples": {"long_alias": "--examples", "short_alias": null, "auto_aliases": false, "enabled": true, "examples": null, "hint": "Print program examples.", "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": true, "args": {}}, "help": {"long_alias": "--help", "short_alias": "-h", "auto_aliases": false, "enabled": true, "examples": null, "hint": "Print program help.", "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": true, "args": {}}, "usage": {"long_alias": "--usage", "short_alias": null, "auto_aliases": false, "enabled": true, "examples": null, "hint": "Print program usage.", "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": true, "args": {}}, "uuid4": {"long_alias": "--uuid4", "short_alias": null, "auto_aliases": false, "enabled": true, "examples": null, "hint": "Print program UUID4.", "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": true, "args": {}}, "version": {"long_alias": "--version", "short_alias": "-v", "auto_aliases": false, "enabled": true, "examples": null, "hint": "Print program version.", "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": true, "args": {}}}}}'
 
-    # print("Here")
     # class Hello():
     #     def __init__(fself, state):
     #         self.state=state
@@ -76,21 +75,24 @@ if __name__ == "__main__":
     # sys.exit()
 
     definition="../test/config/options.json"
-    definition="../test/config/options.yaml"
+    # definition="../test/config/options.yaml"
     direpa_dump="../test/config"
     dump="../test/config/nargs-dump.json"
     # definition=dict()
     # definition="../test/config/options.yaml"
     narg=pkg.Nargs(
-        # cached_dfn="dump.json",
-        definition=definition,
+        # builtins=1,
+        # builtins=["help", "usage"],
+        # cached_dfn="../test/config/nargs-dump.json",
+        # cached_dfn="../test/config/nargs-dump-test.pickle",
+        filenpa_definition=definition,
         # definition=my_dump,
         # cached=True,
-        metadata=dict(executable="dummy", version="1.2.3"),
-        pretty=True,
+        # metadata=dict(executable="dummy"),
+        # pretty=True,
         # prompt=True,
-        substitute=True,
-        # theme=dict(aliases_text=dict(foreground="178;24;24")),
+        # substitute=True,
+        # theme=dict(aliases_text=dict(foreground="178;24;124")),
         # theme=dict(aliases_text=dict(foreground="c62b2b")),
     )
     # print(narg.dump())
@@ -105,14 +107,21 @@ if __name__ == "__main__":
     # print(narg.get_documentation(output="text", filenpa="../output/output.txt", wsyntax=True))
     # print(narg.get_documentation(output="html", filenpa="../output/output.html", wsyntax=True))
     # print(narg.get_documentation(output="markdown", filenpa="../output/output.md", wsyntax=True))
-    # narg._update_nargs_syntax()
     # print(narg.get_documentation(output="asciidoc", filenpa="../output/output.adoc", wsyntax=True))
+    narg._update_nargs_syntax()
 
     # narg.dump()
     # pprint(narg.dump())
 
     root_arg=narg.get_args()
-    print(root_arg)
+
+    # print(root_arg.arg_one)
+
+    # print(root_arg.arg_one.a.b.get_path())
+    # print(root_arg.arg_one.b.get_path())
+    # print(root_arg.arg_one.get_path(wvalues=True))
+    # pprint(root_arg.arg_one._args)
+    # print(root_arg)
     # if root_arg.tom._here:
     #     print("sdfsdf")
 

@@ -5,14 +5,19 @@ import os
 import sys
 
 def get_regex(reg_name):
+    quotes=r"(?:(\=\"(?P<dquotes>.*)\"|\=\'(?P<squotes>.*)\'|\=(?P<nquotes>.*)))?"
     dy=dict(
+        cli_builtin_alias=dict(
+            name="command-line builtin alias",
+            rule=r"^(?P<alias>:{{1,2}}[a-zA-Z0-9][a-zA-Z0-9\-]*)(?:_(?P<index>[1-9][0-9]*))?{}$".format(quotes),
+        ),
         cli_dashless_alias=dict(
             name="command-line dashless alias",
-            rule=r"^(?P<alias>[a-zA-Z0-9][a-zA-Z0-9\-]*)(?:_(?P<index>[1-9][0-9]*))?(?:(\=\"(?P<dquotes>.*)\"|\=\'(?P<squotes>.*)\'))?$",
+            rule=r"^(?P<alias>[a-zA-Z0-9][a-zA-Z0-9\-]*)(?:_(?P<index>[1-9][0-9]*))?{}$".format(quotes),
         ),
         cli_long_alias=dict(
             name="command-line long alias",
-            rule=r"^(?P<alias>--[a-zA-Z0-9][a-zA-Z0-9\-]*)(?:_(?P<index>[1-9][0-9]*))?(?:(\=\"(?P<dquotes>.*)\"|\=\'(?P<squotes>.*)\'))?$",
+            rule=r"^(?P<alias>--[a-zA-Z0-9][a-zA-Z0-9\-]*)(?:_(?P<index>[1-9][0-9]*))?{}$".format(quotes),
         ),
         cli_explicit=dict(
             name="command-line explicit",
@@ -20,7 +25,7 @@ def get_regex(reg_name):
         ),
         cli_short_alias=dict(
             name="command-line short alias",
-            rule=r"^(?P<alias>-[a-zA-Z0-9])(?:_(?P<index>[1-9][0-9]*))?(?:(\=\"(?P<dquotes>.*)\"|\=\'(?P<squotes>.*)\'))?$",
+            rule=r"^(?P<alias>-[a-zA-Z0-9])(?:_(?P<index>[1-9][0-9]*))?{}$".format(quotes),
         ),
         cli_short_alias_concat=dict(
             name="command-line short aliases concatenated",
@@ -79,29 +84,12 @@ def get_regex(reg_name):
             name="definition values",
             rule=r"^(?P<star>\*)|(?P<plus>\+)|(?P<qmark>\?)|(?P<min>[1-9][0-9]*)(?:\-(?P<max>(?:[1-9][0-9]*|\*)))?(?P<optional>\?)?$",
             hints=[
-                "_values can be either '*', '+', '?', an integer or a range",
-                "If integer then only a positive integer is accepted",
-                "If range then two positive integers separated with a dash are accepted i.e.: 4-5",
-                "If range then last positive integer can be a star i.e.: 4-*",
+                "_values can be either '*', '+', '?', an integer or a range.",
+                "If an integer is given then only a positive integer is authorized.",
+                "If a range is given then two positive integers separated with a dash are authorized i.e.: 4-5.",
+                "If a range is given then last positive integer can also be a star i.e.: 4-*.",
                 "A question mark can be appended for integer and range to set values as optional.",
             ],
-        ),
-        special_cmd=dict(
-            name="special command",
-            rule=r"^(?:(?P<at1>@{1,3})(?P<cmark1>:{1,3})?|(?P<cmark2>:{1,3})(?P<at2>@{1,3})?)(?P<params>e?h?i?|e?i?h?|h?e?i?|h?i?e?|i?e?h?|i?h?e?)?$",
-            hints=[
-                "Start with `:` for usage or `@` for argument's path.",
-                "Both `:` and `@` can be used in the command and they are related to current argument on the command-line.",
-                "`:` and `@` can be repeated three times each for verbosity.",
-                "`:`: Print usage of current argument, and first nested arguments.",
-                "`::`: Print usage of current argument, nested arguments and sub-nested arguments.",
-                "`:::`: Print usage of current argument, and all nested arguments.",
-                "`@`: Print current argument's path.",
-                "`@@`: Print current argument's path with argument indexes.",
-                "`@@@`: Print current argument's path with argument indexes and values.",
-                "Params can be added. param `e` print arguments' examples and param `h` print arguments' hint.",
-                "Examples: `@:eh`, `:@h`, `@@@?eh`, `:@@@he`, `:ie`",
-            ]
         ),
         def_json_data=dict(
             name="definition json data",
@@ -122,29 +110,6 @@ def get_regex(reg_name):
         ),
     )
     return dy[reg_name]
-
-# e?h?i?|e?h?i?|
-
-# e?h?i?|e?i?h?|h?e?i?|h?i?e?|i?e?h?|i?h?e?
-# e i h
-# e
-# eh
-# ei
-# ehi
-# eih
-
-# h
-# he
-# hi
-# hei
-# hie
-
-# i
-# ie
-# ih
-# ieh
-# ihe
-
 
 def get_regex_hints(reg_name):
     dy_regex=get_regex(reg_name)

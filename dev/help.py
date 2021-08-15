@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
+from copy import deepcopy
 from datetime import datetime
 from pprint import pprint
+from subprocess import list2cmdline
+
 import json
-import os 
+import os
 import re
+import shlex 
 import shutil
 import sys
 
 from .get_types import get_type_str
-from .nargs_syntax import get_nargs_syntax
+from .nargs_syntax import get_nargs_syntax, get_joined_list
 from .regexes import get_regex, get_regex_hints
 from .style import Style
 
-from ..gpkgs import message as msg
-
-def get_values_notation(style, _in, _type, default, label, value_min, value_max, value_required):
+def get_values_notation(style, _in, _in_labels, _type, default, label, value_min, value_max, value_required):
     if value_required is None:
         return None
     else:
@@ -23,10 +25,13 @@ def get_values_notation(style, _in, _type, default, label, value_min, value_max,
 
         if _in is not None:
             value="{{{}:".format(get_type_str(_type))
-            if isinstance(_in, dict):
-                value+=", ".join(sorted(["{} ({})".format(k, v) for k, v in _in.items()]))
-            elif isinstance(_in, list):
-                value+=", ".join(sorted(_in))
+            if len(_in_labels)> 0:
+                tmp_values=[]
+                for i, v in enumerate(_in):
+                    tmp_values.append("{}({})".format(v, _in_labels[i]))
+                value+=",".join(tmp_values)
+            else:
+                value+=",".join(_in)
             value+="}"
         elif label is not None:
             value="{}{}:{}{}".format(lt, get_type_str(_type), label, gt)
@@ -50,23 +55,17 @@ def get_values_notation(style, _in, _type, default, label, value_min, value_max,
         if default is not None:
             value+=" (="
             if isinstance(default, dict):
-                # if "__is_a_prompt__" in default:
-                #     value+=default["raw_default"]
-                # else:
                 value+=json.dumps(default)
             elif isinstance(default, list):
                 tmp_list=[]
                 for tmp in default:
                     if isinstance(tmp, dict):
-                        # if "__is_a_prompt__" in tmp:
-                        #     tmp_list.append(tmp["raw_default"])
-                        # else:
                         tmp_list.append(json.dumps(tmp))
                     else:
                         tmp_list.append(tmp)
-                value+=", ".join(tmp_list)
+                value+=", ".join(map(str, tmp_list))
             else:
-                value+=default
+                value+=str(default)
             value+=")"
 
         value=style.get_text(value, "values_text")
@@ -82,29 +81,27 @@ def get_values_notation(style, _in, _type, default, label, value_min, value_max,
 
 def get_help_usage(
     dy_metadata,
-    special_cmd,
     node_ref,
     output,
     style,
     about=[],
-    at=None,
     columns=None,
     examples=[],
-    from_get_args=False,
     help=[],
     index=None,
     modes=None,
     node_dfn=None,
-    cmark=None,
     usage=[],
+    max_sibling_level=None,
     wexamples=False,
     whint=False,
     winfo=False,
+    wpath=False,
     wsyntax=False,
     top_node=True,
     
 ):
-    prefix="Nargs at Usage with special command '{}'".format(special_cmd)
+    prefix="Nargs at Usage"
     dy_help=dict()
     if node_dfn is None:
         about=[]
@@ -113,44 +110,12 @@ def get_help_usage(
         usage=[]
 
         node_dfn=node_ref
-        reg_cmd=re.match(get_regex("special_cmd")["rule"], special_cmd)
-        if reg_cmd:
-            if reg_cmd.group("params") is not None:
-                if "e" in reg_cmd.group("params"):
-                    wexamples=True
-                if "h" in reg_cmd.group("params"):
-                    whint=True
-                if "i" in reg_cmd.group("params"):
-                    winfo=True
-
-            if reg_cmd.group("at1"):
-                at=reg_cmd.group("at1")
-            else:
-                at=reg_cmd.group("at2")
-
-            if reg_cmd.group("cmark1"):
-                cmark=reg_cmd.group("cmark1")
-            else:
-                cmark=reg_cmd.group("cmark2")
-        else:
-            if from_get_args is True:
-                return False
-            else:
-                msg.error([
-                        "Regex does not match:",
-                        *get_regex_hints("special_cmd"),
-                    ], prefix=prefix, trace=True, exit=1)
 
         if output in ["cmd_help", "cmd_usage"]:
             columns=shutil.get_terminal_size((80, 20)).columns
 
         if output in ["asciidoc", "cmd_help", "html", "markdown", "text"]:
             about=get_about(output, dy_metadata, style)
-            if output == "cmd_help":
-                print()
-
-
-            examples.append(style.get_text("EXAMPLES", "headers"))
 
             text=style.get_text("USAGE", "headers")
             if output == "cmd_help":
@@ -159,220 +124,213 @@ def get_help_usage(
                 if output == "html":
                     usage.append("\t\t<div id=\"usage\">")
                 usage.append(text)
-
     
     if node_dfn is not None and node_dfn.dy["show"] is True:
-        if at is not None:
-            if node_dfn.get_arg()._here is False:
-                msg.error("Argument has not been provided on the command-line.", prefix=prefix, trace=True, exit=1)
-            address=None
-            if at == "@":
-                address=node_dfn.get_arg().get_path(explicit=False)
-            elif at == "@@":
-                address=node_dfn.get_arg().get_path(wvalues=True)
-            elif at == "@@@":
-                address=node_dfn.get_arg().get_path(explicit=True, wvalues=True)
-            print(address)
-        if cmark is not None:
-            str_alias_value=""
-            aliases=style.get_text(" ".join(node_dfn.dy["aliases"]), "aliases_text")
-            if node_dfn.is_root is True:
-                str_alias_value+="{} {}".format(
-                    style.get_text(dy_metadata["executable"]+":", "aliases_text"),
-                    aliases,
-                )
-            else:
-                str_alias_value+=aliases
-
-            value_notation=get_values_notation(
-                style,
-                node_dfn.dy["in"],
-                node_dfn.dy["type"],
-                node_dfn.dy["default"],
-                node_dfn.dy["label"],
-                node_dfn.dy["value_min"],
-                node_dfn.dy["value_max"],
-                node_dfn.dy["value_required"],
+        str_alias_value=""
+        node_dfn_aliases=deepcopy(node_dfn.dy["aliases"])
+        if len(node_dfn_aliases) > 1:
+            if node_dfn.dy["required"] is True:
+                index_default=node_dfn_aliases.index(node_dfn.dy["default_alias"])
+                default_alias="{}.".format(node_dfn.dy["default_alias"])
+                node_dfn_aliases.insert(index_default, default_alias)
+                node_dfn_aliases.remove(node_dfn.dy["default_alias"])
+        aliases=style.get_text(", ".join(node_dfn_aliases), "aliases_text")
+        if node_dfn.is_root is True:
+            str_alias_value+="{} {}".format(
+                style.get_text(dy_metadata["executable"]+":", "aliases_text"),
+                aliases,
             )
+        else:
+            str_alias_value+=aliases
 
-            if value_notation is not None:
-                str_alias_value+=" {}".format(value_notation)
+        value_notation=get_values_notation(
+            style,
+            node_dfn.dy["in"],
+            node_dfn.dy["in_labels"],
+            node_dfn.dy["type"],
+            node_dfn.dy["default"],
+            node_dfn.dy["label"],
+            node_dfn.dy["value_min"],
+            node_dfn.dy["value_max"],
+            node_dfn.dy["value_required"],
+        )
 
-            if node_dfn.dy["repeat"] != "replace":
-                str_alias_value+=" "+style.get_text(":{}".format(node_dfn.dy["repeat"][0]), "aliases_text")
+        if value_notation is not None:
+            str_alias_value+=" {}".format(value_notation)
 
-            if node_dfn.dy["single"] is True:
-                str_alias_value+=" "+style.get_text("\u2022", "aliases_text")
-                # str_alias_value+=" "+style.get_text(".", "aliases_text")
+        if node_dfn.dy["repeat"] != "replace":
+            str_alias_value+=" "+style.get_text("&{}".format(node_dfn.dy["repeat"][0]), "aliases_text")
 
-            if node_dfn.dy["either_notation"] is not None:
-                str_alias_value+=" {}".format(style.get_text("|{}".format("|".join(node_dfn.dy["either_notation"])), "aliases_text"))
-
-            process_children=False
-            if cmark == ":":
-                if node_dfn.level - node_ref.level == 0:
-                    process_children=True
-            elif cmark == "::":
-                if node_dfn.level - node_ref.level in [0, 1]:
-                    process_children=True
-            elif cmark == ":::":
+        process_children=False
+        if max_sibling_level is None:
+            process_children=True
+        else:
+            if node_dfn.level - node_ref.level < max_sibling_level:
                 process_children=True
 
-            lelem=" "
-            relem=" "
-            if node_dfn.dy["required"] is False:
-                lsbracket=style.get_symbol("[")
-                rsbracket=style.get_symbol("]")
-                lelem=style.get_text(lsbracket, "square_brackets")
-                relem=style.get_text(rsbracket, "square_brackets")
+        lelem=""
+        relem=""
+        if node_dfn.dy["required"] is False:
+            lsbracket=style.get_symbol("[")
+            rsbracket=style.get_symbol("]")
+            lelem=style.get_text(lsbracket, "square_brackets")
+            relem=style.get_text(rsbracket, "square_brackets")
 
-            expand=""
-            if top_node is True:
-                if lelem == " ":
-                    lelem=""
-                    relem=""
-            else:
-                expand_symbol="."
-                expand_symbol=" "
-                if len(node_dfn.nodes) > 0:
-                    if process_children is True:
-                        expand_symbol=" "
-                        # expand_symbol="-"
+        if top_node is True:
+            if lelem == " ":
+                lelem=""
+                relem=""
 
-                        # expand_symbol=chr(8595)
-                        # expand_symbol=chr(711)
-                        # expand_symbol=chr(187)
-                        # expand_symbol=chr(8250)
-                        # expand_symbol=chr(8595)
-                        # expand_symbol=chr(9492)
-                        # expand_symbol="v"
-                    else:
-                        # expand_symbol="+"
-                        # expand_symbol="*"
-                        # expand_symbol=">"
-                        # expand_symbol=chr(8250)
-                        # expand_symbol=style.get_text(chr(187), "nargs_syntax_emphasize")
-                        expand_symbol=style.get_text("*", "nargs_syntax_emphasize")
-                        # expand_symbol="#"
-                        # expand_symbol="%"
-                        # expand_symbol="$"
-                        # expand_symbol=chr(8594)
+        str_alias_value="{}{}{}".format(
+            lelem,
+            str_alias_value, 
+            relem,
+        )
 
-                    # expand_symbol="{}".format(
-                    #     # chr(187),
-                    #     # chr(187),
-                    #     # style.get_text(chr(187), "square_brackets")
-                    #     # style.get_text(chr(8250), "square_brackets")
-                    #     # style.get_text(chr(8595), "square_brackets")
-                    #     # style.get_text(chr(9492), "square_brackets")
-                    #     # style.get_text("+", "square_brackets")
-                    #     # "+",
-                    #     "-",
-                    # )
-                expand="{}".format(expand_symbol)
+        indent=None
+        indent_size=node_dfn.level-node_ref.level
+        if output in ["cmd_help", "cmd_usage", "html", "text"]:
+            indent=style.get_space(2)*indent_size
+        elif output in ["asciidoc", "markdown"]:
+            indent=style.get_space(4)*indent_size
 
-            str_alias_value="{}{}{}{}".format(
-                expand,
-                lelem,
-                str_alias_value, 
-                relem,
+        if wpath is True:
+            print("{}{}".format(indent, node_dfn.current_arg.get_path(wvalues=True)))
+
+        add_expand_symbol=False
+        if top_node is False:
+            if len(node_dfn.nodes) > 0:
+                if process_children is False:
+                    add_expand_symbol=True
+
+        if output in ["asciidoc", "cmd_help", "markdown", "text"]:
+            dy_help["aliases"]=str_alias_value
+        elif output == "html":
+            dy_help["aliases"]=style.get_text(str_alias_value, "aliases_and_values")
+
+        usage_alias_value="{}{}".format(indent, str_alias_value)
+        # usage_alias_value="{}".format(str_alias_value)
+        if add_expand_symbol is True:
+            usage_alias_value="{}{}{}".format(
+                indent[1:],
+                style.get_text("*", "nargs_syntax_emphasize"),
+                str_alias_value,
             )
 
-            indent=style.get_indent(("  "*(node_dfn.level-node_ref.level)))
-            # print(len(indent), node_dfn.name)
+        if output in ["cmd_help", "cmd_usage"]:
+            print(usage_alias_value)
+        elif output in ["html", "text", "markdown", "asciidoc"]:
+            usage.append(usage_alias_value)
 
-            if output in ["asciidoc", "cmd_help", "html", "markdown", "text"]:
-                dy_help["aliases"]=str_alias_value
-                if index is None:
-                    dy_help["index"]=style.get_text(dy_metadata["executable"]+":", "aliases_text")
+        if whint is True:
+            if node_dfn.dy["hint"] is not None:
+                if output == "cmd_help":
+                    dy_help["hint"]=style.get_text(get_wrap_text(columns, node_dfn.dy["hint"], "    "), "hint")
+                elif output == "cmd_usage":
+                    print(style.get_text(get_wrap_text(columns, node_dfn.dy["hint"], indent+"     "), "hint"))
+                elif output in ["html", "text", "markdown", "asciidoc"]:
+                    dy_help["hint"]=style.get_text(node_dfn.dy["hint"], "hint")
+
+        if winfo is True:
+            if node_dfn.dy["info"] is not None:
+                if output == "cmd_help":
+                    dy_help["info"]=style.get_text(get_wrap_text(columns, node_dfn.dy["info"], "    "), "info")
+                elif output == "cmd_usage":
+                    print(style.get_text(get_wrap_text(columns, node_dfn.dy["info"], indent+"     "), "info"))
+                elif output in ["html", "text", "markdown", "asciidoc"]:
+                    dy_help["info"]=style.get_text(node_dfn.dy["info"], "info")
+
+        if output in ["cmd_help", "html", "text", "markdown", "asciidoc"]:
+            if index is None:
+                index=""
+
+            node_dfn_path=shlex.split(node_dfn.current_arg.get_path())
+            del node_dfn_path[0]
+            node_dfn_path.insert(0, dy_metadata["executable"])
+            tmp_path=[]
+            for t in node_dfn_path:
+                tmp_path.append(shlex.quote(t))
+            node_dfn_path=" ".join(tmp_path)
+
+            tmp_index=""
+            if index != "":
+                if output in ["markdown", "asciidoc"]:
+                    tmp_index="{} ".format(style.get_text(index+":", "arg_index"))
                 else:
-                    dy_help["index"]=index
+                    tmp_index="{}: ".format(index)
 
-            if output in ["cmd_help", "cmd_usage"]:
-                print("{}{}".format(indent, str_alias_value))
-            elif output in ["html", "text", "markdown", "asciidoc"]:
-                usage.append("{}{}".format(indent, str_alias_value))
+            if output == "cmd_help":
+                dy_help["path"]="{}{}".format(tmp_index, style.get_text(get_wrap_text(columns, node_dfn_path, ""), "arg_path"))
+            elif output in ["html", "text"]:
+                dy_help["path"]=style.get_text(tmp_index+style.get_text(node_dfn_path, "arg_path"), "arg_index")
+            elif output in ["markdown", "asciidoc"]:
+                dy_help["path"]="{} {}".format(
+                    tmp_index,
+                    style.get_text(node_dfn_path, "arg_path"),
+                )
+                # input(dy_help["path"])
+                # dy_help["path"]="{}{}".format(style.get_text(tmp_index, "arg_index"), style.get_text(node_dfn_path, "arg_path"))
 
-            if whint is True:
-                if node_dfn.dy["hint"] is not None:
-                    if output == "cmd_help":
-                        dy_help["hint"]=style.get_text(get_wrap_text(columns, node_dfn.dy["hint"], "  "), "hint")
-                    elif output == "cmd_usage":
-                        print(style.get_text(get_wrap_text(columns, node_dfn.dy["hint"], indent+"   "), "hint"))
-                    elif output in ["html", "text", "markdown", "asciidoc"]:
-                        dy_help["hint"]=style.get_text(node_dfn.dy["hint"], "hint")
-
-            if winfo is True:
-                if node_dfn.dy["info"] is not None:
-                    if output == "cmd_help":
-                        dy_help["info"]=style.get_text(get_wrap_text(columns, node_dfn.dy["info"], "  "), "info")
-                    elif output == "cmd_usage":
-                        print(style.get_text(get_wrap_text(columns, node_dfn.dy["info"], indent+"   "), "info"))
-                    elif output in ["html", "text", "markdown", "asciidoc"]:
-                        dy_help["info"]=style.get_text(node_dfn.dy["info"], "info")
-
-            if wexamples is True:
-                if node_dfn.dy["examples"] is not None:
-                    dy_help["examples"]=[]
-                    for example in node_dfn.dy["examples"]:
-                        tmp_text=style.get_text("{} {}".format(style.get_text(chr(187), "examples_bullet"), example), "examples")
-                        if output == "cmd_usage":
-                            print("{}   {}".format(indent, tmp_text))
-                        elif output in ["cmd_help", "html", "text"]:
-                            dy_help["examples"].append(tmp_text)
-                            if output in ["cmd_help", "text"]:
-                                examples.append(tmp_text)
-                            elif output == "html":
-                                examples.append("\t\t\t\t<li>{}</li>".format(example))
-                        elif output == "asciidoc":
-                            tmp_text=style.get_text(example, "examples")
-                            dy_help["examples"].append(tmp_text)
+        if wexamples is True:
+            if node_dfn.dy["examples"] is not None:
+                dy_help["examples"]=[]
+                for example in node_dfn.dy["examples"]:
+                    tmp_text=style.get_text("{} {}".format(style.get_text(">", "examples_bullet"), example), "examples")
+                    if output == "cmd_usage":
+                        print("{}   {}".format(indent, tmp_text))
+                    elif output in ["cmd_help", "html", "text"]:
+                        dy_help["examples"].append(tmp_text)
+                        if output in ["cmd_help", "text"]:
                             examples.append(tmp_text)
-                        elif output == "markdown":
-                            tmp_text=style.get_text(example, "examples")
-                            dy_help["examples"].append(tmp_text)
-                            examples.append("{}`{}`".format(style.get_list_bullet(), example))
-                        
-            help.append(dy_help)
+                        elif output == "html":
+                            examples.append("\t\t\t\t<li>{}</li>".format(example))
+                    elif output == "asciidoc":
+                        tmp_text=style.get_text(example, "examples")
+                        dy_help["examples"].append(tmp_text)
+                        examples.append(tmp_text)
+                    elif output == "markdown":
+                        tmp_text=style.get_text(example, "examples")
+                        dy_help["examples"].append(tmp_text)
+                        examples.append("{}`{}`".format(style.get_list_bullet(), example))
+                    
+        help.append(dy_help)
 
-            if process_children is True:
-                explicit_aliases_sort=get_explicit_aliases_sort(node_dfn)
-                for aliases_sort in sorted(explicit_aliases_sort):
-                    for t, tmp_node in enumerate(explicit_aliases_sort[aliases_sort]):
-                        tmp_index=""
-                        if node_dfn.is_root is True:
-                            tmp_index=str(t+1)
+        if process_children is True:
+            explicit_aliases_sort=get_explicit_aliases_sort(node_dfn)
+            index_counter=0
+            for aliases_sort in sorted(explicit_aliases_sort):
+                for tmp_node in explicit_aliases_sort[aliases_sort]:
+                    if tmp_node.dy["show"] is True:
+                        index_counter+=1
+                        tmp_index=None
+                        if index == "":
+                            tmp_index="{}".format(index_counter)
                         else:
-                            tmp_index="{}-{}".format(index, str(t+1))
+                            tmp_index="{}.{}".format(index, index_counter)
 
                         get_help_usage(
                             dy_metadata=dy_metadata,
-                            special_cmd=special_cmd,
                             node_ref=node_ref,
                             output=output,
                             style=style,
                             about=about,
-                            at=None,
                             columns=columns,
                             examples=examples,
-                            from_get_args=from_get_args,
                             help=help,
                             index=tmp_index,
                             modes=modes,
                             node_dfn=tmp_node,
-                            cmark=cmark,
                             usage=usage,
+                            max_sibling_level=max_sibling_level,
                             wexamples=wexamples,
                             whint=whint,
                             winfo=winfo,
+                            wpath=wpath,
                             wsyntax=wsyntax,
                             top_node=False,
                         )
 
     if node_ref == node_dfn:
-        if from_get_args is True:
-            return True
-
         if output in ["asciidoc", "cmd_help", "html", "markdown", "text"]:
             if output == "cmd_help":
                 print()
@@ -395,57 +353,65 @@ def get_help_usage(
                 tmp_help.append("\t\t\t<dl>")
             
             for d, dy in enumerate(help):
-                for elem in ["aliases", "hint", "info", "examples"]:
+                for elem in ["path", "aliases", "hint", "info", "examples"]:
                     if elem in dy:
-                        if elem == "examples":
+                        if elem == "path":
+                            if output == "cmd_help":
+                                print(dy[elem])
+                            elif output == "html":
+                                tmp_help.append("\t\t\t\t<dt>{}</dt>".format("{}".format(dy[elem])))
+                                tmp_help.append("\t\t\t\t<dd>")
+                            elif output == "text":
+                                tmp_help.append(dy[elem])
+                            elif output in ["markdown", "asciidoc"]:
+                                tmp_help.append(dy[elem])
+                        elif elem == "aliases":
+                            if output == "cmd_help":
+                                print("  {}".format(dy[elem]))
+                            elif output == "html":
+                                tmp_help.append("\t\t\t\t\t"+dy[elem])
+                            elif output == "text":
+                                tmp_help.append("  {}".format(dy[elem]))
+                            elif output in ["asciidoc", "markdown"]:
+                                tmp_help.append("{}{}".format(style.get_space(4), dy[elem]))
+                        elif elem == "hint":
+                            if output == "cmd_help":
+                                print(dy[elem])
+                            elif output == "html":
+                                tmp_help.append("\t\t\t\t\t"+dy[elem])
+                            elif output == "text":
+                                tmp_help.append("    "+dy[elem])
+                            elif output in ["asciidoc", "markdown"]:
+                                tmp_help.append("{}{}".format(style.get_space(8), dy[elem]))
+                        elif elem == "info":
+                            if output == "cmd_help":
+                                print(dy[elem])
+                            elif output == "html":
+                                tmp_help.append("\t\t\t\t\t"+dy[elem])
+                            elif output == "text":
+                                tmp_help.append("    "+dy[elem])
+                            elif output in ["asciidoc", "markdown"]:
+                                tmp_help.append("{}{}".format(style.get_space(8), dy[elem]))
+                        elif elem == "examples":
                             for ex in dy[elem]:
                                 if output == "cmd_help":
-                                    print("  {}".format(ex))
+                                    print("    {}".format(ex))
                                 elif output == "html":
                                     tmp_help.append("\t\t\t\t\t"+ex)
                                 elif output == "text":
-                                    tmp_help.append("\t"+ex)
-                                elif output == "markdown":
-                                    tmp_help.append(ex)
-                                elif output == "asciidoc":
-                                    tmp_help.append(ex)
-                        else:
-                            if elem == "hint":
-                                if output == "cmd_help":
-                                    print(dy[elem])
-                                elif output == "html":
-                                    tmp_help.append("\t\t\t\t\t"+dy[elem])
-                                elif output == "text":
-                                    tmp_help.append("\t"+dy[elem])
-                                elif output in ["markdown", "asciidoc"]:
-                                    tmp_help.append(dy[elem])
-                            elif elem == "info":
-                                if output == "cmd_help":
-                                    print(dy[elem])
-                                elif output == "html":
-                                    tmp_help.append("\t\t\t\t\t"+dy[elem])
-                                elif output == "text":
-                                    tmp_help.append("\t"+dy[elem])
-                                elif output in ["markdown", "asciidoc"]:
-                                    tmp_help.append(dy[elem])
-                            elif elem == "aliases":
-                                if d == 0:
-                                    dy[elem]=dy[elem][len(dy["index"])+1:]
-                                    dy["index"]=dy_metadata["executable"]
-
-                                if output == "cmd_help":
-                                    print("{} {}".format(style.get_text(dy["index"]+":", "aliases_indexes"), dy[elem]))
-                                elif output == "html":
-                                    tmp_help.append("\t\t\t\t<dt>{}</dt>".format("{} {}".format(style.get_text(dy["index"]+":", "aliases_indexes"), dy[elem])))
-                                    tmp_help.append("\t\t\t\t<dd>")
-                                elif output == "text":
-                                    tmp_help.append("{} {}".format(style.get_text(dy["index"]+":", "aliases_indexes"), dy[elem]))
-                                elif output == "markdown":
-                                    tmp_help.append("- {} {}".format(style.get_text(dy["index"]+":", "aliases_indexes"), dy[elem]))
-                                elif output == "asciidoc":
-                                    tmp_help.append("{} {}::".format(style.get_text(dy["index"]+":", "aliases_indexes"), dy[elem]))
+                                    tmp_help.append("    "+ex)
+                                elif output in ["asciidoc", "markdown"]:
+                                    tmp_help.append("{}{}".format(style.get_space(8), ex))
                 if output == "html":
                     tmp_help.append("\t\t\t\t</dd>")
+
+                if d + 1 < len(help):
+                    if output == "cmd_help":
+                        print()
+                    elif output == "text":
+                        tmp_help.append("")
+                    elif output in ["asciidoc", "html", "markdown"]:
+                        tmp_help.append(style.get_newline())
 
             if output == "cmd_help":
                 # print()
@@ -453,17 +419,20 @@ def get_help_usage(
             elif output == "html":
                 tmp_help.append("\t\t\t</dl>")
                 tmp_help.append("\t\t</div>")
-            elif output == "text":
+            elif output in ["text"]:
                 tmp_help.append("")
 
-            if len(examples) == 1:
-                examples=[]
-            else:
+            if len(examples) > 0:
+                examples.insert(0, style.get_text("EXAMPLES", "headers"))
+                # examples.insert(0, "")
                 if output == "html":
+
                     examples.insert(0, "\t\t<div id=\"examples\">")
                     examples.insert(2, "\t\t\t<ul class=\"no-bullets\">")
                     examples.append("\t\t\t</ul>")
                     examples.append("\t\t</div>")
+            else:
+                examples=[]
 
             if output == "cmd_help":
                 has_example=len(examples) > 0
@@ -546,14 +515,22 @@ def get_help_usage(
                 elif output == "asciidoc":
                     text=""
                     text+=":plus: +\n"
-                    text+="= {}\n".format(get_title(dy_metadata))
+                    text+=":toc: +\n"
+                    text+=":sectnums: +\n"
+                    text+="= {}\n\n".format(get_title(dy_metadata))
                     for section in sections:
                         for line in section:
-                            print(repr(line))
+                            # print(repr(line))
                             if len(line) > 0:
-                                if line[-1] == "\n" or line[0] == "=" or line[0:2] == "\n=":
+                                reg_space=re.match(r"^\s+(.*)$", line)
+                                if reg_space:
+                                    line=reg_space.group(1)
+                                if line[-1] == "\n" :
+                                    # or line[0] == "=" or line[0:2] == "\n="
                                     text+="{}\n".format(line)
-                                elif line[-2:] == "::":
+                                elif line[0] == "=":
+                                    text+="\n{}\n\n".format(line)
+                                elif line[-2:] == "::" or line[-2:] == " +":
                                     text+="{}\n".format(line)
                                 else:
                                     text+="{} +\n".format(line)
@@ -635,6 +612,7 @@ def get_wrap_text(columns, text, indent):
 
 def get_formatted_text(indent, text):
     return "{}{}".format(indent, text.strip())
+
         
 def get_about(output, dy_metadata, style):
     lines=[]
@@ -648,28 +626,26 @@ def get_about(output, dy_metadata, style):
     else:
         lines.append(text)
         
-    for field in ["name", "executable", "uuid4", "version", "timestamp", "authors", "licenses", "description" ]:
-        if field in dy_metadata:
-            text=""
-            value=dy_metadata[field]
-            if isinstance(value, list):
-                value=", ".join(value)
-            if field == "timestamp":
-                text="{} {}".format(style.get_text("date".capitalize()+":", "about_fields"), datetime.fromtimestamp(value).strftime('%m/%d/%Y %H:%M:%S'))
-            else:
-                if field == "uuid4":
-                    field=field.upper()
-                else:
-                    field=field.capitalize()
-                text="{} {}".format(style.get_text(field+":", "about_fields"), value)
-            if output == "cmd_help":
-                print(text)
-            else:
-                lines.append(text)
-    
-    if output == "html":
+    for field in sorted(dy_metadata):
+        text=""
+        value=dy_metadata[field]
+
+        if isinstance(value, list):
+            value=get_joined_list(value)
+        elif isinstance(value, dict):
+            value=json.dumps(value, sort_keys=True)
+        text="{} {}".format(style.get_text(field+":", "about_fields"), value)
+        if output == "cmd_help":
+            print(text)
+        else:
+            lines.append(text)
+
+    if output == "cmd_help":
+        print()
+    elif output == "html":
         lines.append("\t\t</div>")
     elif output == "text":
         lines.append("")
+
     return lines
 

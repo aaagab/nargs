@@ -10,8 +10,8 @@ from .regexes import get_regex, get_regex_hints
 
 from ..gpkgs import message as msg
 
-def get_dfn_prefix(location=None, option=None):
-    prefix="Nargs in definition"
+def get_dfn_prefix(app_name, location=None, option=None):
+    prefix="For '{}' at Nargs in definition".format(app_name)
 
     if location is None and option is None:
         return prefix
@@ -22,106 +22,42 @@ def get_dfn_prefix(location=None, option=None):
         else:
             return "{} at key '{}'".format(prefix, option)
 
-def get_dy(location, name, dy, is_root):
+def get_dy(location, name, dy, is_root, sibling_level, pretty, app_name):
     tmp_dy=dict()
 
-    if dy is None:
-        dy=dict()
-    elif not isinstance(dy, dict):
-        msg.error("value with type {} must be of type {}.".format(type(dy), dict), prefix=get_dfn_prefix(location), exit=1)
+    tmp_dy["is_builtin"]=get_is_builtin(location, dy)
 
-    dy_aliases=get_aliases(location, name, dy)
-    tmp_dy["dashless_alias"]=dy_aliases["dashless_alias"]
-    tmp_dy["long_alias"]=dy_aliases["long_alias"]
-    tmp_dy["short_alias"]=dy_aliases["short_alias"]
+    dy_aliases=get_aliases(location, name, dy, tmp_dy, sibling_level, pretty, app_name)
+    tmp_dy["dfn_aliases"]=dy_aliases["aliases"]
+    tmp_dy["aliases"]=[]
     tmp_dy["auto_aliases"]=dy_aliases["auto_aliases"]
+    tmp_dy["default_alias"]=None
 
-    tmp_dy["enabled"]=get_enabled(location, dy)
-    tmp_dy["examples"]=get_examples(location, dy)
-    tmp_dy["hint"]=get_hint(location, dy)
-    tmp_dy["info"]=get_info(location, dy)
-    tmp_dy["type"]=get_type(location, dy, tmp_dy)
-    tmp_dy["label"]=get_label(location, dy, tmp_dy)
-    tmp_dy["repeat"]=get_repeat(location, dy)
-    tmp_dy["single"]=get_single(location, dy)
-    tmp_dy["required"]=get_required(location, dy, is_root, tmp_dy)
+    tmp_dy["enabled"]=get_enabled(location, dy, pretty, app_name)
+    tmp_dy["examples"]=get_examples(location, dy, pretty, app_name)
+    tmp_dy["hint"]=get_hint(location, dy, pretty, app_name)
+    tmp_dy["info"]=get_info(location, dy, pretty, app_name)
+    tmp_dy["type"]=get_type(location, dy, tmp_dy, pretty, app_name)
+    tmp_dy["label"]=get_label(location, dy, tmp_dy, pretty, app_name)
+    tmp_dy["repeat"]=get_repeat(location, dy, pretty, app_name)
+    tmp_dy["required"]=get_required(location, dy, is_root, tmp_dy, pretty, app_name)
     tmp_dy["required_children"]=[]
     
-    tmp_dy["either"]=get_either(location, dy, tmp_dy)
-    tmp_dy["either_notation"]=None
-    
-    tmp_dy["show"]=get_show(location, dy)
-    dy_values=get_values(location, dy, tmp_dy)
+    tmp_dy["show"]=get_show(location, dy, pretty, app_name)
+    dy_values=get_values(location, dy, tmp_dy, pretty, app_name)
     tmp_dy["value_min"]=dy_values["min"]
     tmp_dy["value_max"]=dy_values["max"]
     tmp_dy["value_required"]=dy_values["required"]
 
-    tmp_dy["in"]=get_in(location, dy, tmp_dy)
-    tmp_dy["default"]=get_default(location, dy, tmp_dy, name)
-
-    tmp_dy["is_builtin"]=get_is_builtin(dy)
+    dy_in=get_in(location, dy, tmp_dy, pretty, app_name)
+    tmp_dy["in"]=dy_in["in"]
+    tmp_dy["in_labels"]=dy_in["in_labels"]
+    tmp_dy["default"]=get_default(location, dy, tmp_dy, name, pretty, app_name)
 
     return tmp_dy
 
-def get_either(location, dy, tmp_dy):
-    prefix=get_dfn_prefix(location, "_either")
-    if "_either" in dy:
-        _either=dy["_either"]
-        del dy["_either"]
-
-        if isinstance(_either, list):
-            pass
-        elif isinstance(_either, str):
-            _either=[_either]
-        else:
-            msg.error("value type {} must be either of type {} or type {}.".format(type(_either), str, list), prefix=prefix, exit=1)
-
-        ret_either=[]
-        ret_either_ids=[]
-        for tmp_either in _either:
-            if isinstance(tmp_either, str):
-                values=tmp_either.split(",")
-                if len(values) < 2:
-                    msg.error("at least 2 values are needed in  {}.".format(values), prefix=prefix, exit=1)
-
-                tmp_ret_either=[]
-                for value in values:
-                    value=value.strip()
-                    if value == "":
-                        msg.error("empty value not allowed in {}.".format(values), prefix=prefix, exit=1)
-                    if value in tmp_ret_either:
-                        msg.error("duplicate value not allowed in {}.".format(values), prefix=prefix, exit=1)
-                    tmp_ret_either.append(value)
-
-                tmp_ret_either.sort()
-                ret_either_id=",".join(tmp_ret_either)
-                if ret_either_id in ret_either_ids:
-                    msg.error("duplicate lists not allowed {}.".format(tmp_ret_either), prefix=prefix, exit=1)
-
-                ret_either_ids.append(ret_either_id)                    
-                ret_either.append(tmp_ret_either)
-            else:
-                msg.error("for sub-value '{}' value type {} must be of type {}.".format(_tmp_either, type(_tmp_either), str), prefix=prefix, exit=1)
-        return ret_either
-    else:
-        return None
-
-def get_single(location, dy):
-    prefix=get_dfn_prefix(location, "_single")
-    if "_single" in dy:
-        _single=dy["_single"]
-        del dy["_single"]
-        if _single is None:
-            return False
-        if isinstance(_single, bool):
-            return _single
-        else:
-            msg.error("value type {} must be of type {}.".format(type(_single), bool), prefix=prefix, exit=1)
-    else:
-        return False
-
-def get_type(location, dy, tmp_dy):
-    prefix=get_dfn_prefix(location, "_type")
+def get_type(location, dy, tmp_dy, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_type")
     if "_type" in dy:
         _type=dy["_type"]
         del dy["_type"]
@@ -150,12 +86,12 @@ def get_type(location, dy, tmp_dy):
         elif _type in authorized_types:
             return _type
         else:
-            msg.error("value '{}' not in authorized types {}.".format(_type, authorized_types), prefix=prefix, exit=1)
+            msg.error("value '{}' not found in authorized types {}.".format(_type, authorized_types), prefix=prefix, pretty=pretty, exit=1)
     else:
         return None
 
-def get_label(location, dy, tmp_dy):
-    prefix=get_dfn_prefix(location, "_label")
+def get_label(location, dy, tmp_dy, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_label")
     if "_label" in dy:
         _label=dy["_label"]
         del dy["_label"]
@@ -164,11 +100,11 @@ def get_label(location, dy, tmp_dy):
         elif isinstance(_label, str):
             return _label.upper()
         else:
-            msg.error("value type {} must be of type {}.".format(type(_label), str), prefix=prefix, exit=1)
+            msg.error("value type {} must be of type {}.".format(type(_label), str), prefix=prefix, pretty=pretty, exit=1)
     else:
         return None
 
-def get_is_builtin(dy):
+def get_is_builtin(location, dy):
     if "_is_builtin" in dy:
         _is_builtin=dy["_is_builtin"]
         del dy["_is_builtin"]
@@ -176,10 +112,9 @@ def get_is_builtin(dy):
     else:
         return False
 
-def get_values(location, dy_user, dy_options):
-    prefix=get_dfn_prefix(location, "_values")
+def get_values(location, dy_user, dy_options, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_values")
     dy_values=dict(
-        accepted=False,
         required=None,
         min=None,
         max=None,
@@ -213,7 +148,7 @@ def get_values(location, dy_user, dy_options):
                     else:
                         _max=int(_max)
                         if _max <= _min:
-                            msg.error("max value '{}' must be greater than min value '{}'".format(_max, _min), prefix=prefix, exit=1)
+                            msg.error("max value '{}' must be greater than min value '{}'.".format(_max, _min), prefix=prefix, pretty=pretty, exit=1)
                         dy_values["max"]=_max
 
                     dy_values["min"]=_min
@@ -224,10 +159,10 @@ def get_values(location, dy_user, dy_options):
                         dy_values["required"]=False
             else:
                 msg.error([
-                    "_values '{}' syntax error.".format(_values),
-                    "Syntax must regex:",
+                    "value '{}' syntax error.".format(_values),
+                    "Value syntax must match regex:",
                     *get_regex_hints("def_values"),
-                ], prefix=prefix, exit=1)
+                ], prefix=prefix, pretty=pretty, exit=1)
         elif _values is None:
             dy_values=dict(
                 required=None,
@@ -238,14 +173,14 @@ def get_values(location, dy_user, dy_options):
             try:
                 _values=int(_values)
             except:
-                msg.error("value type {} must be either of type {} or type {}.".format(type(_values), str, int), prefix=prefix, exit=1)
+                msg.error("value type {} must be either of type {} or of type {}.".format(type(_values), str, int), prefix=prefix, pretty=pretty, exit=1)
 
             if _values > 0:
                 dy_values["min"]=_values
                 dy_values["max"]=_values
                 dy_values["required"]=True
             else:
-                msg.error("when integer value '{}' must be greater than 0.".format(_values), prefix=prefix, exit=1)
+                msg.error("when value is of type {} then it must be greater than 0.".format(int), prefix=prefix, pretty=pretty, exit=1)
 
     if dy_values["required"] is None:
         if dy_options["type"] is None:
@@ -266,20 +201,22 @@ def get_values(location, dy_user, dy_options):
 
     return dy_values
 
-def get_show(location, dy):
-    prefix=get_dfn_prefix(location, "_show")
+def get_show(location, dy, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_show")
     if "_show" in dy:
         _show=dy["_show"]
         del dy["_show"]
-        if isinstance(_show, bool):
+        if _show is None:
+            return True
+        elif isinstance(_show, bool):
             return _show
         else:
-            msg.error("value type {} must be of type {}.".format(type(_show), bool), prefix=prefix, exit=1)
+            msg.error("value type {} must be of type {}.".format(type(_show), bool), prefix=prefix, pretty=pretty, exit=1)
     else:
         return True
 
-def get_required(location, dy, is_root, tmp_dy):
-    prefix=get_dfn_prefix(location, "_required")
+def get_required(location, dy, is_root, tmp_dy, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_required")
     if "_required" in dy:
         _required=dy["_required"]
         del dy["_required"]
@@ -289,19 +226,17 @@ def get_required(location, dy, is_root, tmp_dy):
         elif _required is None:
             return False
         elif isinstance(_required, bool):
-            if _required is True and tmp_dy["single"] is True:
-                msg.error("value can't be 'True' when option '_single' value is 'True'.", prefix=prefix, exit=1)
             return _required
         else:
-            msg.error("value type {} must be of type {}.".format(type(_required), bool), prefix=prefix, exit=1)
+            msg.error("value type {} must be of type {}.".format(type(_required), bool), prefix=prefix, pretty=pretty, exit=1)
     else:
         if is_root:
             return True
         else:
             return False
 
-def get_repeat(location, dy):
-    prefix=get_dfn_prefix(location, "_repeat")
+def get_repeat(location, dy, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_repeat")
     if "_repeat" in dy:
         _repeat=dy["_repeat"]
         del dy["_repeat"]
@@ -309,45 +244,33 @@ def get_repeat(location, dy):
         if _repeat is None:
             return "replace"
 
-        authorized_repeats=["append", "create", "exit", "replace"]
+        authorized_repeats=["append", "exit", "fork", "replace"]
         if _repeat in authorized_repeats:
             return _repeat
         else:
-            msg.error("value '{}' not found in {}.".format(_repeat, authorized_repeats), prefix=prefix, exit=1)
+            msg.error("value '{}' not found in {}.".format(_repeat, authorized_repeats), prefix=prefix, pretty=pretty, exit=1)
     else:
         return "replace"
 
-def get_in(location, dy_user, dy_options):
-    prefix=get_dfn_prefix(location, "_in")
+def get_in(location, dy_user, dy_options, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_in")
+    dy_in=dict({
+        "in": None,
+        "in_labels": [],
+    })
     if "_in" in dy_user:
         _in=dy_user["_in"]
         del dy_user["_in"]
 
         if _in is None:
-            return None
+            return dy_in
 
         if dy_options["type"] in [".json", "json"]:
-            msg.error("option can't be set for type '{}'.".format(dy_options["type"]), prefix=prefix, exit=1)
+            msg.error("option can't be set for type {}.".format(dy_options["type"]), prefix=prefix, pretty=pretty, exit=1)
 
         if dy_options["type"] is None:
             dy_options["type"]=str
 
-        # if dy_options["type"] in [".json", "json"]:
-        #     if isinstance(_in, dict):
-        #         prefix+=" for type '{}' in dict '{}'".format(dy_options["type"], json.dumps(_in))
-        #         return get_processed_data_dict(prefix, _in)
-        #     else:
-        #         if isinstance(_in, str):
-        #             dy_json_data=get_json_dy(prefix, _in)
-        #             if dy_json_data is None:
-        #                 return dy_json_data
-
-        #         msg.error([
-        #             "For type '{}' _in '{}' must either match type '{}' or type '{}'.".format(dy_options["type"], _in, dict, str),
-        #             "If type '{}' it must match regex:".format(str),
-        #             *get_regex_hints("def_json_data"),
-        #         ], prefix=prefix, exit=1)
-        # else:
         if dy_options["value_min"] is None and dy_options["value_max"] is None:
             dy_options["value_min"]=1
             dy_options["value_max"]=1
@@ -357,16 +280,18 @@ def get_in(location, dy_user, dy_options):
         tmp_ins=[]
         if isinstance(_in, str):
             for tmp_in in sorted(_in.split(",")):
-                tmp_ins.append(tmp_in.strip())
+                tmp_in=tmp_in.strip()
+                if len(tmp_in) > 0:
+                    tmp_ins.append(tmp_in.strip())
         elif type(_in) in [ list, dict ]:
             tmp_ins=sorted(_in)
         else:
-            msg.error("value type '{}' not in authorized value types {}.".format(type(_in), authorized_ins), prefix=prefix, exit=1)
+            msg.error("value type {} not found in authorized types {}.".format(type(_in), authorized_ins), prefix=prefix, pretty=pretty, exit=1)
 
         if len(tmp_ins) == 0:
-            return None
+            return dy_in
         
-        new_ins=[]
+        dy_in["in"]=[]
         for tmp_in in tmp_ins:
             new_in=None
             if dy_options["type"] == bool:
@@ -396,30 +321,31 @@ def get_in(location, dy_user, dy_options):
                     new_in=None
 
             if new_in is None:
-                msg.error("value '{}' does not match type or can't be converted to type '{}'.".format(tmp_in, dy_options["type"]), prefix=prefix, exit=1)
+                if isinstance(_in, dict):
+                    msg.error("dictionary key '{}' does not match type {} or can't be converted to type {}.".format(tmp_in, dy_options["type"], dy_options["type"]), prefix=prefix, pretty=pretty, exit=1)
+                else:
+                    msg.error("value '{}' does not match type {} or can't be converted to type {}.".format(tmp_in, dy_options["type"], dy_options["type"]), prefix=prefix, pretty=pretty, exit=1)
             else:
-                if isinstance(tmp_ins, dict):
-                    value=tmp_ins[tmp_in]
-                    authorized_values_types=[bool, float, int, None, str]
-                    if value not in authorized_values_types:
-                        msg.error("at key '{}' value '{}' is not in authorized types {}.".format(tmp_in, value, authorized_values_types), prefix=prefix, exit=1)
-                new_ins.append(new_in)
+                if isinstance(_in, dict):
+                    value=_in[tmp_in]
+                    if not isinstance(value, str):
+                        msg.error("at key '{}' value type {} must be of type {}.".format(tmp_in, type(value), str), prefix=prefix, pretty=pretty, exit=1)
+                dy_in["in"].append(new_in)
 
         if dy_options["label"] is not None:
-            msg.error("_label must be None when _in is set.", prefix=prefix, exit=1)
+            msg.error("_label must be None when _in is set.", prefix=prefix, pretty=pretty, exit=1)
 
-        if isinstance(tmp_ins, list):
-            return new_ins
-        elif isinstance(tmp_ins, dict):
-            tmp_dy=dict()
-            for t, tmp_in in enumerate(tmp_ins):
-                tmp_dy[new_ins[t]]=tmp_ins[tmp_in]
-            return tmp_dy
+        dy_in["in"].sort()
+        if isinstance(_in, dict):
+            for k in dy_in["in"]:
+                dy_in["in_labels"].append(_in[k])
+
+        return dy_in
     else:
-        return None
+        return dy_in
 
-def get_hint(location, dy):
-    prefix=get_dfn_prefix(location, "_hint")
+def get_hint(location, dy, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_hint")
     if "_hint" in dy:
         _hint=dy["_hint"]
         del dy["_hint"]
@@ -432,14 +358,14 @@ def get_hint(location, dy):
             elif len(_hint) <= 100:
                 return _hint
             else:
-                msg.error("value length '{}' must be less or equal than '100'.".format(len(_hint)), prefix=prefix, exit=1)
+                msg.error("value length '{}' must be less or equal than '100'.".format(len(_hint)), prefix=prefix, pretty=pretty, exit=1)
         else:
-            msg.error("value type {} must be of type {}.".format(type(_hint), str), prefix=prefix, exit=1)
+            msg.error("value type {} must be of type {}.".format(type(_hint), str), prefix=prefix, pretty=pretty, exit=1)
     else:
         return None
 
-def get_info(location, dy):
-    prefix=get_dfn_prefix(location, "_info")
+def get_info(location, dy, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_info")
     if "_info" in dy:
         _info=dy["_info"]
         del dy["_info"]
@@ -452,12 +378,12 @@ def get_info(location, dy):
             else:
                 return _info
         else:
-            msg.error("value type {} must be of type {}.".format(type(_info), str), prefix=prefix, exit=1)
+            msg.error("value type {} must be of type {}.".format(type(_info), str), prefix=prefix, pretty=pretty, exit=1)
     else:
         return None
 
-def get_examples(location, dy):
-    prefix=get_dfn_prefix(location, "_examples")
+def get_examples(location, dy, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_examples")
     if "_examples" in dy:
         _examples=dy["_examples"]
         del dy["_examples"]
@@ -477,9 +403,9 @@ def get_examples(location, dy):
                     if example != "":
                         tmp_examples.append(example)
                 else:
-                    msg.error("At least one element in examples list is not of type {}.".format(str), prefix=prefix, exit=1)
+                    msg.error("At least one element in examples list is not of type {}.".format(str), prefix=prefix, pretty=pretty, exit=1)
         else:
-            msg.error("value type {} must be either of type {} or type {}.".format(type(_examples), str, list), prefix=prefix, exit=1)
+            msg.error("value type {} must be either of type {} or type {}.".format(type(_examples), str, list), prefix=prefix, pretty=pretty, exit=1)
         
         if len(tmp_examples) == 0:
             return None
@@ -488,8 +414,8 @@ def get_examples(location, dy):
     else:
         return None
 
-def get_enabled(location, dy):
-    prefix=get_dfn_prefix(location, "_enabled")
+def get_enabled(location, dy, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_enabled")
     if "_enabled" in dy:
         _enabled=dy["_enabled"]
         del dy["_enabled"]
@@ -499,12 +425,12 @@ def get_enabled(location, dy):
         elif isinstance(_enabled, bool):
             return _enabled
         else:
-            msg.error("value type {} must be of type {}.".format(type(_enabled), bool), prefix=prefix, exit=1)
+            msg.error("value type {} must be of type {}.".format(type(_enabled), bool), prefix=prefix, pretty=pretty, exit=1)
     else:
         return True
 
-def get_default(location, dy_user, dy_options, argument_name):
-    prefix=get_dfn_prefix(location, "_default")
+def get_default(location, dy_user, dy_options, argument_name, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_default")
 
     if "_default" in dy_user:
         _default=dy_user["_default"]
@@ -513,9 +439,11 @@ def get_default(location, dy_user, dy_options, argument_name):
         if _default is None:
             return None
 
-        # # excluded_types=[".json", "dir", "file", "json", "path", "vpath"]
         if dy_options["type"] in [".json", "json"]:
-            msg.error("option can't be set for type '{}'.".format(dy_options["type"]), prefix=prefix, exit=1)
+            msg.error("option can't be set for type {}.".format(dy_options["type"]), prefix=prefix, pretty=pretty, exit=1)
+
+        if dy_options["value_required"] is False:
+            msg.error("values can't be optional when _default is set. Set '_values' with at least a required minimum of values.", prefix=prefix, pretty=pretty, exit=1)
 
         if dy_options["type"] is None:
             dy_options["type"]=str
@@ -525,81 +453,57 @@ def get_default(location, dy_user, dy_options, argument_name):
             list_at_start=False
             _default=[_default]
 
-        # msg.error("here", exit=1)
-        if len(_default) > 0:
-            if dy_options["value_min"] is None and dy_options["value_max"] is None:
-                dy_options["value_min"]=len(_default)
-                dy_options["value_max"]=len(_default)
-                dy_options["value_required"]=True
-            else:
-                error_length=False
-                if dy_options["value_min"] is not None:
-                    if len(_default) < dy_options["value_min"]:
-                        error_length=True
-
-                if dy_options["value_max"] is not None:
-                    if len(_default) > dy_options["value_max"]:
-                        error_length=True
-
-                if error_length is True:
-                    msg.error("for values length '{}' does not match min length {} and max length {}.".format(len(_default), dy_options["value_min"], dy_options["value_max"]), prefix=prefix, exit=1)
-
-            expected_type=None
-            if dy_options["type"] in ["dir", "file", "path", "vpath"]:
-                expected_type=str
-            else:
-                expected_type=dy_options["type"]
-
-            tmp_defaults=[]
-            for value in _default:
-                if value is not None:
-                    if type(value) != expected_type:
-                        if list_at_start is True:
-                            msg.error("for value '{}' in {} for type string '{}'. type error. It must be either {} or {}.".format(
-                                value,
-                                _default,
-                                get_type_str(dy_options["type"]),  
-                                expected_type, 
-                                None,
-                            ), prefix=prefix, exit=1)
-                        else:
-                            msg.error("type error '{}' for type string '{}'. It must be either of type {} or type {} or set _type option with a different type.".format(
-                                type(value),
-                                get_type_str(dy_options["type"]), 
-                                expected_type, 
-                                list
-                            ), prefix=prefix, exit=1)
-
-                    if dy_options["in"] is not None:
-                        if value not in dy_options["in"]:
-                            msg.error("'{}' is not in option _in values {}.".format(value, dy_options["in"]), prefix=prefix, exit=1)
-
-                    tmp_defaults.append(value)
-
-            if len(tmp_defaults) == 0:
-                return None
-            else:
-                if list_at_start is True:
-                    return tmp_defaults
-                else:
-                    return tmp_defaults[0]
+        expected_type=None
+        if dy_options["type"] in ["dir", "file", "path", "vpath"]:
+            expected_type=str
         else:
-            return None
+            expected_type=dy_options["type"]
+
+        tmp_defaults=[]
+        for value in _default:
+            if type(value) != expected_type:
+                msg.error(" value type '{}' must be of type {}.".format(
+                    type(value),
+                    expected_type, 
+                ), prefix=prefix, pretty=pretty, exit=1)
+
+            if dy_options["in"] is not None:
+                if value not in dy_options["in"]:
+                    msg.error("value '{}' is not found in option _in values {}.".format(value, sorted(dy_options["in"])), prefix=prefix, pretty=pretty, exit=1)
+
+            tmp_defaults.append(value)
+
+        if dy_options["value_min"] is None and dy_options["value_max"] is None:
+            dy_options["value_min"]=len(tmp_defaults)
+            dy_options["value_max"]=len(tmp_defaults)
+            dy_options["value_required"]=True
+        else:
+            if len(tmp_defaults) < dy_options["value_min"]:
+                msg.error("number of values '{}' does not match minimum number of values '{}'.".format(len(tmp_defaults), dy_options["value_min"]), prefix=prefix, pretty=pretty, exit=1)
+
+            if dy_options["value_max"] is not None:
+                if len(tmp_defaults) > dy_options["value_max"]:
+                    msg.error("number of values '{}' does not match maximum number of values '{}'.".format(len(tmp_defaults), dy_options["value_max"]), prefix=prefix, pretty=pretty, exit=1)
+
+        if list_at_start is True:
+            return tmp_defaults
+        else:
+            return tmp_defaults[0]
     else:
         return None
 
-def get_aliases(location, name, dy):
+def get_aliases(location, name, dy_user, dy_options, sibling_level, pretty, app_name):
     dy_aliases=dict(
         auto_aliases=False,
         dashless_alias=[],
         long_alias=[],
         short_alias=[],
     )
-    prefix=get_dfn_prefix(location, "_aliases")
+    prefix=get_dfn_prefix(app_name, location, "_aliases")
     auto_aliases=True
-    if "_aliases" in dy:
-        _aliases=dy["_aliases"]
-        del dy["_aliases"]
+    if "_aliases" in dy_user:
+        _aliases=dy_user["_aliases"]
+        del dy_user["_aliases"]
         if _aliases is not None:
             tmp_aliases=[]
             if isinstance(_aliases, str):
@@ -610,9 +514,9 @@ def get_aliases(location, name, dy):
                     if isinstance(tmp_alias, str):
                         tmp_aliases.append(tmp_alias.strip())
                     else:
-                        msg.error("value type {} type must be of type {}.".format(type(tmp_alias), str), prefix=prefix, exit=1)
+                        msg.error("value type {} type must be of type {}.".format(type(tmp_alias), str), prefix=prefix, pretty=pretty, exit=1)
             else:
-                msg.error("valute type {} must be either type {} or type {}.".format(type(_aliases), str, list ), prefix=prefix, exit=1)
+                msg.error("valute type {} must be either type {} or type {}.".format(type(_aliases), str, list ), prefix=prefix, pretty=pretty, exit=1)
 
             for alias in tmp_aliases:
                 auto_aliases=False
@@ -620,10 +524,10 @@ def get_aliases(location, name, dy):
                 for rule_name in ["dashless_alias", "long_alias", "short_alias"]:
                     reg_str=get_regex("def_{}".format(rule_name))["rule"]
                     reg=re.match(reg_str, alias)
-                    if reg:
+                    if reg or (dy_options["is_builtin"] is True and sibling_level == 2):
                         alias_matched=True
                         if alias in dy_aliases[rule_name]:
-                            msg.error("duplicate alias '{}' not authorized.".format(alias), prefix=prefix, exit=1)
+                            msg.error("duplicate alias '{}' not authorized.".format(alias), prefix=prefix, pretty=pretty, exit=1)
                         else:
                             dy_aliases[rule_name].append(alias)
                             break
@@ -635,10 +539,16 @@ def get_aliases(location, name, dy):
                         *get_regex_hints("def_dashless_alias"),
                         *get_regex_hints("def_long_alias"),
                         *get_regex_hints("def_short_alias"),
-                    ], prefix=prefix, exit=1)
-    dy_aliases["auto_aliases"]=auto_aliases
+                    ], prefix=prefix, pretty=pretty, exit=1)
     if auto_aliases is True:
         dy_aliases["long_alias"].append("--{}".format(name.replace("_", "-")))
         dy_aliases["short_alias"].append("-{}".format(name[0]))
 
-    return dy_aliases
+    aliases=[]
+    for alias_str in ["long_alias", "dashless_alias", "short_alias"]:
+        aliases.extend(dy_aliases[alias_str])
+
+    return dict(
+        auto_aliases=auto_aliases,
+        aliases=aliases,
+    )
