@@ -7,7 +7,16 @@ import traceback
 
 from ..gpkgs import message as msg
 
-def get_dy_dfn(direpa_caller, definition, pretty, app_name):
+# def get_dy_dfn(direpa_caller, definition, pretty, app_name):
+def get_dy_dfn(direpa_caller, filenpa_definition, dy_definition):
+    prefix="At Nargs".format(app_name)
+    pretty=False
+    if not isinstance(dy_definition, dict):
+        msg.error("argument dy_definition wrong type {}. It must be of type {}.".format(type(definition), dict), prefix=prefix, pretty=pretty, exit=1)
+
+
+    sys.exit()
+
     prefix="For '{}' at Nargs".format(app_name)
 
     if definition is None:
