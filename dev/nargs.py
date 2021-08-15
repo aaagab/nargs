@@ -42,9 +42,7 @@ class Nargs():
             filenpa_caller=os.path.realpath(filenpa_caller)
         self._direpa_caller=os.path.normpath(os.path.dirname(filenpa_caller))
 
-        self.tmp_dy_definition=dict()
-        if filenpa_definition is not None:
-        # dy_dfn=get_dy_dfn(direpa_caller)
+        dy_dfn=get_dy_dfn(direpa_caller, filenpa_definition, dy_definition)
 
             
 
