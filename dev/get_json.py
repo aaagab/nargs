@@ -18,9 +18,16 @@ try:
 except:
     has_yaml_module=False
 
+def get_arg_prefix(prefix, node, wvalues):
+    # prefix=prefix.format(node.current_arg.get_path(wvalues=wvalues))
+    prefix+=" \"{}\"".format(node.current_arg.get_path(wvalues=wvalues))
+    return prefix
+
 def get_json(
     prefix,
     value,
+    node,
+    pretty,
     search_file=False, 
 ):
     dy=dict()
@@ -44,7 +51,7 @@ def get_json(
                         with open(filenpa, "r") as f:
                             dy=json.load(f)
                     except BaseException:
-                        msg.error("json syntax error in file '{}'".format(filenpa), prefix=prefix)
+                        msg.error("json syntax error in file '{}'".format(filenpa), prefix=get_arg_prefix(prefix, node, wvalues=True), pretty=pretty)
                         print(traceback.format_exc())
                         sys.exit(1)
                 elif ext in ["yml", "yaml"]:
@@ -53,7 +60,7 @@ def get_json(
                             with open(filenpa, "r") as f:
                                 dy=yaml.safe_load(f)
                         except BaseException:
-                            msg.error("yaml syntax error in file '{}'".format(filenpa), prefix=prefix)
+                            msg.error("yaml syntax error in file '{}'".format(filenpa), prefix=get_arg_prefix(prefix, node, wvalues=True), pretty=pretty)
                             print(traceback.format_exc())
                             sys.exit(1)
                     else:
@@ -62,7 +69,7 @@ def get_json(
                             Either do:
                             - pip install pyyaml
                             - use a json file or a json string as argument
-                        """.format(filenpa), heredoc=True, prefix=prefix, exit=1)
+                        """.format(filenpa), heredoc=True, prefix=get_arg_prefix(prefix, node, wvalues=True), pretty=pretty, exit=1)
 
         if json_set is False:
             failed=False
@@ -97,7 +104,7 @@ def get_json(
                         errors.append("value length is >= than '100000'.")
 
             if failed is True:
-                msg.error("Error when trying to load dict from '{}'.".format(value[:200]), prefix=prefix)
+                msg.error("Error when trying to load dict from '{}'.".format(value[:200]), prefix=prefix, pretty=pretty)
                 for error in errors:
                     print(error)
                 sys.exit(1)

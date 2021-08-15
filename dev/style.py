@@ -24,7 +24,7 @@ class Style():
             self.prefix=prefix
         outputs=["asciidoc", "cmd_help", "cmd_usage", "html", "markdown", "text"]
         if output not in outputs:
-            msg.error("output '{}' not found in {}".format(output, outputs), prefix=self.prefix, exit=1)
+            msg.error("output '{}' not found in {}".format(output, outputs), prefix=self.prefix, pretty=self.pretty, exit=1)
         self.output=output
         self.is_tty="/dev/tty" in os.ttyname(1)
 
@@ -33,18 +33,19 @@ class Style():
         indent=""
         if not hasattr(self, "dy_adoc_elem"):
             self.dy_adoc_elem=dict(
-                about_fields="*{}*",
-                aliases_indexes="[black white-background]**{}**",
-                aliases_text="*{}*",
-                square_brackets="[lime]##{}##",
-                hint="* _{}_",
-                examples="* [yellow]++{}++",
-                info="* {}",
+                about_fields=" *{}* ",
+                aliases_text=" *{}* ",
+                arg_index=" *{}* ",
+                arg_path=" *{}* ",
+                examples=" ++{}++ ",
                 examples_bullet="{}",
-                headers="\n== {}",
-                nargs_syntax_headers="\n=== {}",
-                nargs_syntax_emphasize="[red]**{}**",
-                values_text="[fuchsia]__{}__",
+                headers="== {}",
+                hint=" _{}_ ",
+                info="{}",
+                nargs_syntax_emphasize=" **{}** ",
+                nargs_syntax_headers="=== {}",
+                square_brackets="{}",
+                values_text=" __{}__ ",
             )
         
         return deepcopy(self.dy_adoc_elem[elem]).format(text)
@@ -122,6 +123,11 @@ class Style():
             list-style-type: none;
             padding-left: 1em;
         }
+        #nargs-documentation .hint,
+        #nargs-documentation .info,
+        #nargs-documentation .examples {
+            margin-left: 20px;
+        }
         #nargs-documentation #nargs-sheet ul > li:before,
         #nargs-documentation #examples ul > li:before {
             content: "- ";
@@ -135,12 +141,13 @@ class Style():
         """, indent="\t")
 
         for _class in sorted(self.theme):
+            class_name=_class.replace("_", "-")
             is_set=False
             for prop in sorted(self.theme[_class]):
                 value=self.theme[_class][prop]
                 if value not in [None, False]:
                     if is_set is False:
-                        text+="\t#nargs-documentation .{} {{\n".format(_class)
+                        text+="\t#nargs-documentation .{} {{\n".format(class_name)
                     is_set=True
                     if prop == "background":
                         text+="\t\tbackground-color: rgb({});\n".format(", ".join(value.split(";")))
@@ -162,8 +169,10 @@ class Style():
         indent=""
         if not hasattr(self, "dy_html_elem"):
             self.dy_html_elem=dict(
-                aliases_indexes="span",
                 aliases_text="span",
+                aliases_and_values="p",
+                arg_index="span",
+                arg_path="span",
                 square_brackets="span",
                 hint="p",
                 examples="p",
@@ -182,18 +191,30 @@ class Style():
         return "{}<{} class=\"{}\">{}</{}>".format(
             indent,
             tag,
-            elem,
+            elem.replace("_", "-"),
             text,
             tag,
         )
 
-    def get_indent(self, indent):
+    def get_space(self, num_occurences=1):
+        space=None
         if self.output in ["cmd_help", "cmd_usage", "text"]:
-            return indent
+            space=" "
         elif self.output in ["html", "markdown"]:
-            return len(indent) * "&nbsp;&nbsp;"
+            space="&nbsp;"
         elif self.output == "asciidoc":
-            return len(indent) * "{nbsp}{nbsp}"
+            space="{nbsp}"
+        return space*num_occurences
+
+    def get_newline(self, num_occurences=1):
+        newline=None
+        if self.output in ["cmd_help", "cmd_usage", "text"]:
+            newline="\n"
+        elif self.output in ["html", "markdown"]:
+            newline="<br>"
+        elif self.output == "asciidoc":
+            newline="{empty} +"
+        return newline*num_occurences
 
     def get_list_bullet(self):
         if self.output in ["cmd_help", "cmd_usage", "text", "markdown"]:
@@ -213,18 +234,19 @@ class Style():
         indent=""
         if not hasattr(self, "dy_md_elem"):
             self.dy_md_elem=dict(
-                about_fields="**{}**",
-                aliases_indexes="**{}**",
-                aliases_text="**{}**",
-                square_brackets="`{}`",
-                hint="  - *{}*",
-                examples="  - `{}`",
-                info="  - {}",
+                about_fields=" **{}**",
+                aliases_text="{}",
+                arg_index="**{}**",
+                arg_path=" **`{}`**",
+                square_brackets=" **{}**",
+                hint="*{}*",
+                examples=" `{}`",
+                info="{}",
                 examples_bullet="{}",
                 headers="## {}",
                 nargs_syntax_headers="### {}",
                 nargs_syntax_emphasize="`{}`",
-                values_text="*`{}`*",
+                values_text=" *`{}`*",
             )
         
         return deepcopy(self.dy_md_elem[elem]).format(text)
@@ -299,8 +321,8 @@ def get_prop_type(prop):
     elif prop in ["background", "foreground"]:
         return [str, type(None)]
 
-def get_theme(default_theme, user_theme):
-    prefix="Nargs at user theme definition"
+def get_theme(default_theme, user_theme, pretty, app_name):
+    prefix="For '{}' at Nargs in user theme definition".format(app_name)
 
     if user_theme is not None:
         if isinstance(user_theme, dict):
@@ -317,7 +339,7 @@ def get_theme(default_theme, user_theme):
                                         if reg_rgb:
                                             for value in prop_value.split(";"):
                                                 if int(value) > 255:
-                                                    msg.error("Theme element '{}' property '{}' all integer values from {} must be less or equal than 255.".format(elem, prop, prop_value), prefix=prefix, exit=1)
+                                                    msg.error("Theme element '{}' property '{}' all integer values from {} must be less or equal than 255.".format(elem, prop, prop_value), prefix=prefix, pretty=pretty, exit=1)
                                         else:
                                             reg_hexa=re.match(get_regex("def_theme_hexa")["rule"], prop_value)
                                             if reg_hexa:
@@ -330,18 +352,18 @@ def get_theme(default_theme, user_theme):
                                                     "Theme element '{}' property '{}' with value '{}' does not match any regexes from:".format(elem, prop, prop_value),
                                                     *get_regex_hints("def_theme_rgb"),
                                                     *get_regex_hints("def_theme_hexa"),
-                                                ], prefix=prefix, exit=1)
+                                                ], prefix=prefix, pretty=pretty, exit=1)
 
                                     default_theme[elem][prop]=prop_value
                                 else:
-                                    msg.error("Theme element '{}' property '{}' value type {} unknown in {}.".format(elem, prop, type(prop_value), get_prop_type(prop)), prefix=prefix, exit=1)
+                                    msg.error("Theme element '{}' property '{}' value type {} unknown in {}.".format(elem, prop, type(prop_value), get_prop_type(prop)), prefix=prefi, pretty=prettyx, exit=1)
                             else:
-                                msg.error("Theme element '{}' property '{}' unknown in {}.".format(elem, prop, sorted(default_theme[elem])), prefix=prefix, exit=1)
+                                msg.error("Theme element '{}' property '{}' unknown in {}.".format(elem, prop, sorted(default_theme[elem])), prefix=prefix, pretty=pretty, exit=1)
                     else:
-                        msg.error("Theme element '{}' type '{}' must be of type '{}'.".format(elem, type(user_theme[elem]), dict), prefix=prefix, exit=1)
+                        msg.error("Theme element '{}' type '{}' must be of type '{}'.".format(elem, type(user_theme[elem]), dict), prefix=prefix, pretty=pretty, exit=1)
                 else:
-                    msg.error("Theme element '{}' unknown in {}.".format(elem, sorted(default_theme)), prefix=prefix, exit=1)
+                    msg.error("Theme element '{}' unknown in {}.".format(elem, sorted(default_theme)), prefix=prefix, pretty=pretty, exit=1)
         else:
-            msg.error("Theme with type '{}' must be of type '{}'.".format(type(user_theme), dict), prefix=prefix, exit=1)
+            msg.error("Theme with type '{}' must be of type '{}'.".format(type(user_theme), dict), prefix=prefix, pretty=pretty, exit=1)
 
     return default_theme

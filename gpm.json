@@ -12,6 +12,10 @@
     "licenses": [
         "MIT"
     ],
+    "marc": {
+        "tom": {},
+        "harry": {}
+    },
     "name": "Nested Arguments",
     "timestamp": 1620747900.8213155,
     "uuid4": "89d8676a-6b02-43fa-8694-e97de5680cd0",
