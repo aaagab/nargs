@@ -333,7 +333,8 @@ def get_args(
     cmd,
     dy_metadata,
     node_dfn,
-    pretty,
+    pretty_msg,
+    pretty_help,
     substitute,
     theme,
     usage_on_root,
@@ -344,7 +345,7 @@ def get_args(
     prefix="For '{}' at Nargs on the command-line".format(app_name)
 
     if node_dfn is None:
-        msg.warning("get_args returns None due to either arguments empty definition or disabled root argument.", prefix=prefix, pretty=pretty)
+        msg.warning("get_args returns None due to either arguments empty definition or disabled root argument.", prefix=prefix, pretty=pretty_msg)
         return None
 
     def print_usage(node_dfn, max_sibling_level=1):
@@ -352,7 +353,7 @@ def get_args(
             dy_metadata=dy_metadata,
             node_ref=node_dfn,
             output="cmd_usage",
-            style=Style(pretty=pretty, output="cmd_usage", theme=theme),
+            style=Style(pretty_help=pretty_help, pretty_msg=pretty_msg, output="cmd_usage", theme=theme),
             max_sibling_level=max_sibling_level,
         )
 
@@ -362,24 +363,24 @@ def get_args(
         cmd=sys.argv
     else:
         if not isinstance(cmd, str):
-            msg.error("cmd type {} must be type {}.".format(type(cmd), str), prefix=prefix, pretty=pretty, exit=1)
+            msg.error("cmd type {} must be type {}.".format(type(cmd), str), prefix=prefix, pretty=pretty_msg, exit=1)
         cmd_provided=True
         cmd=shlex.split(cmd)
 
     if len(cmd) == 0:
-        msg.error("command must have at least the root argument set.", prefix=prefix, pretty=pretty, exit=1)
+        msg.error("command must have at least the root argument set.", prefix=prefix, pretty=pretty_msg, exit=1)
 
     if usage_on_root is True:
         if len(cmd) == 1:
             if len(node_dfn.dy["required_children"]) > 0:
-                process_required(node_dfn, node_dfn.current_arg, print_usage, prefix, pretty)
+                process_required(node_dfn, node_dfn.current_arg, print_usage, prefix, pretty_msg)
             print_usage(node_dfn)
             sys.exit(1)
 
     if substitute is True:
         tmp_cmd=[]
         for elem in cmd:
-            elem=re.sub(r"(?:__(?P<input>input|hidden)__|__((?P<input_label>input|hidden)(?::))?(?P<label>[a-zA-Z][a-zA-Z0-9]*)__)", lambda m: get_env_var(m), elem)
+            elem=re.sub(r"(?:__(?P<input>input|hidden)__|__((?P<input_label>input|hidden)(?::))?(?P<label>[a-zA-Z][a-zA-Z0-9]*)__)", lambda m: get_substitute_var(m), elem)
             tmp_cmd.append(elem)
         cmd=tmp_cmd
 
@@ -396,7 +397,7 @@ def get_args(
             at_start=False
             if from_sys_argv is False:
                 if elem not in node_dfn.dy["aliases"]:
-                    msg.error("For provided cmd root argument alias '{}' not found in {}.".format(elem, sorted(node_dfn.dy["aliases"])), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty)
+                    msg.error("For provided cmd root argument alias '{}' not found in {}.".format(elem, sorted(node_dfn.dy["aliases"])), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
                     print_usage(node_dfn)
                     sys.exit(1)
             elem=os.path.basename(elem)
@@ -414,9 +415,9 @@ def get_args(
                         reg_arg_matched=True
                         alias=reg_alias.group("alias")
 
-                        node_from_alias=get_node_from_alias(node_dfn, reg_alias, print_usage, prefix, rule_name, explicit=explicit_notation is True, pretty=pretty)
+                        node_from_alias=get_node_from_alias(node_dfn, reg_alias, print_usage, prefix, rule_name, explicit=explicit_notation is True, pretty=pretty_msg)
                         if node_from_alias is None:
-                            msg.error("unknown argument '{}'".format(alias), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty)
+                            msg.error("unknown argument '{}'".format(alias), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
                             print_usage(node_dfn)
                             sys.exit(1)
                         else:
@@ -427,9 +428,9 @@ def get_args(
                     reg_concat=re.match(get_regex("cli_short_alias_concat")["rule"], elem)
                     if reg_concat:
                         after_concat=True
-                        process_concat_alias(reg_concat, node_dfn, print_usage, prefix, pretty)
+                        process_concat_alias(reg_concat, node_dfn, print_usage, prefix, pretty_msg)
                     else: # does not match alias syntax
-                        msg.error("unknown argument '{}'".format(elem), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty)
+                        msg.error("unknown argument '{}'".format(elem), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
                         print_usage(node_dfn)
                         sys.exit(1)
 
@@ -439,7 +440,7 @@ def get_args(
                 reg_explicit=re.match(get_regex("cli_explicit")["rule"], elem)
                 if reg_explicit:
                     if is_last_elem is True:
-                        msg.error("command must finish with an argument or a value not an explicit notation '{}'".format(elem), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty)
+                        msg.error("command must finish with an argument or a value not an explicit notation '{}'".format(elem), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
                         print_usage(node_dfn)
                         sys.exit(1)
 
@@ -453,7 +454,7 @@ def get_args(
                             print(level_up)
                         level_up=level_up - node_dfn.level
                         if  level_up < 1:
-                            msg.error("argument explicit level '{}' with value '{}' is smaller than minimum level 1.".format(elem, level_up), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty, exit=1)
+                            msg.error("argument explicit level '{}' with value '{}' is smaller than minimum level 1.".format(elem, level_up), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg, exit=1)
 
                         for i in range(1, level_up+1):
                             node_dfn=node_dfn.parent
@@ -465,37 +466,37 @@ def get_args(
                             reg_arg_matched=True
                             if rule_name in ["cli_builtin_alias", "cli_long_alias", "cli_short_alias", "cli_dashless_alias"]:
                                 alias=reg_alias.group("alias")
-                                node_from_alias=get_node_from_alias(node_dfn, reg_alias, print_usage, prefix, rule_name, explicit=False, pretty=pretty)
+                                node_from_alias=get_node_from_alias(node_dfn, reg_alias, print_usage, prefix, rule_name, explicit=False, pretty=pretty_msg)
                                 if node_from_alias is None:
 
                                     if node_dfn.dy["value_required"] is None:
-                                        msg.error("unknown input '{}'.".format(alias), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty)
+                                        msg.error("unknown input '{}'.".format(alias), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
                                         print_usage(node_dfn)
                                         sys.exit(1)
                                     else:
-                                        add_value(node_dfn, elem, print_usage, prefix, pretty)
+                                        add_value(node_dfn, elem, print_usage, prefix, pretty_msg)
                                 else:
                                     node_dfn, node_before_usage, builtin_dfn =get_builtin_dfn(node_dfn, node_from_alias, builtin_dfn, node_before_usage)
                                     
                             elif rule_name == "cli_short_alias_concat":
                                 after_concat=True
-                                process_concat_alias(reg_alias, node_dfn, print_usage, prefix, pretty)
+                                process_concat_alias(reg_alias, node_dfn, print_usage, prefix, pretty_msg)
                             break
 
                     if reg_arg_matched is False:
                         if node_dfn.dy["value_required"] is None:
-                            msg.error("unknown input '{}'.".format(elem), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty)
+                            msg.error("unknown input '{}'.".format(elem), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
                             print_usage(node_dfn)
                             sys.exit(1)
                         else:
-                            add_value(node_dfn, elem, print_usage, prefix, pretty)
+                            add_value(node_dfn, elem, print_usage, prefix, pretty_msg)
 
     last_check(
         node_dfn.root,
         print_usage,
         prefix,
         builtin_dfn,
-        pretty,
+        pretty_msg,
     )
 
     if builtin_dfn is None:
@@ -505,7 +506,7 @@ def get_args(
         builtin_arg=builtin_dfn.current_arg
         if builtin_arg._name == "_cmd_":
             if cmd_provided is True:
-                msg.error("Nargs built-in ':cmd' argument can't be provided more than once.", prefix=prefix, pretty=pretty, exit=1)
+                msg.error("Nargs built-in ':cmd' argument can't be provided more than once.", prefix=prefix, pretty=pretty_msg, exit=1)
             lines=[]
             with open(builtin_arg._value, "r") as f:
                 for line in f.read().splitlines():
@@ -520,7 +521,8 @@ def get_args(
                 cmd=cmd,
                 dy_metadata=dy_metadata,
                 node_dfn=node_dfn.root,
-                pretty=pretty,
+                pretty_help=pretty_help,
+                pretty_msg=pretty_msg,
                 substitute=substitute,
                 theme=theme,
                 usage_on_root=usage_on_root,
@@ -531,7 +533,7 @@ def get_args(
             if builtin_arg.metadata._here is True:
                 for arg_name in ["export", "syntax"]:
                     if builtin_arg._[arg_name]._here is True:
-                        msg.error("argument '{}' can't be used with argument '{}'.".format(builtin_arg._[arg_name]._alias, builtin_arg.metadata._alias), prefix=get_arg_prefix(prefix, builtin_dfn, wvalues=False), pretty=pretty, exit=1)
+                        msg.error("argument '{}' can't be used with argument '{}'.".format(builtin_arg._[arg_name]._alias, builtin_arg.metadata._alias), prefix=get_arg_prefix(prefix, builtin_dfn, wvalues=False), pretty=pretty_msg, exit=1)
                 
                 get_values=builtin_arg.metadata.get._alias in ["-v", "--value", "--values"]
                 get_keys=builtin_arg.metadata.get._alias in ["-k", "--key", "--keys"]
@@ -554,7 +556,7 @@ def get_args(
                 for key in keys:
                     if have_custom_keys is True:
                         if key not in dy_metadata:
-                            msg.error("metadata key '{}' not found in {}.".format(key, sorted(dy_metadata)), prefix=get_arg_prefix(prefix, builtin_dfn, wvalues=False), pretty=pretty, exit=1)
+                            msg.error("metadata key '{}' not found in {}.".format(key, sorted(dy_metadata)), prefix=get_arg_prefix(prefix, builtin_dfn, wvalues=False), pretty=pretty_msg, exit=1)
 
                     if get_keys is True:
                         data.append(key)
@@ -597,7 +599,7 @@ def get_args(
             from_=builtin_arg.from_._value
             if from_ < -1:
                 tmp_node_dfn=builtin_dfn.dy_aliases[builtin_arg.from_._alias]["explicit"]
-                msg.error("from LEVEL '{}' must be greater or equal than '-1'.".format(from_), prefix=get_arg_prefix(prefix, tmp_node_dfn, wvalues=False), pretty=pretty, exit=1)
+                msg.error("from LEVEL '{}' must be greater or equal than '-1'.".format(from_), prefix=get_arg_prefix(prefix, tmp_node_dfn, wvalues=False), pretty=pretty_msg, exit=1)
 
             if from_ == 0:
                 tmp_node=node_before_usage
@@ -612,7 +614,7 @@ def get_args(
             depth=builtin_arg.depth._value
             if depth < -1:
                 tmp_node_dfn=builtin_dfn.dy_aliases[builtin_arg.depth._alias]["explicit"]
-                msg.error("depth LEVEL '{}' must be greater or equal than '-1'.".format(builtin_arg.depth._value), prefix=get_arg_prefix(prefix, tmp_node_dfn, wvalues=False), pretty=pretty, exit=1)
+                msg.error("depth LEVEL '{}' must be greater or equal than '-1'.".format(builtin_arg.depth._value), prefix=get_arg_prefix(prefix, tmp_node_dfn, wvalues=False), pretty=pretty_msg, exit=1)
 
             if depth == -1:
                 depth=None
@@ -621,7 +623,7 @@ def get_args(
                 dy_metadata=dy_metadata,
                 node_ref=tmp_node,
                 output="cmd_usage",
-                style=Style(pretty=pretty, output="cmd_usage", theme=theme),
+                style=Style(pretty_help=pretty_help, pretty_msg=pretty_msg, output="cmd_usage", theme=theme),
                 max_sibling_level=depth,
                 wpath=builtin_arg.path._here,
                 whint=builtin_arg.hint._here,
@@ -720,7 +722,7 @@ def get_prompted_value(input_type, label=None):
     elif input_type == "hidden":
         return getpass.getpass(label+": ")
 
-def get_env_var(reg):
+def get_substitute_var(reg):
     dy=reg.groupdict()
     if dy["input"] is not None:
         return get_prompted_value(dy["input"])

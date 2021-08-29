@@ -39,6 +39,21 @@ def get_regex(reg_name):
                 "Optional next chars can be any char from lowercase letter, uppercase letter, integer, or underscore.",
             ]
         ),
+        def_chars=dict(
+            name="definition concatenated chars",
+            rule=r"^[a-zA-Z0-9]$",
+            hints=[
+                "Required char must be either a lowercase letter, an uppercase letter, or an integer.",
+            ]
+        ),
+        def_alias=dict(
+            name="definition alias",
+            rule=r"^{}[a-zA-Z0-9][a-zA-Z0-9\-]*$",
+            hints=[
+                "Required next char must be either a lowercase letter, an uppercase letter, or an integer.",
+                "Optional next chars can be any char from lowercase letter, uppercase letter, integer or dash.",
+            ]
+        ),
         def_dashless_alias=dict(
             name="definition dashless alias",
             rule=r"^[a-zA-Z0-9][a-zA-Z0-9\-]*$",
