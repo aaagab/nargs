@@ -15,8 +15,9 @@
 `version:` 0.1.0<br>
 
 ### Nargs Modes Explained
-- `cached_dfn:` When 'enabled' arguments definition is cached to enable faster arguments parsing.
-- `pretty:` When 'enabled' Nargs messages, usage, and help are themed.
+- `char_prefix:` None
+- `pretty_help:` None
+- `pretty_msg:` None
 - `substitute:` When 'enabled' strings on the command line with syntax \_\_input\_\_, \_\_hidden\_\_, \_\_input:label\_\_, \_\_hidden:label\_\_ trigger user prompt and strings are substituted with user input. Label must start with a letter and can only have letters or numbers. If only labels are provided then strings are substituted with values of matching environment variable names if any. i.e. \_\_input\_\_, \_\_input:username\_\_, \_\_USER\_\_, \_\_Session1\_\_ .
 - `usage_on_root:` When 'enabled' Nargs throws usage when only root argument is provided.
 - `yaml_syntax:` When 'enabled' means PyYAML is installed and yaml can be provided for arguments values types `.json` and `json`.

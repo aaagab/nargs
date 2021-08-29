@@ -11,12 +11,14 @@ from ..gpkgs import message as msg
 
 class Style():
     def __init__(self,
-        pretty=False,
+        pretty_help=False,
+        pretty_msg=False,
         prefix=None,
         output=None,
         theme=None,
     ):
-        self.pretty=pretty
+        self.pretty_help=pretty_help
+        self.pretty_msg=pretty_msg
         self.theme=theme
         if prefix is None:
             self.prefix="Nargs in definition in style"
@@ -24,7 +26,7 @@ class Style():
             self.prefix=prefix
         outputs=["asciidoc", "cmd_help", "cmd_usage", "html", "markdown", "text"]
         if output not in outputs:
-            msg.error("output '{}' not found in {}".format(output, outputs), prefix=self.prefix, pretty=self.pretty, exit=1)
+            msg.error("output '{}' not found in {}".format(output, outputs), prefix=self.prefix, pretty=self.pretty_msg, exit=1)
         self.output=output
         self.is_tty="/dev/tty" in os.ttyname(1)
 
@@ -51,7 +53,7 @@ class Style():
         return deepcopy(self.dy_adoc_elem[elem]).format(text)
 
     def get_cmd_elem(self, text, elem):
-        if self.pretty is True:
+        if self.pretty_help is True:
             for prop in sorted(self.theme[elem]):
                 ignore= self.is_tty and prop == "italic"
                 if ignore is False:

@@ -44,6 +44,7 @@ class NodeDfn(Node):
         is_dy_preset=False,
         pretty=False,
         app_name=None,
+        dy_attr_aliases=dict()
     ):
         super().__init__(name=name, parent=parent)
         
@@ -55,7 +56,16 @@ class NodeDfn(Node):
             self.dy=dy
             self.dy["type"]=get_type_from_str(self.dy["type"])
         else:
-            self.dy=get_dy(self.location, self.name, dy, self.is_root, self.level, pretty, app_name)
+            self.dy=get_dy(
+                self.location,
+                self.name,
+                dy,
+                self.is_root,
+                self.level,
+                pretty,
+                app_name,
+                dy_attr_aliases,
+            )
             if self.is_root is False:
                 if self.dy["required"] is True:
                     self.parent.dy["required_children"].append(self.name)

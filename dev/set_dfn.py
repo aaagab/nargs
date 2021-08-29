@@ -22,15 +22,23 @@ def get_dfn_prefix(app_name, location=None, option=None):
         else:
             return "{} at key '{}'".format(prefix, option)
 
-def get_dy(location, name, dy, is_root, sibling_level, pretty, app_name):
+def get_dy(
+    location,
+    name,
+    dy,
+    is_root,
+    sibling_level,
+    pretty,
+    app_name,
+    dy_attr_aliases,
+):
     tmp_dy=dict()
-
     tmp_dy["is_builtin"]=get_is_builtin(location, dy)
-
-    dy_aliases=get_aliases(location, name, dy, tmp_dy, sibling_level, pretty, app_name)
+    chars=get_chars(location, dy, pretty, app_name)
+    dy_aliases=get_aliases(location, name, dy, tmp_dy, sibling_level, pretty, app_name, dy_attr_aliases, chars)
     tmp_dy["dfn_aliases"]=dy_aliases["aliases"]
     tmp_dy["aliases"]=[]
-    tmp_dy["auto_aliases"]=dy_aliases["auto_aliases"]
+    tmp_dy["auto_alias"]=dy_aliases["auto_alias"]
     tmp_dy["default_alias"]=None
 
     tmp_dy["enabled"]=get_enabled(location, dy, pretty, app_name)
@@ -42,6 +50,8 @@ def get_dy(location, name, dy, is_root, sibling_level, pretty, app_name):
     tmp_dy["repeat"]=get_repeat(location, dy, pretty, app_name)
     tmp_dy["required"]=get_required(location, dy, is_root, tmp_dy, pretty, app_name)
     tmp_dy["required_children"]=[]
+    tmp_dy["xor"]=get_xor(location, dy, tmp_dy)
+
     
     tmp_dy["show"]=get_show(location, dy, pretty, app_name)
     dy_values=get_values(location, dy, tmp_dy, pretty, app_name)
@@ -55,6 +65,168 @@ def get_dy(location, name, dy, is_root, sibling_level, pretty, app_name):
     tmp_dy["default"]=get_default(location, dy, tmp_dy, name, pretty, app_name)
 
     return tmp_dy
+
+# def get_xor
+
+def get_xor(location, dy, tmp_dy):
+    prefix=get_prefix(location, "_either")
+    if "_either" in dy:
+        _either=dy["_either"]
+        del dy["_either"]
+
+        if isinstance(_either, list):
+            pass
+        elif isinstance(_either, str):
+            _either=[_either]
+        else:
+            msg.error("type error '{}'. It must be '{}' or '{}'.".format(type(_either), str, list), prefix=prefix, exit=1)
+
+        ret_either=[]
+        ret_either_ids=[]
+        tmp_dy["either_names"]=[]
+        for tmp_either in _either:
+            if isinstance(tmp_either, str):
+                values=tmp_either.split(",")
+                if len(values) < 2:
+                    msg.error("at least 2 values are needed in  {}.".format(values), prefix=prefix, exit=1)
+
+                tmp_ret_either=[]
+                for value in values:
+                    value=value.strip()
+                    if value == "":
+                        msg.error("empty value not allowed in {}.".format(values), prefix=prefix, exit=1)
+                    if value in tmp_ret_either:
+                        msg.error("duplicate value not allowed in {}.".format(values), prefix=prefix, exit=1)
+                    tmp_ret_either.append(value)
+                    if value not in tmp_dy["either_names"]:
+                        tmp_dy["either_names"].append(value)
+
+                tmp_ret_either.sort()
+                ret_either_id=",".join(tmp_ret_either)
+                if ret_either_id in ret_either_ids:
+                    msg.error("duplicate lists not allowed {}.".format(tmp_ret_either), prefix=prefix, exit=1)
+
+                ret_either_ids.append(ret_either_id)                    
+                ret_either.append(tmp_ret_either)
+            else:
+                msg.error("for sub-value '{}' type error '{}'. It must be '{}'.".format(_tmp_either, type(_tmp_either), str), prefix=prefix, exit=1)
+        # tmp_dy["either_names"].sort()
+        return ret_either
+    else:
+        return None
+
+def get_chars(location, dy, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_chars")
+    if "_chars" in dy:
+        _chars=dy["_chars"]
+        del dy["_chars"]
+        tmp_chars=[]
+        if _chars is not None:
+            if isinstance(_chars, str):
+                for tmp_char in _chars.split(","):
+                    tmp_chars.append(tmp_char.strip())
+            elif isinstance(_chars, list):
+                for tmp_char in _chars:
+                    if isinstance(tmp_char, str):
+                        tmp_chars.append(tmp_char.strip())
+                    else:
+                        msg.error("value type {} type must be of type {}.".format(type(tmp_char), str), prefix=prefix, pretty=pretty, exit=1)
+            else:
+                msg.error("valute type {} must be either type {} or type {}.".format(type(_chars), str, list ), prefix=prefix, pretty=pretty, exit=1)
+
+        tmp_chars=sorted(list(set(tmp_chars)))
+        for tmp_char in tmp_chars:
+            reg=re.match(get_regex("def_chars")["rule"], tmp_char)
+            if not reg:
+                msg.error([
+                    "char '{}' for concatenated aliases syntax error.".format(tmp_char),
+                    "Syntax must match:",
+                    *get_regex_hints("def_chars"),
+                ], prefix=prefix, pretty=pretty, exit=1)
+
+        return tmp_chars
+    else:
+        return []
+
+def get_aliases(location, name, dy_user, dy_options, sibling_level, pretty, app_name, dy_attr_aliases, chars):
+    dy_aliases=dict(
+        auto_alias=False,
+        dashless_alias=[],
+        long_alias=[],
+        short_alias=[],
+    )
+
+    aliases=[]
+
+    prefix=get_dfn_prefix(app_name, location, "_aliases")
+    auto_alias=True
+    if "_aliases" in dy_user:
+        _aliases=dy_user["_aliases"]
+        del dy_user["_aliases"]
+        if _aliases is not None:
+            tmp_aliases=[]
+            if isinstance(_aliases, str):
+                for tmp_alias in _aliases.split(","):
+                    tmp_aliases.append(tmp_alias.strip())
+            elif isinstance(_aliases, list):
+                for tmp_alias in _aliases:
+                    if isinstance(tmp_alias, str):
+                        tmp_aliases.append(tmp_alias.strip())
+                    else:
+                        msg.error("value type {} type must be of type {}.".format(type(tmp_alias), str), prefix=prefix, pretty=pretty, exit=1)
+            else:
+                msg.error("valute type {} must be either type {} or type {}.".format(type(_aliases), str, list ), prefix=prefix, pretty=pretty, exit=1)
+
+            tmp_aliases=sorted(list(set(tmp_aliases)))
+            for alias in tmp_aliases:
+                auto_alias=False
+                dy_regex=get_regex("def_alias")
+                reg_str=dy_regex["rule"].format(dy_attr_aliases["alias_prefixes_regstr"])
+                if re.match(reg_str, alias) is None:
+                    msg.error([
+                        "alias '{}' syntax error.".format(alias),
+                        "Syntax must match regex rule '{}'".format(reg_str),
+                        "- First optional prefix can be any prefix from {}".format(dy_attr_aliases["alias_prefixes_reghint"]),
+                        *["- "+txt for txt in dy_regex["hints"]],
+                    ], prefix=prefix, pretty=pretty, exit=1)
+                else:
+                    aliases.append(alias)
+
+    if auto_alias is True:
+        style=dy_attr_aliases["auto_alias_style"]
+        if dy_options["is_builtin"] is True:
+            name=name[1:-1]
+        elems=name.split("_")
+
+        if "camelcase" in style:
+            tmp_elems=[elem.capitalize() for elem in elems if elem != elems[0]]
+            tmp_elems.insert(0, elems[0])
+            elems=tmp_elems
+        elif "lowercase" in style:
+            elems=[elem.lower() for elem in elems]
+        elif "pascalcase" in style:
+            elems=[elem.capitalize() for elem in elems]
+        elif "uppercase" in style:
+            elems=[elem.upper() for elem in elems]
+
+        elems_str=dy_attr_aliases["auto_alias_prefix"]
+        if "-hyphen" in style:
+            elems_str+="-".join(elems)
+        else:
+            elems_str+="".join(elems)
+        aliases.append(elems_str)
+
+    for c in chars:
+        aliases.append("{}{}".format(
+            dy_attr_aliases["char_prefix"],
+            c,
+        ))
+
+    return dict(
+        auto_alias=auto_alias,
+        aliases=aliases,
+    )
+
 
 def get_type(location, dy, tmp_dy, pretty, app_name):
     prefix=get_dfn_prefix(app_name, location, "_type")
@@ -491,64 +663,3 @@ def get_default(location, dy_user, dy_options, argument_name, pretty, app_name):
             return tmp_defaults[0]
     else:
         return None
-
-def get_aliases(location, name, dy_user, dy_options, sibling_level, pretty, app_name):
-    dy_aliases=dict(
-        auto_aliases=False,
-        dashless_alias=[],
-        long_alias=[],
-        short_alias=[],
-    )
-    prefix=get_dfn_prefix(app_name, location, "_aliases")
-    auto_aliases=True
-    if "_aliases" in dy_user:
-        _aliases=dy_user["_aliases"]
-        del dy_user["_aliases"]
-        if _aliases is not None:
-            tmp_aliases=[]
-            if isinstance(_aliases, str):
-                for tmp_alias in _aliases.split(","):
-                    tmp_aliases.append(tmp_alias.strip())
-            elif isinstance(_aliases, list):
-                for tmp_alias in _aliases:
-                    if isinstance(tmp_alias, str):
-                        tmp_aliases.append(tmp_alias.strip())
-                    else:
-                        msg.error("value type {} type must be of type {}.".format(type(tmp_alias), str), prefix=prefix, pretty=pretty, exit=1)
-            else:
-                msg.error("valute type {} must be either type {} or type {}.".format(type(_aliases), str, list ), prefix=prefix, pretty=pretty, exit=1)
-
-            for alias in tmp_aliases:
-                auto_aliases=False
-                alias_matched=False
-                for rule_name in ["dashless_alias", "long_alias", "short_alias"]:
-                    reg_str=get_regex("def_{}".format(rule_name))["rule"]
-                    reg=re.match(reg_str, alias)
-                    if reg or (dy_options["is_builtin"] is True and sibling_level == 2):
-                        alias_matched=True
-                        if alias in dy_aliases[rule_name]:
-                            msg.error("duplicate alias '{}' not authorized.".format(alias), prefix=prefix, pretty=pretty, exit=1)
-                        else:
-                            dy_aliases[rule_name].append(alias)
-                            break
-
-                if alias_matched is False:
-                    msg.error([
-                        "alias '{}' syntax error.".format(alias),
-                        "Syntax must either match:",
-                        *get_regex_hints("def_dashless_alias"),
-                        *get_regex_hints("def_long_alias"),
-                        *get_regex_hints("def_short_alias"),
-                    ], prefix=prefix, pretty=pretty, exit=1)
-    if auto_aliases is True:
-        dy_aliases["long_alias"].append("--{}".format(name.replace("_", "-")))
-        dy_aliases["short_alias"].append("-{}".format(name[0]))
-
-    aliases=[]
-    for alias_str in ["long_alias", "dashless_alias", "short_alias"]:
-        aliases.extend(dy_aliases[alias_str])
-
-    return dict(
-        auto_aliases=auto_aliases,
-        aliases=aliases,
-    )

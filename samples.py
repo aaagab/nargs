@@ -75,6 +75,8 @@ if __name__ == "__main__":
     # sys.exit()
 
     definition="../test/config/options.json"
+    definition="../test/config/small.json"
+    definition="../test/config/small.yaml"
     # definition="../test/config/options.yaml"
     direpa_dump="../test/config"
     dump="../test/config/nargs-dump.json"
@@ -82,10 +84,10 @@ if __name__ == "__main__":
     # definition="../test/config/options.yaml"
     narg=pkg.Nargs(
         # builtins=1,
-        # builtins=["help", "usage"],
+        # builtins=None,
         # cached_dfn="../test/config/nargs-dump.json",
         # cached_dfn="../test/config/nargs-dump-test.pickle",
-        filenpa_definition=definition,
+        options_file=definition,
         # definition=my_dump,
         # cached=True,
         # metadata=dict(executable="dummy"),

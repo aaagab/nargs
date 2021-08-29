@@ -41,10 +41,12 @@ There are two documentation files:
   - arguments definition, command-line arguments, and in code arguments.
 - Arguments definition is set with either a JSON file, a Python dictionary, or a YAML file.
   - JSON definition file and Python dictionary can have their nodes arguments duplicated with `@` notation.
-  - Once parsed, definition can be cached to reach the fastest definition parsing possible.
-- Built-in command-line Arguments (:cmd, :help, :usage).
-- Four aliases forms: concatenated, dashless, long, and short.
-- Auto-aliases: long form alias and short form alias are set automatically if aliases are not provided in arguments definition.
+  - Once parsed for the first time definition is cached to reach the fastest definition parsing possible.
+  - Caching format can be either json (safer) or pickle (may be faster)
+- Built-in command-line Arguments (cmd, help, path_etc, usage, version).
+- Multiple aliases prefixes: `"", "+", "-", "--", "/", ":", "_"`.
+- Concatenated aliases.
+- Auto-aliases with default prefix and alias style.
 - There are several notations for argument's values. Values can be set either with spaces, or with equal notation. i.e.:
   - `main.py value1 value2`
   - `main.py -a value1 value2`
@@ -77,12 +79,12 @@ There are two documentation files:
   - JSON types: `.json, json`
 
 ## Why Nargs?
-- Nargs prevents end-users from guessing program arguments' combinations. An descriptive error is triggered for either each wrong argument or each wrong argument's values.
+- Nargs prevents end-users from guessing program arguments' combinations. A descriptive error is triggered for either each wrong argument or each wrong argument's values.
 - Nargs auto-generated Help and Usage ensure that a program core documentation is provided out of the box.
 - Nargs empowers users by providing them a notation for infinite arguments nesting.
 - Nargs notation follows command-line arguments notation standard practice with its implicit arguments notation.  
 - Nargs can be used to easily wrap existing command-line programs. It provides them all the Nargs bells and whistles from auto-generated documentation, arguments error checking, auto-aliases, multiple-forms aliases, ...
-- Nargs built-in arguments ensure that programs provide a consistent arguments set for program identification with cmd, help, and usage.
+- Nargs built-in arguments ensure that programs provide a consistent arguments set for program identification with cmd, help, usage and version.
 
 ## Get Started
 **Context: Arguments definition. User creates arguments definition with either**:  
@@ -202,7 +204,7 @@ for arg in args._["arg_two"]["_forks"]:
   sys.exit(0)
 ```
 
-**Context: command-line. End-user provides arguments to execute program functions**:
+**Context: command-line. End-user provides argument.   program functions**:
 ```bash
 # arguments implicit notation
 program.py --arg-one --nested-arg-one
@@ -223,9 +225,9 @@ program.py :help --metadata --uuid4
 
 ## Glossary
 - **Generic Package Manager (GPM)**: References to the Generic Package Manager can be found throughout this documentation. The Generic Package Manager is an ongoing project that is not available publicly yet. For instance `gpm.json` file refers to main configuration file from package managed by the Generic Package Manager. The import statement `from ..gpks.nargs import Nargs` is also related to GPM. Nargs is a standalone module and does not need the Generic Package Manager, however Nargs Module is needed in order to continue the Generic Package Manager development.  
-- **user**: Developer who create a program that use Nargs as a module.  
-- **end-user**: Person that interact on the command-line with a program using Nargs module.
-- **Host Program**: Program created by user that import Nargs as a module.  
+- **user**: Developer who creates a program that uses Nargs as a module.  
+- **end-user**: Person that interacts on the command-line with a program using Nargs module.
+- **Host Program**: Program created by user that imports Nargs as a module.  
 - **arguments**: In code arguments are objects from Nargs CliArg class. In definition arguments are tree nodes with properties and children arguments. On the command-line arguments are selected by typing their aliases.   
 - **arguments siblings level**: Arguments are defined with a tree structure where executable (i.e.: `main.py`) is generally the root argument. Nested arguments can be defined at will from the root argument. Each argument is on a siblings level. Root argument is siblings level 1, then its children are on siblings level 2, and siblings level continue incrementing if more children of children are added.  
 - **arguments aliases**: User calls arguments on the command-line with arguments' aliases. For a given argument `arg_one` aliases may be `--arg-one, -a, argone, arg-one`. Arguments' aliases are only unique at their siblings level.  
@@ -242,21 +244,22 @@ program.py :help --metadata --uuid4
 ```Python
 class Nargs():
   def __init__(self,
-    builtins=None,
-    cached_dfn=None,
-    definition=None,
+    args=dict(),
+    auto_alias_prefix="--",
+    auto_alias_style="lowercase-hyphen",
+    builtins=["cmd", "help", "usage", "version"],
+    cache_file="nargs-dump.json",
+    char_prefix="-",
     metadata=dict(),
-    pretty=True,
+    options_file=None,
+    path_etc=None,
+    pretty_help=True,
+    pretty_msg=True,
     substitute=False,
-    theme=None,
+    theme=dict(),
     usage_on_root=True,
   ):
     self.args=None
-
-  def dump(self,
-    filenpa=None
-  ):
-    return dump
 
   def get_args(self, 
     cmd=None,
@@ -266,21 +269,36 @@ class Nargs():
   def get_default_theme():
     return dict()
 
-  def get_metadata_template():
-    return dict()
-
   def get_documentation(self, output, filenpa=None, wsyntax=False):
     return str
+
+  def get_metadata_template():
+    return dict()
 ```
 
 **WARNING**: Nargs class attributes starting with an underscore are either internal fields or internals functions and user should ignore them. Internal attributes may be changed at anytime without being considered a breaking change. Internal attributes are also not documented.  
 
 ### Nargs \_\_init__
-- **builtins**: This parameter allows to select which [built-in arguments](#built-in-arguments) are going to be added to user program. User can add any built-in arguments from list`["cmd", "help", "usage"]`. If `builtins` is None then all four built-in arguments are added. If `builtins` is an empty list then no built-in arguments are added. If only some built-in arguments are selected then only these selected built-in arguments are added to user's program.  
-- **cached_dfn**: This parameter helps speeding-up arguments command-line parsing by using cached arguments definition data. `cached_dfn` accepts either a JSON string, a dict, a .json file, or a .pickle file. If either provided .json file or provided .pickle file does not exist then Nargs will create the cache file by automatically calling Nargs().dump() with the file as argument for filenpa. The JSON string, dict, .json file, or .pickle file must have been generated from `Nargs().dump()` otherwise an unexpected error is triggered.  If `cached_dfn` data exists then Nargs uses that data as arguments' definition instead of generating the cached-definition. `cached_dfn` relative paths are resolved according to `Nargs()` class caller file path and not user current directory on the command-line. It allows to keep cached_dfn dump files in the project. Definition is not needed anymore when `cached_dfn` points to existing cached data. **Warning**: when `cached_dfn` is set any changes to definition is ignored. In other words `cached_dfn` is generally set when application is packed for production release (see also [Nargs dump](#nargs-dump) or [Arguments Definition](#arguments-definition)).  
-- **definition**: This parameter provides arguments definition to Nargs. Parameter is ignored if cached_dfn has been provided with cached data. `definition` accepts either, a dict, or a .json/.yaml/.yml file path (relative or absolute). Relative path is relative to `Nargs()` class caller file path (see also [Arguments Definition](#arguments-definition)). `definition` can be an empty dictionary. `definition` is set to an empty dictionary when it equals `None`.  
-- **metadata**: This parameter accepts a dictionary that helps populating built-in arguments, usage and help. User can get common metadata fields with Nargs function `Nargs.get_metadata_template()`. Any metadata field that is null or empty is discarded. Provided fields are trimmed. Program fields `name` and `executable` are mandatory and they need to be provided in metadata parameter i.e. `Nargs(metadata=dict(name="My Program", executable="prog"))`.  (see also [built-in arguments](#built-in-arguments))  
-- **pretty**: This parameter sets Nargs `pretty` mode to True or False. When set to True, it prints colored usage and colored help on the command-line.  
+
+- **args**: This parameter provides arguments definition to Nargs. `args` accepts a dict (see also [Arguments Definition](#arguments-definition)).
+- **auto_alias_prefix**: If user does not set an alias for an argument in the definition, then the alias is auto-generated. User can choose what is the default prefix from this list `["", "+", "-", "--", "/", ":", "_"]` with option `auto_alias_prefix` i.e. `my-alias, +my-alias, -my-alias, --my-alias, /my-alias, :my-alias, _my-alias`.  
+- **auto_alias_style**: If the alias is auto-generated from the argument name then several style are possible for instance for an argument name `my_alias` the following auto-alias style can be provided with option `auto_alias_style`:
+    - **camelcase**: i.e. myAlias
+    - **camelcase-hyphen**: i.e. my-Alias
+    - **lowercase**: i.e. myalias
+    - **lowercase-hyphen**: i.e. my-alias
+    - **pascalcase**: i.e. MyAlias
+    - **pascalcase-hyphen**: i.e. My-Alias
+    - **uppercase**: i.e. MYALIAS
+    - **uppercase-hyphen**: i.e. MY-ALIAS
+- **builtins**: This parameter allows to select which [built-in arguments](#built-in-arguments) are going to be added to user program. User can add any built-in arguments from list`["cmd", "help", "usage", "version"]`. If `builtins` is None or an empty list built-in arguments are omitted. If only some built-in arguments are selected then only these selected built-in arguments are added to user's program.  
+- **cache_file**: This parameter provides a file path to cache Nargs options. Default value is `nargs-dump.json`.  Cache file path can be relative or absolute. Relative path is relative to `Nargs()` class caller file path. User can choose either `.json` or `.pickle` extension to cache Nargs options once they have been parsed. There are 3 main elements that are checked to recreate the cache file: options provided with Nargs(), gpm.json file for metadata, and an options file. If any of these three elements are modified then the cache file is recreated. If cache file already exists and none of the three elements have been modified then nargs options are extracted from the cache file instead of being parsed with Nargs module. Caching improves speed when parsing because it allows having all the options and arguments definition grammar checked only once. JSON format is the safest and PICKLE format maybe the fastest because unlike JSON cache, arguments definition objects are already stored in the PICKLE cache. However PICKLE file may be compromised.   
+- **char_prefix**: When creating an argument definition a `chars` option allows to select chars for concatenated aliases. char prefix is a special alias prefix that indicates the beginning of concatenated aliases .i.e `-aef` where `a`, `e`, and `f` are all independent argument that are written with concatenated notation. Prefix `-` is the char prefix. User can select the char prefix from this list `["+", "-", "--", "/", ":", "_"]`. The char prefix can't be also part of an alias prefix. It means that if char prefix is `-` then user won't be able to set `auto_alias_prefix` with prefix `-` or user won't be able to add create an alias with prefix `-`.  
+- **metadata**: This parameter accepts a dictionary that helps populating built-in arguments, usage, help, and version. User can get common metadata fields with Nargs function `Nargs.get_metadata_template()`. Any metadata field that is null or empty is discarded. Provided fields are trimmed. Program fields `name` and `executable` are mandatory and they need to be provided in metadata parameter i.e. `Nargs(metadata=dict(name="My Program", executable="prog"))`.  (see also [built-in arguments](#built-in-arguments))  
+- **options_file**: This parameter allows to provide all the Nargs options from a file. It is the prefered method to provide `args` option. options_file must be a `.json/.yaml/.yml` file path (relative or absolute). Relative path is relative to `Nargs()` class caller file path (see also [Arguments Definition](#arguments-definition)). When options are provided in options file and also from `Nargs()` parameters then all options are extracted first from the options file and then options from `Nargs()` parameters overload same options from options file or options are just added if absent from options file. `options_file` can be omitted. In order to use .yaml/.yml options file, user and end-user needs to `pip install pyyaml`. PyYAML import statement is only triggered if a YAML file is provided. In other words users only using JSON definition file do not need to install PyYAML. Only safe_load is used to parse a YAML options file. YAML file reveals to be 300x times slower using PyYAML 5.4.1 safe_load, than parsing JSON file, according to a quick benchmark test. However Nargs options are cached so a slower parsing time for options YAML file may only appears once before it is cached. YAML is the preferred format to write options file because of its shorter syntax and commenting capabilities.  
+- **path_etc**: User can provide the configuration directory of the application with this option. If `path_etc` is provided then a builtin `path_etc` is appended to the builtins list. It creates a builtin argument that allows end-user to get the application configuration path i.e. `myprog.py --path-etc`.  
+- **pretty_help**: If set to True usage and help are printed with colors in terminal as set by default theme or user theme.
+- **pretty_msg**: If set to True system message are printed with colors and symbols in terminal.  
 - **substitute**: This parameter sets Nargs `substitute` mode to True or False. If `substitute=True` commnand-line strings that match regex `(?:__(?P<input>input|hidden)__|__((?P<input_label>input|hidden)(?::))?(?P<label>[a-zA-Z][a-zA-Z0-9]*)__)` may be substituted either by user input or environment variables values. Regex rules are:
     - strings start with double underscore
     - strings finish with double underscore
@@ -307,13 +325,6 @@ export WorkSpace="Iceland"
 ```
 - **theme**: This parameter accepts a style dictionary to style both help, usage in the terminal and help when exported to html (see also [Nargs get_default_theme](#nargs-get_default_theme), [Nargs get_documentation](#nargs-get_documentation)).  
 - **usage_on_root**: This parameter sets Nargs `usage_on_root` mode to True or False and it determines if usage is printed when only root argument is provided. `usage_on_root` is set to True by default. This mode is only effective when both using `Nargs().get_args()` and when arguments definition has been provided or when root argument `_enabled` property is set to True. The reason for providing `usage_on_root` parameter is that arguments on siblings level 2 are generally optional but they are the ones calling program's function and not the root argument. Thus without `usage_on_root` parameter, end-user would type the root argument at the command-line without nothing happening. Now with Nargs parameter `usage_on_root` end-user can see the program's usage by default when typing only the root argument. This behavior is not wanted in all scenarios and user can disable it by setting `usage_on_root` to False.  
-
-### Nargs dump
-User writes the least amount of data possible in order to create definition data (file or dict). Nargs always parses the entire definition data before parsing command-line arguments. Nargs validates arguments and properties syntax during definition parsing. For instance Nargs sets default properties values, and it transforms other properties for inner-processing. A dump is the final output of the arguments definition parsing process. A dump can be stored and retrieved for faster command-line parsing. It may be useful in production environment for large definition file. User may use `Nargs().dump()` to get a dump of its definition file. Then in order to reuse that dump, user can feed it to `Nargs(cached_dfn=dump_data)`. A dump is also auto generated if user sets `cached_dfn` with a non-existing file path. In that case the type of dump is going to be defined with the file path extension (`.json` for JSON dump and `.pickle` for pickle dump).  
-**filenpa**: User can specify a file path for the dump when calling `Nargs().dump(filenpa="userpath.json")`. Given file directory must exist. `Nargs().dump()` relative paths are resolved according to `Nargs()` class caller file path and not user current directory on the command-line. It allows to keep `cached_dfn` dump files in the project. For most scenarios, only `cached_dfn` is needed for user instead of using `Nargs().dump()` . However in some cases user may want to call `Nargs().dump()` function manually when developing. For instance user can get a definition dump output in order to add it directly in its code as a JSON string. In other words `Nargs().dump()` is only used once to extract a definition dump.  
-**WARNING**:  
-- If regular definition data is parsed with `Nargs(cached_dfn="")`then the program will throw an unexpected error and parsing will break. 
-- Both `Nargs().dump()` and `Nargs(cached_dfn="")` throw and error when arguments definition is null or empty or when root argument `_enabled` property is set to False.  
 
 ### Nargs get_documentation
 `Nargs().get_documentation()` allows to get the documentation in multiple formats. `get_documentation()` returns formatted help as a string, excepts for `cmd_usage`, and `cmd_help`. `output` parameter sets the output format and it can have one of the following values:
@@ -674,40 +685,6 @@ _values="2-*"
 If an argument is present on the command-line and argument's values are required but no values are present then:  
 - if argument's `_default` option is set then values are implicitly added from `_default` option.
 - if argument's `_default` option is not set then Nargs throws an error.
-
-### Notes on YAML Arguments Definition Files and Pickle binaries
-
-In order to use .yaml/.yml definition file, user and end-user needs to `pip install pyyaml`. PyYAML import statement is only triggered if a YAML file is provided. In other words users only using JSON definition file do not need to install PyYAML.  
-Parsing a YAML file reveals to be 300x times slower using PyYAML 5.4.1 safe_load, than parsing JSON file, according to a quick benchmark test. In order to improve speed with PyYAML you can use the CLoader this way: `yaml.load("!!python/object/new:os.system [echo EXPLOIT!]", Loader=yaml.CLoader)`. This time, yaml is only 50x times slower than JSON. However as you can see in the code snippet, your YAML file can also executes arbitrary code. It means you can't trust your configuration file as it could behave like a script when parsed. Nargs only use the PyYAML SafeLoader, which is safe to use against arbitrary code `yaml.load("!!python/object/new:os.system [echo EXPLOIT!]", Loader=yaml.SafeLoader)`. YAML definition file is still an interesting choice despite being slower to parse than JSON. YAML files are smaller, easier to read and to write. User may need to use a JSON definition file to speed-up slow application startup. For instance, it takes approximately `0.001s` to parse a JSON file of approximately 2000 nodes and it takes `0.3s` with the same file written in YAML.  
-In order to improve both speed in yaml and security user could implement yaml as a string inside code this way:
-```python
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
-
-# CLoader is only available if PyYAML has been built with libyaml so speed may not be available on all devices.
-# It can be verified with if yaml.__with_libyaml__ returns True
-
-yaml_str=r"""
-prog:
-  arg_one: 
-    _values: "0..."
-    nested_arg_one: 
-      _aliases: "-n,--nested-arg-one"
-      nested_nested_arg_one:
-    nested_arg_two:
-      _aliases: "-b,--nested-arg-two"
-  arg_two:
-    _aliases: -b,--arg-two
-"""
-
-args=Nargs(definition=yaml.load(yaml_str, Loader=Loader))
-```
-
-The best way to improve Nargs arguments parsing speed is to use Nargs `cached_dfn` parameter see [cached_dfn](#nargs-__init__). `.pickle` format can be used to cache Nargs arguments definition however it suffers from the same safety issue than YAML parsing because arbitrary code may be executed. So end-user should either:  
-- ensure the package definition file integrity
-- generates the pickle cached definition with `cached_dfn` Nargs parameter on first program run after program installation.  
 
 ## Built-in Arguments
 Nargs provides end-user built-in arguments:  
@@ -1081,4 +1058,7 @@ one argument or another:
     xor 
 
 I believe logical rules can only be expressed programmatically in the code. I should remove any required argument though I don't need those. you can't never tell the logic of an argument with other arguments. The developer has to provide the info in the parent argument so at least people can know.
+
+
+xor=[arg_one, arg_two]
 

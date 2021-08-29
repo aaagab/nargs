@@ -8,3 +8,5 @@ gpkgs/
 /.etconf/
 /todo.txt
 .directory
+/nargs-dump.json
+/nargs-dump.pickle

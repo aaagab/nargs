@@ -131,7 +131,7 @@ def get_help_usage(
         if len(node_dfn_aliases) > 1:
             if node_dfn.dy["required"] is True:
                 index_default=node_dfn_aliases.index(node_dfn.dy["default_alias"])
-                default_alias="{}.".format(node_dfn.dy["default_alias"])
+                default_alias="'{}'".format(node_dfn.dy["default_alias"])
                 node_dfn_aliases.insert(index_default, default_alias)
                 node_dfn_aliases.remove(node_dfn.dy["default_alias"])
         aliases=style.get_text(", ".join(node_dfn_aliases), "aliases_text")

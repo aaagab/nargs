@@ -57,11 +57,11 @@ def set_explicit_aliases(node_dfn, pretty, app_name):
                         unset_previous_node_alias(previous_node, alias)
                         set_explicit_alias(node_dfn, alias)
                     else:
-                        if node_dfn.dy["auto_aliases"] is True:
+                        if node_dfn.dy["auto_alias"] is True:
                             node_dfn.dy["aliases"].remove(alias)
                             conflict_nodes.add(previous_node)
                         else:
-                            if previous_node.dy["auto_aliases"] is True:
+                            if previous_node.dy["auto_alias"] is True:
                                 unset_previous_node_alias(previous_node, alias)
                                 set_explicit_alias(node_dfn, alias)
                             else:
