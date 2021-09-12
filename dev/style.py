@@ -41,6 +41,7 @@ class Style():
                 arg_path=" *{}* ",
                 examples=" ++{}++ ",
                 examples_bullet="{}",
+                flags=" _{}_ ",
                 headers="== {}",
                 hint=" _{}_ ",
                 info="{}",
@@ -178,6 +179,7 @@ class Style():
                 square_brackets="span",
                 hint="p",
                 examples="p",
+                flags="span",
                 info="p",
                 examples_bullet="span",
                 headers="h2",
@@ -232,6 +234,12 @@ class Style():
         elif self.output == "asciidoc":
             return "{plus}"
 
+    def get_caret_symbol(self):
+        if self.output in ["cmd_help", "cmd_usage", "text", "markdown", "html"]:
+            return "^"
+        elif self.output == "asciidoc":
+            return "{caret}"
+
     def get_md_elem(self, text, elem):
         indent=""
         if not hasattr(self, "dy_md_elem"):
@@ -243,6 +251,7 @@ class Style():
                 square_brackets=" **{}**",
                 hint="*{}*",
                 examples=" `{}`",
+                flags=" *{}*",
                 info="{}",
                 examples_bullet="{}",
                 headers="## {}",

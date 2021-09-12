@@ -89,10 +89,11 @@ def get_help_usage(
     examples=[],
     help=[],
     index=None,
-    modes=None,
     node_dfn=None,
     usage=[],
     max_sibling_level=None,
+    user_options=None,
+    verbose=False,
     wexamples=False,
     whint=False,
     winfo=False,
@@ -158,8 +159,16 @@ def get_help_usage(
         if value_notation is not None:
             str_alias_value+=" {}".format(value_notation)
 
+        tmp_txt=""
         if node_dfn.dy["repeat"] != "replace":
-            str_alias_value+=" "+style.get_text("&{}".format(node_dfn.dy["repeat"][0]), "aliases_text")
+            tmp_txt="&{}".format(node_dfn.dy["repeat"][0])
+
+        if node_dfn.dy["xor_notation"] is not None:
+            tmp_txt+=node_dfn.dy["xor_notation"].replace("^", style.get_caret_symbol())
+
+        if tmp_txt != "":
+            str_alias_value+=" "+style.get_text(tmp_txt, "aliases_text")
+
 
         process_children=False
         if max_sibling_level is None:
@@ -186,6 +195,13 @@ def get_help_usage(
             str_alias_value, 
             relem,
         )
+
+        if (top_node is True and output == "cmd_usage") or output in ["asciidoc", "cmd_help", "html", "markdown", "text"]:
+            if node_dfn.dy["flags_notation"] is not None:
+                str_alias_value+=" {}".format(
+                    style.get_text("@{}".format(node_dfn.dy["flags_notation"]), "flags"),
+                )
+
 
         indent=None
         indent_size=node_dfn.level-node_ref.level
@@ -318,10 +334,11 @@ def get_help_usage(
                             examples=examples,
                             help=help,
                             index=tmp_index,
-                            modes=modes,
                             node_dfn=tmp_node,
                             usage=usage,
                             max_sibling_level=max_sibling_level,
+                            user_options=user_options,
+                            verbose=verbose,
                             wexamples=wexamples,
                             whint=whint,
                             winfo=winfo,
@@ -445,7 +462,7 @@ def get_help_usage(
                     print()
 
                 if wsyntax is True:
-                    print("\n".join(get_nargs_syntax(style, modes)))
+                    print("\n".join(get_nargs_syntax(style, user_options)))
                     print()
                 
                 if has_example is False and wsyntax is False:
@@ -461,7 +478,7 @@ def get_help_usage(
                         about.extend(examples)
                         about.append("")
                 if wsyntax is True:
-                    about.extend(get_nargs_syntax(style, modes))
+                    about.extend(get_nargs_syntax(style, user_options))
                     about.append("")
                 return "\n".join(about)
             else:
@@ -472,7 +489,7 @@ def get_help_usage(
                     sections=[about, usage, tmp_help, examples]
 
                 if wsyntax is True:
-                    sections.append(get_nargs_syntax(style, modes))
+                    sections.append(get_nargs_syntax(style, user_options))
 
                 if output == "html":
                     text=""
@@ -515,6 +532,7 @@ def get_help_usage(
                 elif output == "asciidoc":
                     text=""
                     text+=":plus: +\n"
+                    text+=":caret: ^\n"
                     text+=":toc: +\n"
                     text+=":sectnums: +\n"
                     text+="= {}\n\n".format(get_title(dy_metadata))

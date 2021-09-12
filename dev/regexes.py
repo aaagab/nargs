@@ -4,32 +4,30 @@ import json
 import os
 import sys
 
+# test def_alias regex 
+
+def get_alias_prefixes():
+    return ["", "+", "--", "-", "/", ":", "_"]
+    
+def get_flags_precedence():
+    return ['+', '-', '', '/', ':', '_', '--']
+
 def get_regex(reg_name):
-    quotes=r"(?:(\=\"(?P<dquotes>.*)\"|\=\'(?P<squotes>.*)\'|\=(?P<nquotes>.*)))?"
+    quotes=r"(?P<values>(?:\=|:)(\"(?P<dquotes>.*)\"|\'(?P<squotes>.*)\'|(?P<nquotes>.*)))?"
+    prefixes=r"(?:\+|--|-|/|:|_)?"
+    index=r"(?P<index_str>_(?P<index>[1-9][0-9]*))?"
     dy=dict(
-        cli_builtin_alias=dict(
-            name="command-line builtin alias",
-            rule=r"^(?P<alias>:{{1,2}}[a-zA-Z0-9][a-zA-Z0-9\-]*)(?:_(?P<index>[1-9][0-9]*))?{}$".format(quotes),
+        alias_sort_regstr=dict(
+            rule=r"^(\+|--|-|/|:|_)",
         ),
-        cli_dashless_alias=dict(
-            name="command-line dashless alias",
-            rule=r"^(?P<alias>[a-zA-Z0-9][a-zA-Z0-9\-]*)(?:_(?P<index>[1-9][0-9]*))?{}$".format(quotes),
+        cli_alias=dict(
+            rule=r"^(?P<alias>{}[a-zA-Z0-9][a-zA-Z0-9\-]*){}{}$".format(prefixes, index, quotes),
         ),
-        cli_long_alias=dict(
-            name="command-line long alias",
-            rule=r"^(?P<alias>--[a-zA-Z0-9][a-zA-Z0-9\-]*)(?:_(?P<index>[1-9][0-9]*))?{}$".format(quotes),
+        cli_flags=dict(
+            rule=r"^@(?P<chars>[a-zA-Z0-9][a-zA-Z0-9]+){}{}$".format(index, quotes),
         ),
         cli_explicit=dict(
-            name="command-line explicit",
-            rule=r"^(?:(?P<minus>-)|(?P<plus_concat>\++)|(?:\+(?P<plus_index>[1-9][0-9]*)))$",
-        ),
-        cli_short_alias=dict(
-            name="command-line short alias",
-            rule=r"^(?P<alias>-[a-zA-Z0-9])(?:_(?P<index>[1-9][0-9]*))?{}$".format(quotes),
-        ),
-        cli_short_alias_concat=dict(
-            name="command-line short aliases concatenated",
-            rule=r"^-(?P<short_aliases>[a-zA-Z0-9][a-zA-Z0-9]+)$",
+            rule=r"^(?:(?P<minus>-)|(?P<equal>=)|(?P<plus_concat>\++)|(?:\+(?P<plus_index>[1-9][0-9]*)))$",
         ),
         def_arg_name=dict(
             name="definition argument name",
@@ -39,44 +37,13 @@ def get_regex(reg_name):
                 "Optional next chars can be any char from lowercase letter, uppercase letter, integer, or underscore.",
             ]
         ),
-        def_chars=dict(
-            name="definition concatenated chars",
-            rule=r"^[a-zA-Z0-9]$",
-            hints=[
-                "Required char must be either a lowercase letter, an uppercase letter, or an integer.",
-            ]
-        ),
         def_alias=dict(
             name="definition alias",
-            rule=r"^{}[a-zA-Z0-9][a-zA-Z0-9\-]*$",
+            rule=r"^({})([a-zA-Z0-9][a-zA-Z0-9\-]*)$".format(prefixes),
             hints=[
+                "First optional prefix can be any prefix from {}".format(get_alias_prefixes()),
                 "Required next char must be either a lowercase letter, an uppercase letter, or an integer.",
                 "Optional next chars can be any char from lowercase letter, uppercase letter, integer or dash.",
-            ]
-        ),
-        def_dashless_alias=dict(
-            name="definition dashless alias",
-            rule=r"^[a-zA-Z0-9][a-zA-Z0-9\-]*$",
-            hints=[
-                "Required first char must be either a lowercase letter, an uppercase letter, or an integer.",
-                "Optional next chars can be any char from lowercase letter, uppercase letter, integer or dash.",
-            ]
-        ),
-        def_long_alias=dict(
-            name="definition long alias",
-            rule=r"^--[a-zA-Z0-9][a-zA-Z0-9\-]*$",
-            hints=[
-                "Required first and second char are dashes.",
-                "Required third char must be either a lowercase letter, an uppercase letter, or an integer.",
-                "Optional next chars can be any char from lowercase letter, uppercase letter, integer or dash.",
-            ]
-        ),
-        def_short_alias=dict(
-            name="definition short alias",
-            rule=r"^-[a-zA-Z0-9]$",
-            hints=[
-                "Required first char must be a dash.",
-                "Required second char must be either a lowercase letter, an uppercase letter, or an integer.",
             ]
         ),
         def_theme_hexa=dict(

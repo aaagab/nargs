@@ -17,56 +17,75 @@ from .style import Style
 
 from ..gpkgs import message as msg
 
-def enable_arg(node, alias, print_usage):
+def enable_arg(node, alias, prefix, pretty, cmd_line_index):
     node.current_arg._here=True
-    node.current_arg._["_here"]=True
     node.current_arg._alias=alias
-    node.current_arg._["_alias"]=alias
+    node.current_arg._cmd_line_index=cmd_line_index
     node.current_arg._forks.append(node.current_arg)
+    num_forks=len(node.current_arg._forks)
+    for fork in node.current_arg._forks:
+        fork._count=num_forks
 
-def create_fork(node, ref_arg=None):
+    if node.is_root is False:
+        if node in node.parent.dy_xor:
+            for group_num in sorted(node.parent.dy_xor[node]):
+                for tmp_node_dfn in node.parent.dy_xor[node][group_num]:
+                    if tmp_node_dfn.current_arg is not None:
+                        for tmp_arg in tmp_node_dfn.current_arg._forks:
+                            if tmp_arg._parent == node.current_arg._parent:
+                                msg.error([
+                                    "XOR conflict, the two following arguments can't be provided at the same time:",
+                                    "- {}".format(node.current_arg.get_path()),
+                                    "- {}".format(tmp_arg.get_path()),
+                                ]
+                                , prefix=get_arg_prefix(prefix, node.parent, wvalues=False), pretty=pretty)
+                                sys.exit(1)
+
+def create_fork(node):
     node.set_arg("fork")
     for tmp_node in node.nodes:
-        create_fork(
-            node=tmp_node,
-            ref_arg=new_arg,
-        )
+        create_fork(node=tmp_node)
 
 def check_values_min_max(node_dfn, arg, print_usage, prefix, pretty):
-    ignore=node_dfn.dy["value_required"] is False and len(arg._values) == 0
-    
-    if ignore is False:
-        if node_dfn.dy["value_required"] is True and len(arg._values) == 0 and node_dfn.dy["default"] is not None:
-            in_values=dict()
-            if node_dfn.dy["in"] is not None and isinstance(node_dfn.dy["in"], dict):
-                in_values=node_dfn.dy["in"]
+    if node_dfn.dy["value_min"] is not None:
+        if len(arg._values) < node_dfn.dy["value_min"]:
+            if node_dfn.dy["value_min"] == 1:
+                msg.error("argument needs at least one value.", prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty)
+            else:
+                msg.error("argument '{}' minimum values '{}' is less than '{}'".format(arg._alias, len(arg._values), node_dfn.dy["value_min"]), prefix=get_arg_prefix(prefix, node_dfn, wvalues=True), pretty=pretty)
+            print_usage(node_dfn)
+            sys.exit(1)
+    if node_dfn.dy["value_max"] is not None:
+        if len(arg._values) > node_dfn.dy["value_max"]:
+            msg.error("argument '{}' maximum value(s) '{}' is greater than '{}'".format(arg._alias, len(arg._values), node_dfn.dy["value_max"]), prefix=get_arg_prefix(prefix, node_dfn, wvalues=True), pretty=pretty)
+            print_usage(node_dfn)
+            sys.exit(1)
 
-            default_values=node_dfn.dy["default"]
-            if not isinstance(default_values, list):
-                default_values=[default_values]
+def values_final_check(node_dfn, arg, print_usage, prefix, pretty):
+    if len(arg._values) > 0:
+        check_values_min_max(node_dfn, arg, print_usage, prefix, pretty)
+    else:
+        if node_dfn.dy["value_required"] is True:
+            if node_dfn.dy["default"] is None:
+                check_values_min_max(node_dfn, arg, print_usage, prefix, pretty)
+            else:
+                in_values=dict()
+                if node_dfn.dy["in"] is not None and isinstance(node_dfn.dy["in"], dict):
+                    in_values=node_dfn.dy["in"]
 
-            for d, default_value in enumerate(default_values):
-                tmp_default_value=default_value
-                if tmp_default_value in in_values:
-                    tmp_default_value=in_values[tmp_default_value]
-                if d == 0:
-                    arg._value=tmp_default_value
-                    arg._["_value"]=tmp_default_value
-                arg._values.append(tmp_default_value)
+                default_values=node_dfn.dy["default"]
+                if not isinstance(default_values, list):
+                    default_values=[default_values]
 
-        if node_dfn.dy["value_min"] is not None:
-            if len(arg._values) < node_dfn.dy["value_min"]:
-                if node_dfn.dy["value_min"] == 1:
-                    msg.error("argument needs at least one value.", prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty)
-                else:
-                    msg.error("argument '{}' minimum values '{}' is less than '{}'".format(arg._alias, len(arg._values), node_dfn.dy["value_min"]), prefix=get_arg_prefix(prefix, node_dfn, wvalues=True), pretty=pretty)
-                print_usage(node_dfn)
-                sys.exit(1)
-        if node_dfn.dy["value_max"] is not None:
-            if len(arg._values) > node_dfn.dy["value_max"]:
-                msg.error("argument '{}' maximum value(s) '{}' is greater than '{}'".format(arg._alias, len(arg._values), node_dfn.dy["value_max"]), prefix=get_arg_prefix(prefix, node_dfn, wvalues=True), pretty=pretty)
-                print_usage(node_dfn)
-                sys.exit(1)
+                for d, default_value in enumerate(default_values):
+                    tmp_default_value=default_value
+                    if tmp_default_value in in_values:
+                        tmp_default_value=in_values[tmp_default_value]
+                    if d == 0:
+                        arg._value=tmp_default_value
+                    arg._values.append(tmp_default_value)
+        else:
+            pass
 
 def add_value(
     node,
@@ -74,11 +93,12 @@ def add_value(
     print_usage,
     prefix,
     pretty,
+    cmd_line_index,
 ):
     arg=node.current_arg
     if node.dy["value_max"] is not None:
         if len(arg._values) >= node.dy["value_max"]:
-            msg.error("value '{}' can't be added. Maximum number of values '{}' has been reached already.".format(value, node.dy["value_max"]), prefix=get_arg_prefix(prefix, node, wvalues=True), pretty=pretty)
+            msg.error("value '{}' can't be added. Maximum number of values '{}' has been reached already.".format(value, node.dy["value_max"]), prefix=get_arg_prefix(prefix, node, wvalues=True, cmd_line_index=cmd_line_index), pretty=pretty)
             print_usage(node)
             sys.exit(1)
 
@@ -89,10 +109,11 @@ def add_value(
                 value,
                 node,
                 pretty,
+                cmd_line_index,
                 search_file="." in node.dy["type"], 
             )
         elif node.dy["type"] in [ "dir", "file", "path", "vpath" ]:
-            tmp_value=get_path(prefix, value, node.dy["type"], pretty)
+            tmp_value=get_path(prefix, node, value, node.dy["type"], pretty, cmd_line_index)
     else:
         tmp_value=None
         if node.dy["type"] == bool:
@@ -111,7 +132,7 @@ def add_value(
             tmp_value=value
 
         if tmp_value is None:
-            msg.error("value '{}' type error. It must match type '{}'.".format(value, node.dy["type"]), prefix=get_arg_prefix(prefix, node, wvalues=True), pretty=pretty)
+            msg.error("value '{}' type error. It must match type '{}'.".format(value, node.dy["type"]), prefix=get_arg_prefix(prefix, node, wvalues=True, cmd_line_index=cmd_line_index), pretty=pretty)
             print_usage(node)
             sys.exit(1)
 
@@ -119,67 +140,51 @@ def add_value(
 
     if node.dy["in"] is not None:
         if value not in node.dy["in"]:
-            msg.error("value '{}' not found in {}.".format(value, node.dy["in"]), prefix=get_arg_prefix(prefix, node, wvalues=True), pretty=pretty)
+            msg.error("value '{}' not found in {}.".format(value, node.dy["in"]), prefix=get_arg_prefix(prefix, node, wvalues=True, cmd_line_index=cmd_line_index), pretty=pretty)
             print_usage(node)
             sys.exit(1)
 
     if arg._value is None:
         arg._value=value
-        arg._["_value"]=value
     arg._values.append(value)
 
-def set_node(alias, node, print_usage, prefix, pretty, index=None):
-    if node.dy["repeat"] in ["append", "replace"]:
-        if index is not None:
+def set_node(alias, node, print_usage, prefix, pretty, cmd_line_index, index):
+    if index is not None:
+        if node.dy["repeat"] in ["append", "replace", "error"]:
             if index > 1:
-                msg.error("arg '{}' wrong index syntax only '_1' is authorized.".format(alias), prefix=get_arg_prefix(prefix, node, wvalues=False), pretty=pretty)
+                msg.error("argument '{}' wrong index syntax '_{}' only '_1' is authorized when '_repeat' option is set to '{}'.".format(alias, index, node.dy["repeat"]), prefix=get_arg_prefix(prefix, node, wvalues=False, cmd_line_index=cmd_line_index), pretty=pretty)
                 print_usage(node)
                 sys.exit(1)
-        if node.dy["repeat"] == "append":
-            if node.current_arg._here is True:
-                node.current_arg._alias=alias
-                node.current_arg._["_alias"]=alias
-            else:
-                enable_arg(node, alias, print_usage)
+        elif node.dy["repeat"] == "fork":
+            if index > len(node.current_arg._forks) + 1:
+                msg.error("argument index '_{}' is too big. Biggest index available is '_{}'.".format(index, len(node.current_arg._forks)+1), prefix=get_arg_prefix(prefix, node, wvalues=False, cmd_line_index=cmd_line_index), pretty=pretty)
+                print_usage(node)
+                sys.exit(1)
 
-        elif node.dy["repeat"] == "replace":
-            if node.current_arg._here is True:
-                reset_dfn(node)
-            enable_arg(node, alias, print_usage)
-
-    elif node.dy["repeat"] == "exit":
+    if node.dy["repeat"] == "append":
         if node.current_arg._here is True:
-            msg.error("arg '{}' can't be repeated.".format(alias), prefix=get_arg_prefix(prefix, node, wvalues=False), pretty=pretty)
+            node.current_arg._alias=alias
+            node.current_arg._cmd_line_index=cmd_line_index
+        else:
+            enable_arg(node, alias, prefix, pretty, cmd_line_index)
+    elif node.dy["repeat"] == "replace":
+        if node.current_arg._here is True:
+            reset_dfn(node)
+        enable_arg(node, alias, prefix, pretty, cmd_line_index)
+    elif node.dy["repeat"] == "error":
+        if node.current_arg._here is True:
+            msg.error("argument '{}' can't be repeated.".format(alias), prefix=get_arg_prefix(prefix, node, wvalues=False, cmd_line_index=cmd_line_index), pretty=pretty)
             print_usage(node)
             sys.exit(1)
         else:
-            enable_arg(node, alias, print_usage)
+            enable_arg(node, alias, prefix, pretty, cmd_line_index)
     elif node.dy["repeat"] == "fork":
         if index is None or index == len(node.current_args._forks)+1:
             create_fork(node)
-            enable_arg(node, alias, print_usage)
+            enable_arg(node, alias, prefix, pretty, cmd_line_index)
         elif index <= len(node.current_arg._forks):
             # select existing argument
             node.set_arg("select", index-1)
-        else: # index > len(node.current_arg._forks) + 1:
-            msg.error("argument index '{}' is too big. Biggest index available is '{}'".format(index, len(node.current_arg._forks)+1), prefix=get_arg_prefix(prefix, node, wvalues=False), pretty=pretty)
-            print_usage(node)
-            sys.exit(1)
-
-def process_concat_alias(reg_concat, node, print_usage, prefix, pretty):
-    for c in reg_concat.group("short_aliases"):
-        tmp_alias="-{}".format(c)
-        if tmp_alias in node.dy_aliases and node.dy_aliases[tmp_alias]["explicit"] is not None:
-            if node.dy_aliases[tmp_alias]["explicit"].dy["value_required"] is None:
-                set_node(tmp_alias, node.dy_aliases[tmp_alias]["explicit"], print_usage, "{} {}".format(prefix, ", in concatenated aliases '{}'".format(tmp_alias)), pretty, index=None)
-            else:
-                msg.error("In concatenated aliases '{}' alias '{}' can't be an argument that accepts values in its definition.".format(elem, alias), prefix=get_arg_prefix(prefix, node, wvalues=False), pretty=pretty)
-                print_usage(node)
-                sys.exit(1)
-        else:
-            msg.error("In concatenated aliases '{}' unknown alias '{}'.".format(elem, alias), prefix=get_arg_prefix(prefix, node, wvalues=False), pretty=pretty)
-            print_usage(node)
-            sys.exit(1)
 
 def get_explicit_path(node_dfn,  conflict_node_dfn, alias):
     explicit_notation=None
@@ -195,7 +200,6 @@ def get_explicit_path(node_dfn,  conflict_node_dfn, alias):
             argument_type="sibling"
     else:
         explicit_notation=(node_dfn.level - conflict_node_dfn.level + 1)*"+"
-        print(conflict_node_dfn.level, node_dfn.level)
         argument_type="parent"
 
     return "'{} {} {}' for '{}' argument at siblings level {} with aliases {}.".format(
@@ -255,12 +259,10 @@ def get_closest_parent(nodes):
         max_sibling_level=max_level-ref_node.level,
     )
 
-def get_node_from_alias(node, reg_alias, print_usage, prefix, rule_name, explicit, pretty):
+def get_node_from_alias(node, reg_alias, print_usage, prefix, explicit, pretty, cmd_line_index):
     alias=reg_alias.group("alias")
     index=reg_alias.group("index")
-    if index is None:
-        index=1
-    else:
+    if index is not None:
         index=int(index)
 
     tmp_node=None
@@ -271,6 +273,8 @@ def get_node_from_alias(node, reg_alias, print_usage, prefix, rule_name, explici
             else:
                 tmp_node=node.dy_aliases[alias]["explicit"]
         else:
+            lst_error=[]
+            nodes_error=[]
             if node.dy_aliases[alias]["explicit"] is None:
                 if len(node.dy_aliases[alias]["implicit"]) == 0:
                     tmp_node=None
@@ -282,8 +286,9 @@ def get_node_from_alias(node, reg_alias, print_usage, prefix, rule_name, explici
                     ]
                     for imp_dfn in node.dy_aliases[alias]["implicit"]:
                         lst_error.append(get_explicit_path(node, imp_dfn, alias))
+                        nodes_error.append(imp_dfn)
 
-                    msg.error(lst_error, prefix=get_arg_prefix(prefix, node, wvalues=False), pretty=pretty, exit=1)
+                    nodes_error.append(node)
             else:
                 if len(node.dy_aliases[alias]["implicit"]) == 0:
                     tmp_node=node.dy_aliases[alias]["explicit"]
@@ -291,41 +296,94 @@ def get_node_from_alias(node, reg_alias, print_usage, prefix, rule_name, explici
                     lst_error=[
                         "explicit notation is needed because alias '{}' is present multiple times in argument's explicit aliases and implicit aliases at paths:".format(alias)
                     ]
-                    nodes=[]
                     
                     for imp_dfn in node.dy_aliases[alias]["implicit"]:
                         lst_error.append(get_explicit_path(node, imp_dfn, alias))
-                        nodes.append(imp_dfn)
+                        nodes_error.append(imp_dfn)
 
                     lst_error.append(get_explicit_path(node, node.dy_aliases[alias]["explicit"], alias))
-                    nodes.append(node.dy_aliases[alias]["explicit"])
+                    nodes_error.append(node.dy_aliases[alias]["explicit"])
 
-                    msg.error(lst_error, prefix=get_arg_prefix(prefix, node, wvalues=False), pretty=pretty)
-                    closest=get_closest_parent(nodes)
-                    print_usage(closest["node"], closest["max_sibling_level"])
-                    sys.exit(1)
+            if len(lst_error) > 0:
+                msg.error(lst_error, prefix=get_arg_prefix(prefix, node, wvalues=False), pretty=pretty)
+                closest=get_closest_parent(nodes_error)
+                print_usage(closest["node"], closest["max_sibling_level"])
+                sys.exit(1)
           
         if tmp_node is not None:
-            set_node(alias, tmp_node, print_usage, prefix, pretty, index)
+            if reg_alias.group("values") is not None:
+                cmd_line_index=cmd_line_index-len(reg_alias.group("values"))
             
-            values=[]
-            for tmp_value in [
-                reg_alias.group("dquotes"),
-                reg_alias.group("squotes"),
-                reg_alias.group("nquotes"),
-            ]:
-                if tmp_value is not None:
-                    values=shlex.split(tmp_value)
-                    break
+            set_node(alias, tmp_node, print_usage, prefix, pretty, cmd_line_index, index)
+            process_values(reg_alias, tmp_node, print_usage, prefix, pretty, cmd_line_index)
+            
+    return tmp_node
 
-            if len(values) > 0:
-                if tmp_node.dy["value_required"] is None:
-                    msg.error("values are not allowed {}.".format(values), prefix=get_arg_prefix(prefix, tmp_node, wvalues=False), pretty=pretty)
-                    print_usage(tmp_node)
-                    sys.exit(1)
-                else:
-                    for v, value in enumerate(values):
-                        add_value(tmp_node, value, print_usage, prefix, pretty)
+# def get_values_str_from_reg(reg_alias):
+#     values_str=""
+#     for tmp_value in [
+#         reg_alias.group("dquotes"),
+#         reg_alias.group("squotes"),
+#         reg_alias.group("nquotes"),
+#     ]:
+#         if tmp_value is not None:
+#             values=tmp_value
+#             break
+#     return values_str
+
+
+def process_values(reg_alias, tmp_node, print_usage, prefix, pretty, cmd_line_index):
+    values=[]
+    for tmp_value in [
+        reg_alias.group("dquotes"),
+        reg_alias.group("squotes"),
+        reg_alias.group("nquotes"),
+    ]:
+        if tmp_value is not None:
+            values=shlex.split(tmp_value)
+            break
+
+    if len(values) > 0:
+        if tmp_node.dy["value_required"] is None:
+            msg.error("values are not allowed {}.".format(values), prefix=get_arg_prefix(prefix, tmp_node, wvalues=False), pretty=pretty)
+            print_usage(tmp_node)
+            sys.exit(1)
+        else:
+            for v, value in enumerate(values):
+                add_value(tmp_node, value, print_usage, prefix, pretty, cmd_line_index)
+
+def get_node_from_flags(reg_flags, node, print_usage, prefix, pretty, cmd_line_index):
+    dy_reg=reg_flags.groupdict()
+    unknown_chars=set(dy_reg["chars"])-set(sorted(node.dy_flags))
+    if len(unknown_chars) > 0:
+        msg.error("In flags set '{}' unknown char(s) {}.".format(reg_flags.string, list(unknown_chars)), prefix=get_arg_prefix(prefix, node, wvalues=False), pretty=pretty)
+        print_usage(node)
+        sys.exit(1)
+
+    tmp_node=None
+    index=None
+    if dy_reg["values"] is not None:
+        cmd_line_index-=len(dy_reg["values"])
+    if dy_reg["index_str"] is not None:
+        cmd_line_index-=len(dy_reg["index_str"])
+
+    cmd_line_index=cmd_line_index-len(dy_reg["chars"])
+    for i, c in enumerate(dy_reg["chars"]):
+        cmd_line_index+=1
+        is_last=i+1==len(dy_reg["chars"])
+        if is_last is True:
+            if dy_reg["index_str"] is not None:
+                cmd_line_index+=len(dy_reg["index_str"])
+            if dy_reg["index"] is not None:
+                index=int(dy_reg["index"])
+
+        tmp_node=node.dy_flags[c]
+        alias=tmp_node.dy["flags_aliases"][c]
+        set_node(alias, tmp_node, print_usage, prefix, pretty, cmd_line_index, index)
+
+        if is_last is True:
+            process_values(reg_flags, tmp_node, print_usage, prefix, pretty, cmd_line_index)
+
     return tmp_node
 
 def get_args(
@@ -339,9 +397,9 @@ def get_args(
     theme,
     usage_on_root,
     get_documentation,
+    verbose,
     cmd_provided=False,
 ):
-    # prefix="For '{}' at Nargs on the command-line for \"{{}}\"".format(app_name)
     prefix="For '{}' at Nargs on the command-line".format(app_name)
 
     if node_dfn is None:
@@ -355,6 +413,7 @@ def get_args(
             output="cmd_usage",
             style=Style(pretty_help=pretty_help, pretty_msg=pretty_msg, output="cmd_usage", theme=theme),
             max_sibling_level=max_sibling_level,
+            verbose=verbose,
         )
 
     from_sys_argv=False
@@ -367,15 +426,10 @@ def get_args(
         cmd_provided=True
         cmd=shlex.split(cmd)
 
+    cmd_line=" ".join(cmd)
+
     if len(cmd) == 0:
         msg.error("command must have at least the root argument set.", prefix=prefix, pretty=pretty_msg, exit=1)
-
-    if usage_on_root is True:
-        if len(cmd) == 1:
-            if len(node_dfn.dy["required_children"]) > 0:
-                process_required(node_dfn, node_dfn.current_arg, print_usage, prefix, pretty_msg)
-            print_usage(node_dfn)
-            sys.exit(1)
 
     if substitute is True:
         tmp_cmd=[]
@@ -385,111 +439,110 @@ def get_args(
         cmd=tmp_cmd
 
     at_start=True
-    explicit_notation=False
+    after_explicit=False
     builtin_dfn=None
     node_before_usage=None
     after_concat=False
+    trigger_usage_on_root=usage_on_root is True and len(cmd) == 1
 
+    cmd_line_index=0
+    elem=None
     while len(cmd) > 0:
+        if elem is not None:
+            cmd_line_index+=1
         elem=cmd.pop(0)
+
+        cmd_line_index+=len(elem)
+        # print(cmd_line[:cmd_line_index])
+        
         is_last_elem=len(cmd) == 0
         if at_start is True:
             at_start=False
+
+            elem=os.path.basename(elem)
+            enable_arg(node_dfn, elem, prefix, pretty_msg, cmd_line_index)
+            node_dfn.current_arg._cmd_line=cmd_line
+
             if from_sys_argv is False:
                 if elem not in node_dfn.dy["aliases"]:
-                    msg.error("For provided cmd root argument alias '{}' not found in {}.".format(elem, sorted(node_dfn.dy["aliases"])), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
+                    msg.error("For provided cmd, root argument alias '{}' not found in {}.".format(elem, sorted(node_dfn.dy["aliases"])), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
                     print_usage(node_dfn)
                     sys.exit(1)
-            elem=os.path.basename(elem)
-            enable_arg(node_dfn, elem, print_usage)
+            
+            if trigger_usage_on_root is True:
+                if len(node_dfn.dy["required_children"]) > 0:
+                    process_required(node_dfn, node_dfn.current_arg, print_usage, prefix, pretty_msg)
+                print_usage(node_dfn)
+                sys.exit(1)
         else:
-            only_argument=(explicit_notation is True or after_concat is True)
-            if only_argument is True:
-                if after_concat is True:
-                    after_concat=False
-
-                reg_arg_matched=False
-                for rule_name in ["cli_builtin_alias", "cli_long_alias", "cli_short_alias", "cli_dashless_alias"]:
-                    reg_alias=re.match(get_regex(rule_name)["rule"], elem)
-                    if reg_alias:
-                        reg_arg_matched=True
-                        alias=reg_alias.group("alias")
-
-                        node_from_alias=get_node_from_alias(node_dfn, reg_alias, print_usage, prefix, rule_name, explicit=explicit_notation is True, pretty=pretty_msg)
-                        if node_from_alias is None:
-                            msg.error("unknown argument '{}'".format(alias), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
-                            print_usage(node_dfn)
-                            sys.exit(1)
-                        else:
-                            node_dfn, node_before_usage, builtin_dfn =get_builtin_dfn(node_dfn, node_from_alias, builtin_dfn, node_before_usage)
-                        break
-                    
-                if reg_arg_matched is False:
-                    reg_concat=re.match(get_regex("cli_short_alias_concat")["rule"], elem)
-                    if reg_concat:
-                        after_concat=True
-                        process_concat_alias(reg_concat, node_dfn, print_usage, prefix, pretty_msg)
-                    else: # does not match alias syntax
-                        msg.error("unknown argument '{}'".format(elem), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
-                        print_usage(node_dfn)
-                        sys.exit(1)
-
-                explicit_notation=False
-            else:
-                # only_argument is False means explicit_notation is False and after_concat is False
+            if after_explicit is False:
                 reg_explicit=re.match(get_regex("cli_explicit")["rule"], elem)
                 if reg_explicit:
                     if is_last_elem is True:
-                        msg.error("command must finish with an argument or a value not an explicit notation '{}'".format(elem), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
+                        msg.error("command must finish with an argument or a value not an explicit notation '{}'.".format(elem), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False, cmd_line_index=cmd_line_index), pretty=pretty_msg)
                         print_usage(node_dfn)
                         sys.exit(1)
 
-                    explicit_notation=True
                     if reg_explicit.group("minus") is None:
                         level_up=0
-                        if reg_explicit.group("plus_concat") is None:
-                            level_up=int(reg_explicit.group("plus_index"))
+                        if reg_explicit.group("equal") is not None:
+                            level_up=1
+                        elif reg_explicit.group("plus_concat") is not None:
+                            level_up=len(reg_explicit.group("plus_concat"))+1
                         else:
-                            level_up=len(reg_explicit.group("plus_concat"))
-                            print(level_up)
-                        level_up=level_up - node_dfn.level
+                            level_up=int(reg_explicit.group("plus_index"))+1
+
+                        level_up=node_dfn.level - level_up
                         if  level_up < 1:
-                            msg.error("argument explicit level '{}' with value '{}' is smaller than minimum level 1.".format(elem, level_up), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg, exit=1)
+                            msg.error("explicit level '{}' out of bound. Level value '{}' is lower than limit '1'.".format(elem, level_up), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg, exit=1)
 
-                        for i in range(1, level_up+1):
+                        while node_dfn.level != level_up:
                             node_dfn=node_dfn.parent
+
+                    after_explicit=True
+                    continue
+
+            reg_alias=re.match(get_regex("cli_alias")["rule"], elem)
+            if reg_alias:
+                alias=reg_alias.group("alias")
+
+                node_from_alias=get_node_from_alias(node_dfn, reg_alias, print_usage, prefix, explicit=after_explicit, pretty=pretty_msg, cmd_line_index=cmd_line_index)
+
+                if node_from_alias is None:
+                    if after_explicit is True:
+                        msg.error("unknown argument '{}'.".format(alias), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False, cmd_line_index=cmd_line_index), pretty=pretty_msg)
+                        print_usage(node_dfn)
+                        sys.exit(1)
+                    else:
+                        if node_dfn.dy["value_required"] is None:
+                            msg.error("unknown input '{}'.".format(alias), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
+                            print_usage(node_dfn)
+                            sys.exit(1)
+                        else:
+                            add_value(node_dfn, elem, print_usage, prefix, pretty_msg, cmd_line_index)
                 else:
-                    reg_arg_matched=False
-                    for rule_name in ["cli_builtin_alias", "cli_long_alias", "cli_short_alias", "cli_dashless_alias", "cli_short_alias_concat"]:
-                        reg_alias=re.match(get_regex(rule_name)["rule"], elem)
-                        if reg_alias:
-                            reg_arg_matched=True
-                            if rule_name in ["cli_builtin_alias", "cli_long_alias", "cli_short_alias", "cli_dashless_alias"]:
-                                alias=reg_alias.group("alias")
-                                node_from_alias=get_node_from_alias(node_dfn, reg_alias, print_usage, prefix, rule_name, explicit=False, pretty=pretty_msg)
-                                if node_from_alias is None:
+                    node_dfn, node_before_usage, builtin_dfn =get_builtin_dfn(node_dfn, node_from_alias, builtin_dfn, node_before_usage)
 
-                                    if node_dfn.dy["value_required"] is None:
-                                        msg.error("unknown input '{}'.".format(alias), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
-                                        print_usage(node_dfn)
-                                        sys.exit(1)
-                                    else:
-                                        add_value(node_dfn, elem, print_usage, prefix, pretty_msg)
-                                else:
-                                    node_dfn, node_before_usage, builtin_dfn =get_builtin_dfn(node_dfn, node_from_alias, builtin_dfn, node_before_usage)
-                                    
-                            elif rule_name == "cli_short_alias_concat":
-                                after_concat=True
-                                process_concat_alias(reg_alias, node_dfn, print_usage, prefix, pretty_msg)
-                            break
-
-                    if reg_arg_matched is False:
+            else:
+                reg_flags=re.match(get_regex("cli_flags")["rule"], elem)
+                if reg_flags:
+                    node_from_flags=get_node_from_flags(reg_flags, node_dfn, print_usage, prefix, pretty_msg, cmd_line_index)
+                    node_dfn, node_before_usage, builtin_dfn =get_builtin_dfn(node_dfn, node_from_flags, builtin_dfn, node_before_usage)
+                else:
+                    if after_explicit is True:
+                        msg.error("unknown argument '{}'".format(elem), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
+                        print_usage(node_dfn)
+                        sys.exit(1)
+                    else:
                         if node_dfn.dy["value_required"] is None:
                             msg.error("unknown input '{}'.".format(elem), prefix=get_arg_prefix(prefix, node_dfn, wvalues=False), pretty=pretty_msg)
                             print_usage(node_dfn)
                             sys.exit(1)
                         else:
-                            add_value(node_dfn, elem, print_usage, prefix, pretty_msg)
+                            add_value(node_dfn, elem, print_usage, prefix, pretty_msg, cmd_line_index)
+
+            if after_explicit is True:
+                after_explicit=False
 
     last_check(
         node_dfn.root,
@@ -527,6 +580,7 @@ def get_args(
                 theme=theme,
                 usage_on_root=usage_on_root,
                 get_documentation=get_documentation,
+                verbose=verbose,
                 cmd_provided=True,
             )
         elif builtin_arg._name == "_help_":
@@ -698,7 +752,7 @@ def last_check(
                     break
 
             if node_dfn.dy["value_required"] is not None:
-                check_values_min_max(node_dfn, arg, print_usage, prefix, pretty)
+                values_final_check(node_dfn, arg, print_usage, prefix, pretty)
 
             if len(node_dfn.dy["required_children"]) > 0:
                 process_required(node_dfn, arg, print_usage, prefix, pretty)
@@ -756,14 +810,18 @@ def process_required(parent_dfn, parent_arg, print_usage, prefix, pretty):
                     required_dfn=tmp_required_dfn
                     break
 
-            if required_dfn.dy["value_required"] is True and required_dfn.dy["default"] is None:
-                msg.error("required argument '{}' is missing.".format(required_arg._default_alias), prefix=prefix.format(parent_arg.get_path(wvalues=True)), pretty=pretty)
-                print_usage(parent_dfn)
-                sys.exit(1)
+            cmd_line_index=parent_arg._cmd_line_index
+            if required_dfn.dy["value_required"] is True: 
+                if required_dfn.dy["default"] is None:
+                    prefix=get_arg_prefix(prefix, parent_dfn, wvalues=False)
+                    msg.error("required argument '{}' is missing.".format(required_arg._default_alias), prefix=prefix, pretty=pretty)
+                    print_usage(parent_dfn)
+                    sys.exit(1)
+                else:
+                    enable_arg(required_dfn, required_dfn.dy["default_alias"], prefix, pretty, cmd_line_index)
+                    values_final_check(required_dfn, required_arg, print_usage, prefix, pretty)
             else:
-                enable_arg(required_dfn, required_dfn.dy["default_alias"], print_usage)
-                if required_dfn.dy["value_required"] is True and required_dfn.dy["default"] is not None:
-                    check_values_min_max(required_dfn, required_arg, print_usage, prefix, pretty)
+                enable_arg(required_dfn, required_dfn.dy["default_alias"], prefix, pretty, cmd_line_index)
             process_required(required_dfn, required_arg, print_usage, prefix, pretty)
 
 def get_boolean(value):
@@ -781,3 +839,5 @@ def get_boolean(value):
             return True
     else:
         return None
+
+
