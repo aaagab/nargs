@@ -7,11 +7,14 @@ import pickle
 import sys
 import traceback
 
+from .regexes import get_alias_prefixes
 from .style import get_theme
+
+from .. import __version__
 
 from ..gpkgs import message as msg
 
-def get_cached_options(direpa_caller, cache_file, extension, md5_options):
+def get_cached_options(direpa_caller, cache_file, extension, md5_options, only_cache):
     prefix="At Nargs with cache_file option"
 
     if os.path.exists(cache_file):
@@ -35,39 +38,84 @@ def get_cached_options(direpa_caller, cache_file, extension, md5_options):
         if dy_cached_options is None:
             return None
         else:
-            if "md5_options" in dy_cached_options:
-                if md5_options == dy_cached_options["md5_options"]:
-                    for file_option in ["filenpa_metadata", "filenpa_options"]:
-                        if file_option in dy_cached_options:
-                            for key in ["filenpa", "md5"]:
-                                if key not in dy_cached_options[file_option]:
-                                    dy_cached_options=None
-                                    break
+            if only_cache is True:
+                return dy_cached_options
+            else:
+                if "md5_options" in dy_cached_options:
+                    if md5_options == dy_cached_options["md5_options"]:
+                        if "md5_files" in dy_cached_options:
+                            dy_cached_files=dict()
+                            for file_label in dy_cached_options["md5_files"]:
+                                for key in ["filenpa", "md5"]:
+                                    if key not in dy_cached_options["md5_files"][file_label]:
+                                        return None
 
-                            filenpa_option=dy_cached_options[file_option]["filenpa"]
-                            if not os.path.exists(filenpa_option) or not os.path.isfile(filenpa_option):
-                                dy_cached_options=None
-                                break
+                                filenpa_option=dy_cached_options["md5_files"][file_label]["filenpa"]
+                                if not os.path.exists(filenpa_option) or not os.path.isfile(filenpa_option):
+                                    return None
 
-                            file_md5=dy_cached_options[file_option]["md5"]
-                            if file_md5 != hashlib.md5(open(filenpa_option,"rb").read()).hexdigest():
-                                dy_cached_options=None
-                                break
-                    return dy_cached_options
+                                file_md5=dy_cached_options["md5_files"][file_label]["md5"]
+                                if file_md5 != hashlib.md5(open(filenpa_option,"rb").read()).hexdigest():
+                                    return None
+
+                                if "user" in file_label:
+                                    dy_cached_files[file_label]=filenpa_option
+
+                            user_files=get_user_files(direpa_caller, dy_cached_options)
+                            for dy_user_file in user_files:
+                                if dy_user_file["label"] in dy_cached_files:
+                                    filenpa_cached=dy_cached_files[dy_user_file["label"]]
+                                    filenpa_found=dy_user_file["filenpa"]
+                                    if filenpa_cached != filenpa_found:
+                                        return None
+                                else:
+                                    return None
+
+                        return dy_cached_options
+                    else:
+                        return None
                 else:
                     return None
-            else:
-                return None
     else:
         return None
 
+def get_user_files(direpa_caller, dy_options):
+    tmp_filenpas=[]
+    filer_user=".nargs-user"
+
+    for ext in [".yaml", ".json"]:
+        filenpa_user_exe=os.path.join(direpa_caller, filer_user+ext)
+        if os.path.exists(filenpa_user_exe):
+            tmp_filenpas.append(dict(filenpa=filenpa_user_exe, label="user1"))
+            break
+
+    if "path_etc" in dy_options:
+        if isinstance(dy_options["path_etc"], str):
+            if not os.path.isabs(dy_options["path_etc"]):
+                dy_options["path_etc"]=os.path.abspath(os.path.join(direpa_caller, dy_options["path_etc"]))
+            dy_options["path_etc"]=os.path.normpath(dy_options["path_etc"])
+            if os.path.exists(dy_options["path_etc"]):
+                if os.path.isdir(dy_options["path_etc"]):
+                    for ext in [".yaml", ".json"]:
+                        filenpa_user_conf=os.path.join(dy_options["path_etc"], filer_user+ext)
+                        if os.path.exists(filenpa_user_conf):
+                            tmp_filenpas.append(dict(filenpa=filenpa_user_conf, label="user2"))
+                            break
+    else:
+        dy_options["path_etc"]=None
+
+    return tmp_filenpas
+
 def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
-    prefix="At Nargs when settings options"
+    prefix="At Nargs when setting options"
     pretty=False
     if not isinstance(dy_options, dict):
         msg.error("argument dy_options wrong type {}. It must be of type {}.".format(type(dy_options), dict), prefix=prefix, pretty=pretty, exit=1)
 
     dy_options["md5_options"]=md5_options
+    dy_options["nargs_version"]=__version__
+
+    filenpas_md5=[]
 
     if "options_file" in dy_options:
         options_file=dy_options["options_file"]
@@ -80,51 +128,78 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
                 ), prefix=prefix, pretty=pretty, exit=1)
                 
             if not os.path.isabs(options_file):
-                options_file=os.path.normpath(os.path.abspath(os.path.join(direpa_caller, options_file)))
+                options_file=os.path.abspath(os.path.join(direpa_caller, options_file))
+            options_file=os.path.normpath(options_file)
             
             if not os.path.exists(options_file):
                 msg.error("options file path not found '{}'.".format(options_file), prefix=prefix, pretty=pretty, exit=1)
+
             if not os.path.isfile(options_file):
                 msg.error("options file path is not a file '{}'".format(options_file), prefix=prefix, pretty=pretty, exit=1)
 
-            filen=os.path.basename(options_file)
-            filer, ext=os.path.splitext(filen)
+            filenpas_md5.append(dict(filenpa=options_file, label="options_file"))
 
-            authorized_exts=[".json", ".yaml", ".yml"]
-            if ext not in authorized_exts:
-                msg.error("options file extension '{}' must be in {}".format(ext, authorized_exts), prefix=prefix, pretty=pretty, exit=1)
+    filenpas_md5.extend(get_user_files(direpa_caller, dy_options))
 
-            if ext == ".json":
-                with open(options_file, "r") as f:
-                    try:
-                        dy_options.update(json.load(f))
-                    except BaseException:
-                        print(traceback.format_exc())
-                        msg.error("JSON syntax error in options file '{}'.".format(options_file), prefix=prefix, pretty=pretty)
-                        sys.exit(1)
-            elif ext in [".yaml", ".yml"]:
-                with open(options_file, "r") as f:
-                    try:
-                        import yaml
-                    except:
-                        msg.error(r"""
-                            YAML module not found to import options file.
-                            Do either:
-                            - pip install pyyaml.
-                            - use a JSON file for options file.
-                            - use a python dict for options file.
-                        """, heredoc=True, prefix=prefix, pretty=pretty, exit=1)
-                    try:
-                        dy_options.update(yaml.safe_load(f))
-                    except BaseException as e:
-                        print(traceback.format_exc())
-                        msg.error("YAML syntax error in definition file '{}'".format(options_file), prefix=prefix, pretty=pretty)
-                        sys.exit(1)
+    if "md5_files" not in dy_options:
+        dy_options["md5_files"]=dict()
+    
+    for dy_filenpa_md5 in filenpas_md5:
+        filenpa_md5=dy_filenpa_md5["filenpa"]
+        file_label=dy_filenpa_md5["label"]
+        filen=os.path.basename(filenpa_md5)
+        
+        filer, ext=os.path.splitext(filen)
 
-            dy_options["filenpa_options"]=dict(
-                filenpa=options_file,
-                md5=hashlib.md5(open(options_file,"rb").read()).hexdigest(),
-            )
+        authorized_exts=[".json", ".yaml"]
+        if ext not in authorized_exts:
+            msg.error("options file extension '{}' must be in {}".format(ext, authorized_exts), prefix=prefix, pretty=pretty, exit=1)
+
+        tmp_dy_options=dict()
+        if ext == ".json":
+            with open(filenpa_md5, "r") as f:
+                try:
+                    tmp_dy_options=json.load(f)
+                except BaseException:
+                    print(traceback.format_exc())
+                    msg.error("JSON syntax error in options file '{}'.".format(filenpa_md5), prefix=prefix, pretty=pretty)
+                    sys.exit(1)
+        elif ext == ".yaml":
+            with open(filenpa_md5, "r") as f:
+                try:
+                    import yaml
+                except:
+                    msg.error(r"""
+                        YAML module not found to import options file.
+                        Do either:
+                        - pip install pyyaml.
+                        - use a JSON file for options file.
+                        - use a python dict for options file.
+                    """, heredoc=True, prefix=prefix, pretty=pretty, exit=1)
+                try:
+                    tmp_dy_options=yaml.safe_load(f)
+                except BaseException as e:
+                    print(traceback.format_exc())
+                    msg.error("YAML syntax error in definition file '{}'".format(filenpa_md5), prefix=prefix, pretty=pretty)
+                    sys.exit(1)
+
+        if "user" in file_label:
+            for key in sorted(tmp_dy_options):
+                if key not in [
+                    "pretty_help",
+                    "pretty_msg",
+                    "substitute",
+                    "theme",
+                    "verbose",
+                ]:
+                    del tmp_dy_options[key]
+            
+        dy_options.update(tmp_dy_options)
+
+        dy_options["md5_files"][file_label]=dict(
+            filenpa=filenpa_md5,
+            md5=hashlib.md5(open(filenpa_md5,"rb").read()).hexdigest(),
+        )
 
     for field in ["pretty_help", "pretty_msg"]:
         if field in dy_options:
@@ -143,18 +218,18 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
 
     set_dy_metadata(direpa_caller, dy_options, pretty, main)
     app_name=dy_options["metadata"]["name"]
-    prefix="For '{}' At Nargs when settings options".format(app_name)
+    prefix="For '{}' At Nargs when setting options".format(app_name)
 
     data=dict(
         args=[dict],
         auto_alias_style=[str],
         auto_alias_prefix=[str],
         builtins=[list, type(None)],
-        char_prefix=[str],
         path_etc=[str, type(None)],
         substitute=[bool],
-        theme=[dict],
+        theme=[dict, type(None)],
         usage_on_root=[bool],
+        verbose=[bool],
     )
 
     styles=[
@@ -168,9 +243,8 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
         "uppercase-hyphen",
     ]
 
-    alias_prefixes=["", "+", "-", "--", "/", ":", "_"]
+    alias_prefixes=get_alias_prefixes()
     builtins=["cmd", "help", "usage", "version"]
-    concat_prefixes=["+", "-", "--", "/", ":", "_"]
 
     for option in sorted(data):
         if option in dy_options:
@@ -181,7 +255,7 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
                     break
 
             if matched is False:
-                msg.error("option '{}' has wrong type {}. Type must be {}.".format(option, type(option), _type), prefix=prefix, pretty=pretty, exit=1)
+                msg.error("option '{}' has wrong type {}. Type must be {}.".format(option, type(dy_options[option]), _type), prefix=prefix, pretty=pretty, exit=1)
 
             value=dy_options[option]
             if option == "auto_alias_style":
@@ -199,13 +273,6 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
                             msg.error("option '{}' value '{}' is not in {}.".format(option, v, builtins), prefix=prefix, pretty=pretty, exit=1)
 
                 dy_options[option]=sorted(list(set(dy_options[option])))
-            elif option == "char_prefix":
-                if value == dy_options["auto_alias_prefix"]:
-                    msg.error("option '{}' value '{}' can't be the same as option 'auto_alias_prefix'.".format(option, value), prefix=prefix, pretty=pretty, exit=1)
-                elif value not in concat_prefixes:
-                    msg.error("option '{}' value '{}' is not in {}.".format(option, value, concat_prefixes), prefix=prefix, pretty=pretty, exit=1)
-            elif option == "path_etc":
-                pass
             elif option == "substitute":
                 pass
             elif option == "theme":
@@ -221,10 +288,6 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
                 dy_options[option]="--"
             elif option == "builtins":
                 dy_options[option]=builtins
-            elif option == "char_prefix":
-                dy_options[option]="-"
-            elif option == "path_etc":
-                dy_options[option]=None
             elif option == "substitute":
                 dy_options[option]=False
             elif option == "theme":
@@ -233,13 +296,6 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
                 dy_options[option]=True
             elif option == "args":
                 dy_options[option]=dict()
-
-    alias_prefixes.remove(dy_options["char_prefix"])
-    alias_prefixes.remove("")
-    regstr="({})?".format("|".join(alias_prefixes)).replace("+", "\+")
-
-    dy_options["alias_prefixes_regstr"]=regstr
-    dy_options["alias_prefixes_reghint"]=alias_prefixes
 
 def get_metadata_template():
     return dict(

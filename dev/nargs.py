@@ -23,7 +23,6 @@ from .style import get_theme, get_default_props, Style
 
 from ..gpkgs import message as msg
 
-
 def get_dump(node, dump=None):
     if node.is_root is True:
         dump=dict()
@@ -44,16 +43,17 @@ class Nargs():
         auto_alias_prefix="--",
         auto_alias_style="lowercase-hyphen",
         builtins=["cmd", "help", "usage", "version"],
-        cache_file="nargs-dump.json",
-        char_prefix="-",
+        cache_file="nargs-cache.json",
         metadata=dict(),
         options_file=None,
+        only_cache=False,
         path_etc=None,
         pretty_help=True,
         pretty_msg=True,
         substitute=False,
         theme=dict(),
         usage_on_root=True,
+        verbose=True,
     ):
         prefix="At Nargs"
         dy_options=locals().copy()
@@ -69,6 +69,9 @@ class Nargs():
             filenpa_caller=os.path.realpath(filenpa_caller)
         direpa_caller=os.path.normpath(os.path.dirname(filenpa_caller))
 
+        if isinstance(only_cache, bool) is False:
+            msg.error("only_cache option wrong type {}. It must be of type {}.".format(type(only_cache), bool), prefix=prefix, pretty=False, exit=1)
+
         dy_cached_options=None
         cache_extension=None
         if isinstance(cache_file, str) is True:
@@ -77,14 +80,17 @@ class Nargs():
             if cache_extension in auth_exts:
                 if not os.path.isabs(cache_file):
                     cache_file=os.path.normpath(os.path.abspath(os.path.join(direpa_caller, cache_file)))
-                dy_cached_options=get_cached_options(direpa_caller, cache_file, cache_extension, md5_options)
+                dy_cached_options=get_cached_options(direpa_caller, cache_file, cache_extension, md5_options, only_cache)
             else:
                 msg.error("cache_file option file extension '{}' not found in '{}'.".format(cache_extension, auth_exts), prefix=prefix, pretty=False, exit=1)
         else:
-            msg.error("cache_file option wrong type {}. It must be of type {}.".format(type(cache_file), str), prefix=prefix, pretty=False, exit=1) 
+            msg.error("cache_file option wrong type {}. It must be of type {}.".format(type(cache_file), str), prefix=prefix, pretty=False, exit=1)
 
         dy_cached_options=None
         if dy_cached_options is None:
+            print("not cached")
+            if only_cache is True:
+                msg.error("option 'only_cache' is set to True but Nargs was unable to retrieve cache from cache_file '{}'.".format(cache_file), prefix=prefix, pretty=False, exit=1)
             set_options(direpa_caller, dy_options, md5_options, self.get_default_theme(), sys.argv[0])
 
             self._set_basic_vars(dy_options)
@@ -115,6 +121,7 @@ class Nargs():
                 with open(cache_file, "wb") as f:
                     pickle.dump(dy_options, f)
         else:
+            print("cached")
             dy_options=dy_cached_options
             self._set_basic_vars(dy_options)
 
@@ -122,7 +129,6 @@ class Nargs():
                 self._node_dfn=self._get_node_dfn_cached_trigger_error_if(
                     dy_options["dump"],
                     cache_file,
-                    dy_attr_aliases,
                 )
             elif cache_extension == ".pickle":
                 self._node_dfn=dy_options["dump"]
@@ -132,12 +138,11 @@ class Nargs():
             self._substitute=dy_options["substitute"]
             self._theme=dy_options["theme"]
 
-            self._modes=dict(
-                char_prefix=dy_options["char_prefix"],
+            self._user_options=dict(
                 pretty_help=self._pretty_help,
                 pretty_msg=self._pretty_msg,
                 substitute=self._substitute,
-                usage_on_root=self._usage_on_root,
+                verbose=self._verbose,
             )
         except KeyError as e:
             if dy_cached_options is None:
@@ -161,12 +166,10 @@ class Nargs():
         self._pretty_help=dy_options["pretty_help"]
         self._app_name=dy_options["metadata"]["name"]
         self._dy_attr_aliases=dict(
-            alias_prefixes_regstr=dy_options["alias_prefixes_regstr"],
-            alias_prefixes_reghint=dy_options["alias_prefixes_reghint"],
             auto_alias_prefix=dy_options["auto_alias_prefix"],
             auto_alias_style=dy_options["auto_alias_style"],
-            char_prefix=dy_options["char_prefix"],
         )
+        self._verbose=dy_options["verbose"]
 
     def _get_node_dfn_cached_trigger_error_if(self, dy_args_dump, filenpa_cache):
         try:
@@ -213,6 +216,10 @@ class Nargs():
             ),
             examples_bullet=dict(
                 foreground=gray,
+            ),
+            flags=dict(
+                italic=True,
+                foreground=bgreen,
             ),
             headers=dict(
                 bold=True,
@@ -269,6 +276,7 @@ class Nargs():
             theme=self._theme,
             usage_on_root=self._usage_on_root,
             get_documentation=self.get_documentation,
+            verbose=self._verbose,
         )
 
     def _update_nargs_syntax(self):
@@ -277,8 +285,8 @@ class Nargs():
             title="NARGS END-USER DOCUMENTATION", 
             sections=[get_nargs_syntax(
                     Style(pretty_help=self._pretty_help, pretty_msg=self._pretty_msg, output="markdown", theme=self._theme, prefix="For '{}' at Nargs update syntax".format(self._app_name)), 
-                    self._modes,
-                    print_modes=False,
+                    self._user_options,
+                    print_options=False,
 
                 )
             ],
@@ -286,22 +294,20 @@ class Nargs():
         with open(filenpa, "w") as f:
             f.write("{}".format(nargs_syntax))
             
-    def get_documentation(self, output, filenpa=None, wsyntax=False):
+    def get_documentation(self, output, filenpa=None, wsyntax=False, overwrite=False):
         prefix="For '{}' at Nargs get_documentation".format(self._app_name)
-
-        # if self._theme is None:
-            # self._theme=get_theme(default_theme=self.get_default_theme(), user_theme=self._user_theme, pretty=self._pretty_msg)
 
         documentation=get_help_usage(
             dy_metadata=self._dy_metadata,
-            modes=self._modes,
             node_ref=self._node_dfn,
             output=output,
             style=Style(pretty_help=self._pretty_help, pretty_msg=self._pretty_msg, output=output, theme=self._theme, prefix=prefix),
+            user_options=self._user_options,
             wexamples=True,
             whint=True,
             winfo=True,
             wsyntax=wsyntax,
+            verbose=self._verbose,
         )
 
         if output not in ["cmd_usage", "cmd_help"]:
@@ -312,8 +318,9 @@ class Nargs():
                 if not os.path.isabs(filenpa):
                     filenpa=os.path.abspath(filenpa)
                 filenpa=os.path.normpath(filenpa)
-                if os.path.exists(filenpa):
-                    msg.error("file already exists '{}'".format(filenpa), prefix=prefix, pretty=self._pretty_msg, exit=1)
+                if overwrite is False:
+                    if os.path.exists(filenpa):
+                        msg.error("file already exists '{}'".format(filenpa), prefix=prefix, pretty=self._pretty_msg, exit=1)
                 with open(filenpa, "w") as f:
                     f.write("{}".format(documentation))
 

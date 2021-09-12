@@ -50,7 +50,9 @@ class NodeDfn(Node):
         
         self.current_arg=None
         self.dy_aliases=dict()
+        self.dy_flags=dict()
         self.explicit_aliases_sort=None
+        self.dy_xor=dict()
 
         if is_dy_preset is True:
             self.dy=dy
@@ -69,11 +71,15 @@ class NodeDfn(Node):
             if self.is_root is False:
                 if self.dy["required"] is True:
                     self.parent.dy["required_children"].append(self.name)
+                if self.name in self.parent.dy["xor"]:
+                    group_nums=sorted([int(num) for num in self.parent.dy["xor"][self.name]])
+                    self.dy["xor_notation"]="^"+"^".join(map(str, group_nums))
+                    # pprint(self.dy["xor_notation"])
 
         if self.dy["enabled"] is True:
             self.set_arg("init")
-            if is_dy_preset is False:
-                set_explicit_aliases(self, pretty, app_name)
+            # if is_dy_preset is False:
+                # set_explicit_aliases(self, pretty, app_name)
 
     def set_arg(self, action, index=None):
         if action in ["init", "reset", "fork"]:
@@ -124,6 +130,8 @@ class CliArg():
         self._alias=None
         self._aliases=[]
         self._args=[]
+        self._cmd_line_index=None
+        self._count=0
         self._default_alias=None
         self._forks=forks
         self._here=False
@@ -132,25 +140,29 @@ class CliArg():
         self._value=None
         self._values=[]
 
-        # to update _alias, _here, _value, _values but not in the self._
-        self._=dict(
-            _alias=self._alias,
-            _aliases=self._aliases,
-            _args=self._args,
-            _default_alias=self._default_alias,
-            _forks=self._forks,
-            _here=self._here,
-            _name=self._name,
-            _parent=self._parent,
-            _value=self._value,
-            _values=self._values,
-        )
+        if self._parent is None:
+            self._root=self
+            self._is_root=True
+            if len(self._forks) == 0:
+                self._cmd_line=None
+        else:
+            self._root=self._parent._root
+            self._is_root=False
+
+        self._=dict()
 
         if default_alias is not None:
             self._default_alias=default_alias
-            self._["_default_alias"]=default_alias
             self._aliases=aliases
-            self._["_aliases"]=aliases
+
+    def get_cmd_line(self, cmd_line_index=None):
+        if cmd_line_index is None:
+            if self._cmd_line_index is None:
+                return None
+            else:
+                return self._root._forks[0]._cmd_line[:self._cmd_line_index]
+        else:
+            return self._root._forks[0]._cmd_line[:cmd_line_index]
             
     def get_path(self, wvalues=False):
         path=[]

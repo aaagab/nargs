@@ -5,83 +5,79 @@ import re
 import sys
 
 from .set_dfn import get_dfn_prefix
-
 from ..gpkgs import message as msg
 
 def unset_previous_node_alias(previous_node, alias):
-    node_dfn.dy["aliases"].remove(alias)
-
+    previous_node.dy["aliases"].remove(alias)
     if previous_node.dy["default_alias"] == alias:
         previous_node.dy["default_alias"]=None
-
-    if len(previous_node.dy["aliases"]) > 0:
-        if previous_node.dy["default_alias"] == alias:
+        if len(previous_node.dy["aliases"]) > 0:
             previous_node.dy["default_alias"]=previous_node.dy["aliases"][0]
 
-def set_explicit_alias(node_dfn, alias):
-    if node_dfn.is_root is False:
-        node_dfn.parent.dy_aliases[alias]=dict(explicit=node_dfn, implicit=[])
-
+def set_default_alias(node_dfn, alias):
     if node_dfn.dy["default_alias"] is None:
         node_dfn.dy["default_alias"]=alias
 
+def remove_builtin_alias(builtin_node, alias):
+    builtin_node.dy["aliases"].remove(alias)
+    del builtin_node.dy["aliases_info"][alias]
+    if builtin_node.dy["default_alias"] == alias:
+        builtin_node.dy["default_alias"]=None
+        if len(builtin_node.dy["aliases"]) > 0:
+            builtin_node.dy["default_alias"]=builtin_node.dy["aliases"][0]
+
 def set_explicit_aliases(node_dfn, pretty, app_name):
     prefix=None
-    pnode_dfn=None
 
     if node_dfn.is_root is True:
         prefix=get_dfn_prefix(app_name, node_dfn.location)
     elif node_dfn.is_root is False:
         prefix=get_dfn_prefix(app_name, node_dfn.parent.location)
-        pnode_dfn=node_dfn.parent
 
-    node_dfn.dy["aliases"]=[]
-    check_nodes=set()
-    conflict_nodes=set()
-    for alias in node_dfn.dy["dfn_aliases"]:
-        node_dfn.dy["aliases"].append(alias)
+    # node_dfn.dy["aliases"]=[]
+    # for alias in node_dfn.dy["dfn_aliases"].copy():
+    for alias in node_dfn.dy["aliases"].copy():
+        # node_dfn.dy["aliases"].append(alias)
         if node_dfn.is_root is True:
-            set_explicit_alias(node_dfn, alias)
+            set_default_alias(node_dfn, alias)
         else:
-            if alias in pnode_dfn.dy_aliases:
-                previous_node=pnode_dfn.dy_aliases[alias]["explicit"]
-                check_nodes.add(previous_node)
+            if alias in node_dfn.parent.dy_aliases:
+                previous_node=node_dfn.parent.dy_aliases[alias]["explicit"]
                 if node_dfn.dy["is_builtin"] is True:
                     if previous_node.dy["is_builtin"] is True:
                         msg.error("alias conflict '{}' between two built-in arguments '{}' and '{}'. This is a developer bug, it shouldn't happen.".format(alias, node_dfn.location, previous_node.location), prefix=prefix, pretty=pretty, exit=1)
                     else:
-                        node_dfn.dy["aliases"].remove(alias)
-                        conflict_nodes.add(previous_node)
+                        remove_builtin_alias(node_dfn, alias)
+                        if len(node_dfn.dy["aliases"]) == 0:
+                            node.dy["enabled"]=False
+                            break
                 else:
                     if previous_node.dy["is_builtin"] is True:
-                        unset_previous_node_alias(previous_node, alias)
-                        set_explicit_alias(node_dfn, alias)
+                        remove_builtin_alias(previous_node, alias)
+                        if len(previous_node.dy["aliases"]) == 0:
+                            remove_builtin_node(previous_node)
+                        set_default_alias(node_dfn, alias)
                     else:
-                        if node_dfn.dy["auto_alias"] is True:
-                            node_dfn.dy["aliases"].remove(alias)
-                            conflict_nodes.add(previous_node)
-                        else:
-                            if previous_node.dy["auto_alias"] is True:
-                                unset_previous_node_alias(previous_node, alias)
-                                set_explicit_alias(node_dfn, alias)
-                            else:
-                                msg.error("alias '{}' already exists at the same siblings level for argument '{}' and argument '{}'. This is a developer bug, it shouldn't happen.".format(alias, node_dfn.location, previous_node.location), prefix=prefix, pretty=pretty, exit=1)
+                        node_text="explicitly set"
+                        if node_dfn.dy["is_auto_alias"] is True:
+                            node_text="auto-generated"
+
+                        previous_node_text="explicitly set"
+                        if previous_node.dy["is_auto_alias"] is True:
+                            previous_node_text="auto-generated"
+
+                        msg.error("'{}' alias '{}' for argument '{}' has already been '{}' for sibling argument '{}'. Please explicitly set a different alias for one of the arguments.".format(
+                            node_text,
+                            alias,
+                            node_dfn.location,
+                            previous_node_text,
+                            previous_node.location,
+                        ), prefix=prefix, pretty=pretty, exit=1)
             else:
-                set_explicit_alias(node_dfn, alias)
+                set_default_alias(node_dfn, alias)
 
-    if node_dfn.dy["is_builtin"] is False:
-        check_nodes.add(node_dfn)
-        for node in check_nodes:
-            if len(node.dy["aliases"]) == 0:
-                if node.dy["is_builtin"] is False:
-                    if node != node_dfn:
-                        conflict_nodes={node_dfn}
-
-                    dy_conflict=dict()
-                    for cnode in conflict_nodes:
-                        dy_conflict[cnode.name]=cnode.dy["dfn_aliases"]
-
-                    msg.error("'{}' aliases {} need to be explicitly defined because they conflict with sibling argument(s) {}.".format(node.location, 
-                    node.dy["dfn_aliases"],
-                    dy_conflict,
-                    ), prefix=prefix, pretty=pretty, exit=1)
+def remove_builtin_node(node):
+    for tmp_node in node.nodes:
+        remove_builtin_node(tmp_node)
+    node.parent.nodes.remove(node)
+    del node

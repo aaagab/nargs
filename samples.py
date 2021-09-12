@@ -88,6 +88,8 @@ if __name__ == "__main__":
         # cached_dfn="../test/config/nargs-dump.json",
         # cached_dfn="../test/config/nargs-dump-test.pickle",
         options_file=definition,
+        auto_alias_prefix="--",
+        path_etc="../test",
         # definition=my_dump,
         # cached=True,
         # metadata=dict(executable="dummy"),
@@ -106,10 +108,10 @@ if __name__ == "__main__":
     # )
     # sys.exit()
 
-    # print(narg.get_documentation(output="text", filenpa="../output/output.txt", wsyntax=True))
-    # print(narg.get_documentation(output="html", filenpa="../output/output.html", wsyntax=True))
-    # print(narg.get_documentation(output="markdown", filenpa="../output/output.md", wsyntax=True))
-    # print(narg.get_documentation(output="asciidoc", filenpa="../output/output.adoc", wsyntax=True))
+    # print(narg.get_documentation(output="text", filenpa="../output/output.txt", wsyntax=True, overwrite=True))
+    # print(narg.get_documentation(output="html", filenpa="../output/output.html", wsyntax=True, overwrite=True))
+    # print(narg.get_documentation(output="markdown", filenpa="../output/output.md", wsyntax=True, overwrite=True))
+    # print(narg.get_documentation(output="asciidoc", filenpa="../output/output.adoc", wsyntax=True, overwrite=True))
     narg._update_nargs_syntax()
 
     # narg.dump()
