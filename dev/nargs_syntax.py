@@ -176,10 +176,8 @@ def get_nargs_syntax(style, user_options, print_options=True):
             style.get_text(":arg", "nargs_syntax_emphasize"),
             style.get_text("_arg", "nargs_syntax_emphasize"),
         ),
-        "Arguments' aliases accept index notation and may accept value(s).",
-        "Each argument has a default alias. Default alias notation is only shown for required arguments that have at least two aliases. Default alias notation surrounds alias with single-quotes i.e.: {}. Single quotes are not part of the alias. ".format(
-            style.get_text("-a, '--arg'", "nargs_syntax_emphasize")
-        ),
+        "Arguments' aliases accept branch index notation and may accept value(s).",
+        "Each argument has a default alias. Default alias is the first alias on the argument's aliases list as shown in help or in usage.",
         "One char only aliases may be selected as flags. i.e. {}, {}, {}, {}, {}, {}, and {}.".format(
             style.get_text("a", "nargs_syntax_emphasize"),
             style.get_text("+a", "nargs_syntax_emphasize"),
@@ -190,19 +188,30 @@ def get_nargs_syntax(style, user_options, print_options=True):
             style.get_text("_a", "nargs_syntax_emphasize"),
         ),
         "A flag is an argument with at least a one char alias that is selected according to rules defined in Nargs developer's documentation at section 'Concatenated Flags Aliases'.",
-        "A flags set is a group of flag related to a particular argument. Each argument may have a different flags set. Some arguments may not have a flags set depending on arguments definition.",
-        "A flags set start with 'at symbol' and contains at least one char. i.e. {} where 'c' is cmd, 'h' is 'help', 'u' is 'usage' and 'v' is 'version'.".format(
+        "A flags set is a group of flags related to a particular argument. Each argument may have a different flags set. Some arguments may not have a flags set depending on arguments definition.",
+        "A flags set starts with 'at symbol' and contains at least one char. i.e. {} where 'c' is cmd, 'h' is 'help', 'u' is 'usage' and 'v' is 'version'.".format(
             style.get_text("@chuv", "nargs_syntax_emphasize"),
         ),
-        "A flag may be repeated in a flags set depending on argument's definition. Flags order does not matter.",
-        "Only the latest flag of a flags set may accept a value and may have index notation.",
-        "A flag does not accept explicit notation. A flags set does accept explicit notation.",
-        "Flags set information details is only available through 'usage' argument.",
-        "To see what flags set is available for an argument, user can type: '{}' or '{}' for information on each flag.".format(
-            style.get_text("prog.py --arg --usage", "nargs_syntax_emphasize"),
-            style.get_text("prog.py --arg --usage --flags", "nargs_syntax_emphasize"),
+        "A flag may be repeated in a flags set depending on argument's definition. Flags order may not matter.",
+        "Only the latest flag of a flags set may accept a value and may have branch index notation.",
+        "A flag set may be concatenated to a command-line argument. i.e.: '{}'.".format(
+            style.get_text("prog.py --usage@hip", "nargs_syntax_emphasize"),
         ),
-        "Only the the current argument's flags set information is available at a time.",
+        "'at symbol' may be repeated to nest multiple flags sets. i.e.: '{}' is the same as '{}'.".format(
+            style.get_text("prog.py @u@hip", "nargs_syntax_emphasize"),
+            style.get_text("prog.py --usage --hint --info --path", "nargs_syntax_emphasize"),
+        ),
+        "When nesting multiple flags sets by using multiple 'at symbol' then the nested flags set is always related to the last flag used. i.e.: for '{}' then flags set '{}' is related to flag '{}'.".format(
+            style.get_text("prog.py @u@hip", "nargs_syntax_emphasize"),
+            style.get_text("@hip", "nargs_syntax_emphasize"),
+            style.get_text("u", "nargs_syntax_emphasize"),
+        ), 
+        "A flag does not accept explicit notation. A flags set does accept explicit notation.",
+        "To know which argument is related to a flag, end-user can use the usage argument. i.e.: '{}', or '{}', or '{}'.".format(
+            style.get_text("prog.py @u?", "nargs_syntax_emphasize"),
+            style.get_text("prog.py @u@h?", "nargs_syntax_emphasize"),
+            style.get_text("prog.py @u@hiu", "nargs_syntax_emphasize"),
+        ),
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
         append_li_html(style, text)
@@ -212,13 +221,13 @@ def get_nargs_syntax(style, user_options, print_options=True):
     open_ul_html(style, text)
     text.append("{}Required: {}".format(
         style.get_list_bullet(),
-        style.get_text("-m, '--mount'", "aliases_text")
+        style.get_text("--mount, -m", "aliases_text")
     ))
     append_li_html(style, text)
     text.append("{}Optional: {}{}{}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("-m, --mount", "aliases_text"),
+        style.get_text("--mount, -m", "aliases_text"),
         rsbracket,
     ))
     append_li_html(style, text)
@@ -226,74 +235,23 @@ def get_nargs_syntax(style, user_options, print_options=True):
         style.get_list_bullet(),
         style.get_text("*", "nargs_syntax_emphasize"),
         lsbracket,
-        style.get_text("-m, --mount", "aliases_text"),
+        style.get_text("--mount, -m", "aliases_text"),
         rsbracket,
         style.get_text("*", "nargs_syntax_emphasize"),
-        style.get_text("-m, '--mount'", "aliases_text")
+        style.get_text("--mount, -m", "aliases_text")
 
     ))
     append_li_html(style, text)
+
 
     for tmp_text in [
         "When a required argument is omitted and argument accepts either no value(s), optional value(s), or required value(s) with default value(s) set then required argument is added implicitly and the selected alias set is the default alias.",
         "When a required argument with required value(s) is omitted and argument has not default value(s) set then an error is thrown.",
-        "Omitted required argument process is repeated recursively on implicitly added argument's required children.",
+        "Omitted required argument process is repeated recursively and argument's required children may be added implicitly.",
         "An optional argument may still be required in-code by developer. Nargs only represents a small subset of arguments' logical rules.",
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
         append_li_html(style, text)
-    close_ul_html(style, text)
-
-    text.append("\n{}".format(style.get_text("Repeated Argument's options", "nargs_syntax_headers")))
-    open_ul_html(style, text)
-    text.append("{}({})ppend values: {}".format(
-        style.get_list_bullet(),
-        style.get_text("a", "nargs_syntax_emphasize"),
-        style.get_text("-m, '--mount' &a", "aliases_text"),
-    ))
-    append_li_html(style, text)
-    text.append("{}({})rror if repeated: {}".format(
-        style.get_list_bullet(),
-        style.get_text("e", "nargs_syntax_emphasize"),
-        style.get_text("-m, '--mount' &e", "aliases_text"),
-    ))
-    append_li_html(style, text)
-    text.append("{}({})ork new argument is created: {}".format(
-        style.get_list_bullet(),
-        style.get_text("f", "nargs_syntax_emphasize"),
-        style.get_text("-m, '--mount' &f", "aliases_text"),
-    ))    
-    append_li_html(style, text)
-    text.append("{}({})eplace previous argument and reset children (implicit): {}".format(
-        style.get_list_bullet(),
-        style.get_text("r", "nargs_syntax_emphasize"),
-        style.get_text("-m, '--mount'", "aliases_text"),
-    ))
-    append_li_html(style, text)
-    close_ul_html(style, text)
-
-    text.append("\n{}".format(style.get_text("XOR Group Notation", "nargs_syntax_headers")))
-    open_ul_html(style, text)
-    text.append("{}When argument has notation: {}".format(
-        style.get_list_bullet(),
-        style.get_text("-m, --mount {}1{}3".format(caret, caret), "aliases_text"),
-    ))
-    append_li_html(style, text)
-    text.append("{}It means that argument is part of two '{}' groups: group 1 and group 3. An argument can belong to multiple XOR groups.".format(
-        style.get_list_bullet(),
-        style.get_text("exclusive either (XOR)", "nargs_syntax_emphasize"),
-    ))
-    append_li_html(style, text)
-    text.append("{}XOR groups define siblings arguments' groups where any argument from a group can't be present at the same time on the command-line with any other siblings' arguments of the same group.".format(
-        style.get_list_bullet(),
-    ))
-    append_li_html(style, text)
-    text.append("{}i.e. sibling argument with notation '{}' can't be present at the same time with argument '{}'.".format(
-        style.get_list_bullet(),
-        style.get_text("-u, --unmount {}3".format(caret), "aliases_text"),
-        style.get_text("-m, --mount {}1{}3".format(caret, caret), "aliases_text"),
-    ))
-    append_li_html(style, text)
     close_ul_html(style, text)
 
     text.append("\n{}".format(style.get_text("Arguments Tree Vocabulary", "nargs_syntax_headers")))
@@ -301,7 +259,6 @@ def get_nargs_syntax(style, user_options, print_options=True):
 
     text.append("{}Arguments tree structure related to --self argument:".format(style.get_list_bullet()))
     append_li_html(style, text)
-    
     space_width=2
     for tmp_str in [
         "{}{}".format(style.get_space(space_width*2), style.get_text("--root-arg", "aliases_text")),
@@ -327,9 +284,28 @@ def get_nargs_syntax(style, user_options, print_options=True):
         "All {}'s parents may be called ancestors. The oldest ancestor is the root argument.".format(
             style.get_text("--self", "nargs_syntax_emphasize"),
         ),
+        "Arguments may be duplicated in multiple branches.",
+        "Each argument's branch has its own subset of child arguments.",
+        "Arguments may have multiple occurences per branch.",
+        "Arguments branches and occurences described:",
     ]:
         text.append("{}{}".format(
             style.get_list_bullet(),
+            tmp_str,
+        ))
+        append_li_html(style, text)
+
+    for tmp_str in [
+        "{}{}".format(style.get_space(space_width*2), style.get_text("--parent", "aliases_text")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--self_1 (branch 1 occurence 1) --self (branch 1 occurence 2)", "nargs_syntax_emphasize")),
+        "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 1", "aliases_text")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--self_2 (branch 2 occurence 1) --self (branch 2 occurence 2)", "nargs_syntax_emphasize")),
+        "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 2)", "aliases_text")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--self_ (branch 3 occurence 1) --self (branch 3 occurence 2)", "nargs_syntax_emphasize")),
+        "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 3)", "aliases_text")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--sibling", "aliases_text")),
+    ]:
+        text.append("{}".format(
             tmp_str,
         ))
         append_li_html(style, text)
@@ -345,8 +321,8 @@ def get_nargs_syntax(style, user_options, print_options=True):
             minus
         ),
         "Explicit navigation searches for aliases only in children arguments.",
-        "Explicit navigation can reaches any argument described in arguments tree vocabulary.",
-        "Implicit navigation searches aliases in children' arguments, parents' arguments and parents' arguments' children.",
+        "Explicit navigation can reach any argument described in arguments tree vocabulary.",
+        "Implicit navigation searches aliases in children' arguments, parents' arguments and parents' children.",
         "Command-line symbols {}, {}, and {} help to explicitly navigate arguments' tree.".format(
             style.get_text(plus, "nargs_syntax_emphasize"), 
             equal,
@@ -393,16 +369,84 @@ def get_nargs_syntax(style, user_options, print_options=True):
         append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Arguments Index Notation", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Arguments' Logical Properties", "nargs_syntax_headers")))
+    open_ul_html(style, text)
+    for tmp_text in [
+        "An argument logical properties can be shown with usage argument. i.e.: '{}'".format(
+            style.get_text("prog.py --arg --usage --properties", "nargs_syntax_emphasize"),
+        ),
+        "'{}' property is a boolean that describes if argument's parent may have fork(s) when argument is present.".format(
+            style.get_text("allow_parent_fork", "nargs_syntax_emphasize"),
+        ),
+        "'{}' property is a boolean that describes if argument's siblings may be present when argument is present.".format(
+            style.get_text("allow_siblings", "nargs_syntax_emphasize"),
+        ),
+        "'{}' property is a boolean that describes if argument's fork are allowed. To fork means to divide into two or more branches.".format(
+            style.get_text("fork", "nargs_syntax_emphasize"),
+        ),
+        "'{}' property is a boolean that describes if at least one argument's child must be provided when argument is present.".format(
+            style.get_text("need_child", "nargs_syntax_emphasize"),
+        ),
+        "'{}' property is a string set with one option from '{}'. Property defines multiple argument's occurences behavior.".format(
+            style.get_text("repeat", "nargs_syntax_emphasize"),
+            style.get_text("append, error, replace", "nargs_syntax_emphasize"),
+        ),
+        "'{}' means multiple argument's occurences are allowed and for each occurence the same argument is kept but argument's '{}' internal property is incremented and new argument's values are appended to argument's values list.".format(
+            style.get_text("repeat=append", "nargs_syntax_emphasize"),
+            style.get_text("_count", "nargs_syntax_emphasize"),
+        ),
+        "'{}' means only one argument's occurence is allowed otherwise Nargs throws an error.".format(
+            style.get_text("repeat=error", "nargs_syntax_emphasize"),
+        ),
+        "'{}' means multiple argument's occurences are allowed and for each occurence a new argument is created and the previous argument is replaced and all the previous argument's children are removed. Argument's '{}' internal property is not incremented and new argument's values start a new argument's values list.".format(
+            style.get_text("repeat=replace", "nargs_syntax_emphasize"),
+            style.get_text("_count", "nargs_syntax_emphasize"),
+        ),
+        "'{}' property is a boolean that describes if argument's must be present when argument's parent is present. '{}' property has also been described in 'Argument Aliases States'.".format(
+            style.get_text("required", "nargs_syntax_emphasize"),
+            style.get_text("required", "nargs_syntax_emphasize"),
+        ),
+        "'{}' property is a list of integers where each integer represents a group. Argument's siblings arguments with the same '{}' group can't be present at the same time on the command-line with any other argument from that group. It is the definition of '{}' which means '{}'. Group scope is at the siblings level on argument's branch, it means that the same group name is not related if it is located on argument's parents or argument's children or if on same argument but on a different branch.".format(
+            style.get_text("xor_groups", "nargs_syntax_emphasize"),
+            style.get_text("xor", "nargs_syntax_emphasize"),
+            style.get_text("xor", "nargs_syntax_emphasize"),
+            style.get_text("exclusive or", "nargs_syntax_emphasize"),
+        ),
+    ]:
+        text.append("{}{}".format(style.get_list_bullet(), tmp_text))
+        append_li_html(style, text)
+    close_ul_html(style, text)
+
+    text.append("\n{}".format(style.get_text("Arguments Branch Index Notation", "nargs_syntax_headers")))
     open_ul_html(style, text)
     for tmp_str in [
-        "Argument's index notation allows selecting a specific argument's occurence.",
-        "Index notation consists in adding to argument's alias an underscore and an index number starting at one.",
-        "Index notation's index is the argument occurence number.",
-        "Argument with repeat option set to 'fork' allows to have an index greater than 1.",
-        "Argument with repeat option set to either 'append', 'error', or 'replace' only allows to have the index equals to 1.",
-        "Index notation examples: 'prog --help_1 --export_1' or 'prog --arg_1 --arg_2' or 'prog --arg_1 = --arg_2'.",
-        "Explicit notation and index notation allows to select accurately an argument's occurence in the arguments tree.",
+        "Argument's branch index notation allows selecting a specific argument's occurence.",
+        "Branch index notation consists in adding to argument's alias an underscore and an index number starting at one.",
+        "Branch index notation's index is the argument occurence number.",
+        "If only underscore is provided it means create a branch i.e.: '{}'".format(
+            style.get_text("prog --arg-one_", "nargs_syntax_emphasize"),
+        ),
+        "Argument with '{}' property set to '{}' allows to have an index greater than 1.".format(
+            style.get_text("fork", "nargs_syntax_emphasize"),
+            style.get_text("True", "nargs_syntax_emphasize"),
+        ),
+        "Branch index notation examples: '{}' or '{}' or '{}' or '{}'.".format(
+            style.get_text("prog --help_1 --export_1", "nargs_syntax_emphasize"),
+            style.get_text("prog --arg_1 --arg_2", "nargs_syntax_emphasize"),
+            style.get_text("prog --arg_1 = --arg_2", "nargs_syntax_emphasize"),
+            style.get_text("prog --arg_ --arg_ --arg_", "nargs_syntax_emphasize"),
+        ),
+        "Argument's branches and argument's occurences per branch are not the same.",
+        "Argument with '{}' property set to either '{}', or '{}' allows to have muliple occurences of an argument per branch.".format(
+            style.get_text("repeat", "nargs_syntax_emphasize"),
+            style.get_text("append", "nargs_syntax_emphasize"),
+            style.get_text("replace", "nargs_syntax_emphasize"),
+        ),
+        "Argument's multiple occurences examples: '{}' or '{}'.".format(
+            style.get_text("prog --arg --arg", "nargs_syntax_emphasize"),
+            style.get_text("prog --arg_1 --arg_1", "nargs_syntax_emphasize"),
+        ),
+        "Explicit notation and branch index notation allows to select accurately an argument's branch in the arguments tree.",
     ]:
         text.append("{}{}".format(
             style.get_list_bullet(),
@@ -545,6 +589,10 @@ def get_nargs_syntax(style, user_options, print_options=True):
         ),
         "Values notation is useful to prevent values to be mistaken for aliases.",
         "Values notation allows faster command-line parsing.",
+        "Last flag on a flags set can also accepts values i.e. {}:{}".format(
+            style.get_text("@chu", "aliases_text"),
+            style.get_text("value", "values_text"),
+        )
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
         append_li_html(style, text)
@@ -620,33 +668,72 @@ def get_nargs_syntax(style, user_options, print_options=True):
     text.append("{}{}{}{}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("-m, --mount &e", "aliases_text"),
+        style.get_text("--mount, -m", "aliases_text"),
         rsbracket,
     ))
     append_li_html(style, text)
     text.append("{}{} {}".format(
         style.get_list_bullet(),
-        style.get_text("-m, '--mount'", "aliases_text"),
+        style.get_text("--mount, -m", "aliases_text"),
         style.get_text("{}str:PATH{} 1... (=mycustompath)".format(lt, gt), "values_text"),
     ))
     append_li_html(style, text)
-    text.append("{}{}{} {}{}{} {}{}".format(
+    text.append("{}{}{} {}{}{} {}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("-m, --mount", "aliases_text"),
+        style.get_text("--mount, -m", "aliases_text"),
         lsbracket,
         style.get_text("{}str:PATH{} ...5 (=mycustompath)".format(lt, gt), "values_text"),
         rsbracket,
-        style.get_text("&a", "aliases_text"),
         rsbracket,
     ))
     append_li_html(style, text)
     text.append("{}{} {}".format(
         style.get_list_bullet(),
-        style.get_text("-m, '--mount'", "aliases_text"),
+        style.get_text("--mount, -m", "aliases_text"),
         style.get_text("{}str:{{option1,option2,option3}}{} 2 (=option1, option2)".format(lt, gt), "values_text"),
     ))
     append_li_html(style, text)
+    close_ul_html(style, text)
+
+    text.append("\n{}".format(style.get_text("Arguments Syntax Pitfall", "nargs_syntax_headers")))
+    open_ul_html(style, text)
+    for tmp_text in [
+        "For value '{}' in command '{}', '{}' is parsed as an explicit notation. In order to set '{}' as a value use '{}'.".format(
+            style.get_text("+4", "nargs_syntax_emphasize"),
+            style.get_text("--arg +4", "nargs_syntax_emphasize"),
+            style.get_text("+4", "nargs_syntax_emphasize"),
+            style.get_text("+4", "nargs_syntax_emphasize"),
+            style.get_text("--arg=+4", "nargs_syntax_emphasize"),
+        ),
+        "For alias '{}' in command '{}', '{}' is parsed as an explicit notation. In order to set '{}' as an alias use explicit notation before argument '{}'".format(
+            style.get_text("+4", "nargs_syntax_emphasize"),
+            style.get_text("--arg +4", "nargs_syntax_emphasize"),
+            style.get_text("+4", "nargs_syntax_emphasize"),
+            style.get_text("+4", "nargs_syntax_emphasize"),
+            style.get_text("--arg = +4", "nargs_syntax_emphasize"),
+        ),
+        "For value '{}' in command '{}', '{}' is parsed as a flags set. In order to set '{}' as a value use '{}'.".format(
+            style.get_text("@value", "nargs_syntax_emphasize"),
+            style.get_text("--arg @value", "nargs_syntax_emphasize"),
+            style.get_text("@value", "nargs_syntax_emphasize"),
+            style.get_text("@value", "nargs_syntax_emphasize"),
+            style.get_text("--arg=@value", "nargs_syntax_emphasize"),
+        ),
+        "For alias '{}' in command '{}', '{}' is parsed as an alias. In order to set '{}' as a value use '{}'.".format(
+            style.get_text("-value", "nargs_syntax_emphasize"),
+            style.get_text("--arg -value", "nargs_syntax_emphasize"),
+            style.get_text("-value", "nargs_syntax_emphasize"),
+            style.get_text("-value", "nargs_syntax_emphasize"),
+            style.get_text("--arg=-value", "nargs_syntax_emphasize"),
+        ),
+        "Question mark alias '{}' from usage may be misinterpreted by Bash as wildcard operator. If that happens end-user may want to use any other aliases provided for usage argument.".format(
+            style.get_text("?", "nargs_syntax_emphasize"),
+        ),
+        "Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'unknown argument' else 'value' else 'unknown input'. If 'flags notation' then flags set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).",  
+    ]:
+        text.append("{}{}".format(style.get_list_bullet(), tmp_text))
+        append_li_html(style, text)
     close_ul_html(style, text)
 
     if style.output == "html":

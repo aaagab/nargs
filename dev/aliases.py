@@ -5,7 +5,9 @@ import re
 import sys
 
 from .set_dfn import get_dfn_prefix
+
 from ..gpkgs import message as msg
+
 
 def unset_previous_node_alias(previous_node, alias):
     previous_node.dy["aliases"].remove(alias)
@@ -20,7 +22,9 @@ def set_default_alias(node_dfn, alias):
 
 def remove_builtin_alias(builtin_node, alias):
     builtin_node.dy["aliases"].remove(alias)
-    del builtin_node.dy["aliases_info"][alias]
+    builtin_node.parent.dy_aliases[alias]["explicit"]=None
+    c=builtin_node.dy["aliases_info"][alias]["text"]
+    # del builtin_node.dy["aliases_info"][alias]
     if builtin_node.dy["default_alias"] == alias:
         builtin_node.dy["default_alias"]=None
         if len(builtin_node.dy["aliases"]) > 0:
@@ -34,17 +38,16 @@ def set_explicit_aliases(node_dfn, pretty, app_name):
     elif node_dfn.is_root is False:
         prefix=get_dfn_prefix(app_name, node_dfn.parent.location)
 
-    # node_dfn.dy["aliases"]=[]
-    # for alias in node_dfn.dy["dfn_aliases"].copy():
-    for alias in node_dfn.dy["aliases"].copy():
-        # node_dfn.dy["aliases"].append(alias)
+    node_dfn.dy["aliases"]=[]
+    for alias in node_dfn.dy["dfn_aliases"].copy():
+        node_dfn.dy["aliases"].append(alias)
         if node_dfn.is_root is True:
             set_default_alias(node_dfn, alias)
         else:
             if alias in node_dfn.parent.dy_aliases:
                 previous_node=node_dfn.parent.dy_aliases[alias]["explicit"]
-                if node_dfn.dy["is_builtin"] is True:
-                    if previous_node.dy["is_builtin"] is True:
+                if node_dfn.dy["is_builtin"] is True and node_dfn.level == 2:
+                    if previous_node.dy["is_builtin"] is True and previous_node.level == 2:
                         msg.error("alias conflict '{}' between two built-in arguments '{}' and '{}'. This is a developer bug, it shouldn't happen.".format(alias, node_dfn.location, previous_node.location), prefix=prefix, pretty=pretty, exit=1)
                     else:
                         remove_builtin_alias(node_dfn, alias)
@@ -52,7 +55,7 @@ def set_explicit_aliases(node_dfn, pretty, app_name):
                             node.dy["enabled"]=False
                             break
                 else:
-                    if previous_node.dy["is_builtin"] is True:
+                    if previous_node.dy["is_builtin"] is True and previous_node.level == 2:
                         remove_builtin_alias(previous_node, alias)
                         if len(previous_node.dy["aliases"]) == 0:
                             remove_builtin_node(previous_node)
@@ -80,4 +83,5 @@ def remove_builtin_node(node):
     for tmp_node in node.nodes:
         remove_builtin_node(tmp_node)
     node.parent.nodes.remove(node)
+    del node.parent.dy_nodes[node.name]
     del node

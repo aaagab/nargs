@@ -45,11 +45,6 @@ if __name__ == "__main__":
     # """
     # definition=yaml.safe_load(yaml_str)
 
-    # pprint(definition)
-    # my_dump=json.loads('{"prog": {"long_alias": "--prog", "short_alias": "-p", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": "this is my program", "type": "str", "in": null, "label": null, "repeat": "replace", "required": true, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "args": {"arg_one": {"long_alias": "--arg-one", "short_alias": "-a", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "args": {"a": {"long_alias": "--a", "short_alias": "-a", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "args": {"b": {"long_alias": "--b", "short_alias": "-b", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "default_alias": "--b", "args": {"c": {"long_alias": "--c", "short_alias": "-c", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "default_alias": "--c", "args": {}}}}}}, "b": {"long_alias": "--b", "short_alias": "-b", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "requ ired": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "args": {"c": {"long_alias": "--c", "short_alias": "-c", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "default_alias": "--c", "args": {}}}}, "c": {"long_alias": "--c", "short_alias": "-c", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "args": {}}, "nested_arg": {"long_alias": "--nested-arg", "short_alias": "-n", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "args": {"nested_nested_arg": {"long_alias": "--nested-nested-arg", "short_alias": "-n", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "args": {}}}}, "arg_two": {"long_alias": "--arg-two", "short_alias": "-a", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "args": {"nested_arg": {"long_alias": "--nested-arg", "short_alias": "-n", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "default_alias": "--nested-arg", "args": {"nested_nested_arg": {"long_alias": "--nested-nested-arg", "short_alias": "-n", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "default_alias": "--nested-nested-arg", "args": {}}}}, "c": {"long_alias": "--c", "short_alias": "-c", "auto_aliases": true, "default": null, "enabled": true, "examples": [], "hint": null, "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": false, "default_alias": "--c", "args": {}}}}}}, "examples": {"long_alias": "--examples", "short_alias": null, "auto_aliases": false, "default": null, "enabled": true, "examples": [], "hint": "Print program examples.", "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": true, "args": {}}, "help": {"long_alias": "--help", "short_alias": "-h", "auto_aliases": false, "default": null, "enabled": true, "examples": [], "hint": "Print program help.", "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": true, "args": {}}, "uuid4": {"long_alias": "--uuid4", "short_alias": null, "auto_aliases": false, "default": null, "enabled": true, "examples": [], "hint": "Print program UUID4.", "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": true, "args": {}}, "usage": {"long_alias": "--usage", "short_alias": null, "auto_aliases": false, "default": null, "enabled": true, "examples": [], "hint": "Print program usage.", "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": true, "args": {}}, "version": {"long_alias": "--version", "short_alias": "-v", "auto_aliases": false, "default": null, "enabled": true, "examples": [], "hint": "Print program version.", "type": "str", "in": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "is_builtin": true, "args": {}}}}}')
-
-    # mydump='{"prog": {"long_alias": "--prog", "short_alias": "-p", "auto_aliases": true, "enabled": true, "examples": ["prog.py --arg-one -a -b -c"], "hint": "this is my program", "info": null, "type": "str", "label": null, "repeat": "replace", "required": true, "show": true, "value_min": 2, "value_max": null, "value_required": true, "default": null, "in": null, "is_builtin": false, "args": {"arg_one": {"long_alias": "--arg-one", "short_alias": "-a", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": "str", "label": "VALUE", "repeat": "append", "required": false, "show": true, "value_min": 3, "value_max": 4, "value_required": false, "default": ["1", "3", "4"], "in": null, "is_builtin": false, "args": {"a": {"long_alias": "--a", "short_alias": "-a", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "args": {"b": {"long_alias": "--b", "short_alias": "-b", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "default_alias": "--b", "args": {"c": {"long_alias": "--c", "short_alias": "-c", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "default_alias": "--c", "args": {}}}}}}, "b": {"long_alias": "--b", "short_alias": "-b", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "args": {"c": {"long_alias": "--c", "short_alias": "-c", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "default_alias": "--c", "args": {}}}}, "c": {"long_alias": "--c", "short_alias": "-c", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "args": {}}, "nested_arg": {"long_alias": "--nested-arg", "short_alias": "-n", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "args": {"nested_nested_arg": {"long_alias": "--nested-nested-arg", "short_alias": "-n", "auto_aliases": true, "enabled": true, "examples": null, "hint": null, "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": false, "args": {}}}}}}, "examples": {"long_alias": "--examples", "short_alias": null, "auto_aliases": false, "enabled": true, "examples": null, "hint": "Print program examples.", "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": true, "args": {}}, "help": {"long_alias": "--help", "short_alias": "-h", "auto_aliases": false, "enabled": true, "examples": null, "hint": "Print program help.", "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": true, "args": {}}, "usage": {"long_alias": "--usage", "short_alias": null, "auto_aliases": false, "enabled": true, "examples": null, "hint": "Print program usage.", "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": true, "args": {}}, "uuid4": {"long_alias": "--uuid4", "short_alias": null, "auto_aliases": false, "enabled": true, "examples": null, "hint": "Print program UUID4.", "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": true, "args": {}}, "version": {"long_alias": "--version", "short_alias": "-v", "auto_aliases": false, "enabled": true, "examples": null, "hint": "Print program version.", "info": null, "type": null, "label": null, "repeat": "replace", "required": false, "show": true, "value_min": null, "value_max": null, "value_required": null, "default": null, "in": null, "is_builtin": true, "args": {}}}}}'
-
     # class Hello():
     #     def __init__(fself, state):
     #         self.state=state
@@ -74,12 +69,16 @@ if __name__ == "__main__":
 
     # sys.exit()
 
+    # # /home/gabaaa/fty/wrk/n/nargs/89d8676a6b0243fa8694e97de5680cd0/test
+    # # /home/gabaaa/fty/wrk/n/nargs/89d8676a6b0243fa8694e97de5680cd0/test
+
+
     definition="../test/config/options.json"
     definition="../test/config/small.json"
     definition="../test/config/small.yaml"
     # definition="../test/config/options.yaml"
     direpa_dump="../test/config"
-    dump="../test/config/nargs-dump.json"
+    # dump="../test/config/nargs-dump.json"
     # definition=dict()
     # definition="../test/config/options.yaml"
     narg=pkg.Nargs(
@@ -89,7 +88,7 @@ if __name__ == "__main__":
         # cached_dfn="../test/config/nargs-dump-test.pickle",
         options_file=definition,
         auto_alias_prefix="--",
-        path_etc="../test",
+        # path_etc="../test",
         # definition=my_dump,
         # cached=True,
         # metadata=dict(executable="dummy"),
@@ -113,21 +112,49 @@ if __name__ == "__main__":
     # print(narg.get_documentation(output="markdown", filenpa="../output/output.md", wsyntax=True, overwrite=True))
     # print(narg.get_documentation(output="asciidoc", filenpa="../output/output.adoc", wsyntax=True, overwrite=True))
     narg._update_nargs_syntax()
-
-    # narg.dump()
-    # pprint(narg.dump())
-
     root_arg=narg.get_args()
 
-    # print(root_arg.arg_one)
+    # print()
+    # print(root_arg.arg_one._here)
+    # print("root_arg._args:", root_arg._args)
+    # for arg in root_arg._args:
+    #     print(arg._name)
 
-    # print(root_arg.arg_one.a.b.get_path())
-    # print(root_arg.arg_one.b.get_path())
-    # print(root_arg.arg_one.get_path(wvalues=True))
-    # pprint(root_arg.arg_one._args)
-    # print(root_arg)
-    # if root_arg.tom._here:
-    #     print("sdfsdf")
+    # cmd_line=root_arg._branches[0]._cmd_line
+    # print(root_arg._["arg_one"])
 
-    # print(arg)
+    # for arg in root_arg._args:
+    #     print()
+    #     print("address:", arg)
+    #     print("branch_num:", arg._branches.index(arg)+1)
+    #     print("count:", arg._count)
+    #     print("argument paths:")
+    #     for index in sorted(arg._dy_indexes["aliases"]):
+    #         print(cmd_line[:index])
+    #     print("values paths:")
+    #     for index in arg._dy_indexes["values"]:
+    #         print(cmd_line[:index])
+
+    #     print("values:", arg._values)
+
+    # print("######################")
+    # print(root_arg._["arg_one"])
+    # print(root_arg._["arg_one"]._branches)
+    # # sys.exit()
+    # for arg in root_arg._["arg_one"]._branches:
+    #     print()
+    #     print("branch_num:", arg._branches.index(arg)+1)
+    #     print("count:", arg._count)
+    #     print("argument paths:")
+    #     for index in sorted(arg._dy_indexes["aliases"]):
+    #         print(cmd_line[:index])
+    #     print("values paths:")
+    #     for index in arg._dy_indexes["values"]:
+    #         print(cmd_line[:index])
+
+    #     print("values:", arg._values)
+
+
+    # print(root_arg.arg_one.arg_two.snarg_two._here)
+
     
