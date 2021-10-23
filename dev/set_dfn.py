@@ -31,31 +31,37 @@ def get_dy(
     pretty,
     app_name,
     dy_attr_aliases,
+    parent,
 ):
     tmp_dy=dict()
     tmp_dy["is_builtin"]=get_is_builtin(location, dy)
     # chars=get_chars(location, dy, pretty, app_name)
     dy_aliases=get_aliases(location, name, dy, tmp_dy, sibling_level, pretty, app_name, dy_attr_aliases)
-    # tmp_dy["dfn_aliases"]=dy_aliases["aliases"]
-    tmp_dy["aliases"]=dy_aliases["aliases"]
+    tmp_dy["dfn_aliases"]=dy_aliases["aliases"]
+    tmp_dy["aliases"]=[]
+    tmp_dy["dy_aliases"]=dict()
     tmp_dy["is_auto_alias"]=dy_aliases["is_auto_alias"]
     tmp_dy["aliases_info"]=dy_aliases["aliases_info"]
     tmp_dy["default_alias"]=None
     tmp_dy["flags"]=dict()
+    tmp_dy["flag"]=None
     tmp_dy["flags_notation"]=None
     tmp_dy["flags_aliases"]=dict()
 
     tmp_dy["enabled"]=get_enabled(location, dy, pretty, app_name)
+    tmp_dy["need_child"]=get_need_child(location, dy, pretty, app_name, is_root)
+    tmp_dy["allow_siblings"]=get_allow_siblings(location, dy, pretty, app_name, is_root)
+    tmp_dy["allow_parent_fork"]=get_allow_parent_fork(location, dy, pretty, app_name, is_root)
     tmp_dy["examples"]=get_examples(location, dy, pretty, app_name)
     tmp_dy["hint"]=get_hint(location, dy, pretty, app_name)
     tmp_dy["info"]=get_info(location, dy, pretty, app_name)
     tmp_dy["type"]=get_type(location, dy, tmp_dy, pretty, app_name)
     tmp_dy["label"]=get_label(location, dy, tmp_dy, pretty, app_name)
+    tmp_dy["fork"]=get_fork(location, dy, pretty, app_name)
     tmp_dy["repeat"]=get_repeat(location, dy, pretty, app_name)
-    tmp_dy["required"]=get_required(location, dy, is_root, tmp_dy, pretty, app_name)
-    tmp_dy["required_children"]=[]
     tmp_dy["xor"]=get_xor(location, dy, tmp_dy, app_name)
     tmp_dy["xor_notation"]=None
+    tmp_dy["xor_groups"]=None
     
     tmp_dy["show"]=get_show(location, dy, pretty, app_name)
     dy_values=get_values(location, dy, tmp_dy, pretty, app_name)
@@ -67,6 +73,9 @@ def get_dy(
     tmp_dy["in"]=dy_in["in"]
     tmp_dy["in_labels"]=dy_in["in_labels"]
     tmp_dy["default"]=get_default(location, dy, tmp_dy, name, pretty, app_name)
+
+    tmp_dy["required"]=get_required(location, dy, is_root, tmp_dy, pretty, app_name, parent)
+    tmp_dy["required_children"]=[]
 
     return tmp_dy
 
@@ -161,19 +170,27 @@ def get_aliases(location, name, dy_user, dy_options, sibling_level, pretty, app_
             tmp_aliases=sorted(list(set(tmp_aliases)))
             for alias in tmp_aliases:
                 is_auto_alias=False
-                reg=re.match(get_regex("def_alias")["rule"], alias)
-                if reg is None:
-                    msg.error([
-                        "alias '{}' syntax error.".format(alias),
-                        *get_regex_hints("def_alias"),
-                    ], prefix=msg_prefix, pretty=pretty, exit=1)
-                else:
+                if name == "_usage_" and alias == "?":
                     aliases.append(alias)
                     dy_aliases[alias]=dict(
-                        prefix=reg.group(1),
-                        text=reg.group(2),
-                        is_flag=len(reg.group(2)) == 1,
+                        prefix="",
+                        text="?",
+                        is_flag=True,
                     )
+                else:
+                    reg=re.match(get_regex("def_alias")["rule"], alias)
+                    if reg is None:
+                        msg.error([
+                            "alias '{}' syntax error.".format(alias),
+                            *get_regex_hints("def_alias"),
+                        ], prefix=msg_prefix, pretty=pretty, exit=1)
+                    else:
+                        aliases.append(alias)
+                        dy_aliases[alias]=dict(
+                            prefix=reg.group(1),
+                            text=reg.group(3),
+                            is_flag=len(reg.group(3)) == 1,
+                        )
 
     if is_auto_alias is True:
         auto_alias_text=get_auto_alias(dy_attr_aliases, name)
@@ -256,7 +273,7 @@ def get_label(location, dy, tmp_dy, pretty, app_name):
         if _label is None:
             return None
         elif isinstance(_label, str):
-            return _label.upper()
+            return _label
         else:
             msg.error("value type {} must be of type {}.".format(type(_label), str), prefix=prefix, pretty=pretty, exit=1)
     else:
@@ -373,25 +390,64 @@ def get_show(location, dy, pretty, app_name):
     else:
         return True
 
-def get_required(location, dy, is_root, tmp_dy, pretty, app_name):
+def get_required(location, dy, is_root, tmp_dy, pretty, app_name, parent):
     prefix=get_dfn_prefix(app_name, location, "_required")
+
+    is_required=None
     if "_required" in dy:
         _required=dy["_required"]
         del dy["_required"]
 
         if is_root:
-            return True
+            is_required=True
         elif _required is None:
-            return False
+            is_required=False
         elif isinstance(_required, bool):
-            return _required
+            is_required=_required
         else:
             msg.error("value type {} must be of type {}.".format(type(_required), bool), prefix=prefix, pretty=pretty, exit=1)
     else:
         if is_root:
-            return True
+            is_required=True
         else:
-            return False
+            is_required=False
+
+    if is_required is True and is_root is False:
+        if parent is not None:
+            is_parent_implicit=(parent.dy["required"] is True and parent.dy["value_required"] is True and parent.dy["default"] is not None) or (parent.dy["required"] is True and parent.dy["value_required"] in [False, None])
+            is_implicit=(tmp_dy["value_required"] is True and tmp_dy["default"] is not None) or (tmp_dy["value_required"] in [False, None])
+
+            if is_parent_implicit is True:
+                if is_implicit is False:
+                    msg.error([
+                        "A required argument can be added implicitly on the command-line when its parent is on the command-line and if 'argument has required values and argument has default values' or 'argument values are not required' or 'argument does not accept values'.", 
+                        "In definition when an argument can be added implicitly on the command-line then its required children argument must also have the properties to be added implicitly on the command-line.",
+                        "For current argument '{}', its parent '{}' can be implicitly added but current argument can't be implicitly added.".format(location, parent.name),
+                        "Either set parent argument's definition with required values and no default values or set current argument properties so it may be added implicitly on the command-line.",
+                    ], prefix=prefix, pretty=pretty, exit=1)
+
+        if tmp_dy["allow_parent_fork"] is False:
+            msg.error("when value is '{}' then property '_allow_parent_fork' must be set to '{}'.".format(True, True), prefix=prefix, pretty=pretty, exit=1)
+        if tmp_dy["allow_siblings"] is False:
+            msg.error("when value is '{}' then property '_allow_siblings' must be set to '{}'.".format(True, True), prefix=prefix, pretty=pretty, exit=1)
+        if tmp_dy["need_child"] is True:
+            msg.error("when value is '{}' then property '_need_child' must be set to '{}'.".format(True, False), prefix=prefix, pretty=pretty, exit=1)
+
+    return is_required
+
+def get_fork(location, dy, pretty, app_name):
+    prefix=get_dfn_prefix(app_name, location, "_fork")
+    if "_fork" in dy:
+        _fork=dy["_fork"]
+        del dy["_fork"]
+        if _fork is None:
+            return True
+        elif isinstance(_fork, bool):
+            return _fork
+        else:
+            msg.error("value type {} must be of type {}.".format(type(_fork), bool), prefix=prefix, pretty=pretty, exit=1)
+    else:
+        return False
 
 def get_repeat(location, dy, pretty, app_name):
     prefix=get_dfn_prefix(app_name, location, "_repeat")
@@ -402,7 +458,7 @@ def get_repeat(location, dy, pretty, app_name):
         if _repeat is None:
             return "replace"
 
-        authorized_repeats=["append", "error", "fork", "replace"]
+        authorized_repeats=["append", "error", "replace"]
         if _repeat in authorized_repeats:
             return _repeat
         else:
@@ -571,6 +627,64 @@ def get_examples(location, dy, pretty, app_name):
             return tmp_examples
     else:
         return None
+
+def get_allow_siblings(location, dy, pretty, app_name, is_root):
+    prefix=get_dfn_prefix(app_name, location, "_allow_siblings")
+    if "_allow_siblings" in dy:
+        _allow_siblings=dy["_allow_siblings"]
+        del dy["_allow_siblings"]
+
+        if _allow_siblings is None:
+            return True
+        elif isinstance(_allow_siblings, bool):
+            if is_root is True:
+                return True
+            else:
+                return _allow_siblings
+        else:
+            msg.error("value type {} must be of type {}.".format(type(_allow_siblings), bool), prefix=prefix, pretty=pretty, exit=1)
+    else:
+        return True
+
+def get_allow_parent_fork(location, dy, pretty, app_name, is_root):
+    prefix=get_dfn_prefix(app_name, location, "_allow_parent_fork")
+    if "_allow_parent_fork" in dy:
+        _allow_parent_fork=dy["_allow_parent_fork"]
+        del dy["_allow_parent_fork"]
+
+        if _allow_parent_fork is None:
+            return True
+        elif isinstance(_allow_parent_fork, bool):
+            if is_root is True:
+                return True
+            else:
+                return _allow_parent_fork
+        else:
+            msg.error("value type {} must be of type {}.".format(type(_allow_parent_fork), bool), prefix=prefix, pretty=pretty, exit=1)
+    else:
+        return True
+
+def get_need_child(location, dy, pretty, app_name, is_root):
+    prefix=get_dfn_prefix(app_name, location, "_need_child")
+
+    if "_need_child" in dy:
+        _need_child=dy["_need_child"]
+        del dy["_need_child"]
+
+        if _need_child is None:
+            if is_root is True:
+                return True
+            else:
+                return False
+        elif isinstance(_need_child, bool):
+            return _need_child
+        else:
+            msg.error("value type {} must be of type {}.".format(type(_need_child), bool), prefix=prefix, pretty=pretty, exit=1)
+    else:
+        if is_root is True:
+            return True
+        else:
+            return False
 
 def get_enabled(location, dy, pretty, app_name):
     prefix=get_dfn_prefix(app_name, location, "_enabled")

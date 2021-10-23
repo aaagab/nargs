@@ -13,18 +13,24 @@ def get_flags_precedence():
     return ['+', '-', '', '/', ':', '_', '--']
 
 def get_regex(reg_name):
-    quotes=r"(?P<values>(?:\=|:)(\"(?P<dquotes>.*)\"|\'(?P<squotes>.*)\'|(?P<nquotes>.*)))?"
-    prefixes=r"(?:\+|--|-|/|:|_)?"
-    index=r"(?P<index_str>_(?P<index>[1-9][0-9]*))?"
+    # quotes=r"(?P<values>(?:\=|:)((?P<dquotes>\".*\")|(?P<squotes>\'.*\')|(?P<nquotes>.*)))?"
+    # quotes=r"(?:\=?|\:?)(?P<values>(.*))?"
+    # quotes=r"(?:\=?)(?P<values>(.*))?"
+    values=r"(?P<values_str>(?:\=|:)(?P<values>.*))?"
+    prefixes=r"(?P<prefix>\+|--|-|/|:|_)?"
+    branch_num=r"(?P<branch_num_str>_(?P<branch_num>[1-9][0-9]*)?)?"
+    branch_num2=r"(?P<branch_num_str2>_(?P<branch_num2>[1-9][0-9]*)?)?"
+    flags=r"@(?P<chars>[a-zA-Z0-9\?][a-zA-Z0-9@\?]*(?<!@))"
     dy=dict(
         alias_sort_regstr=dict(
             rule=r"^(\+|--|-|/|:|_)",
         ),
         cli_alias=dict(
-            rule=r"^(?P<alias>{}[a-zA-Z0-9][a-zA-Z0-9\-]*){}{}$".format(prefixes, index, quotes),
+            # rule=r"^(?P<alias>{}[a-zA-Z0-9\?][a-zA-Z0-9\-_]*?(?<!\-|_)){}{}$".format(prefixes, branch_num, values),
+            rule=r"^(?P<alias>{}[a-zA-Z0-9\?][a-zA-Z0-9\-_]*?(?<!\-|_)){}(?P<flags_str>{}{})?{}$".format(prefixes, branch_num, flags, branch_num2, values),
         ),
         cli_flags=dict(
-            rule=r"^@(?P<chars>[a-zA-Z0-9][a-zA-Z0-9]+){}{}$".format(index, quotes),
+            rule=r"^{}{}{}$".format(flags, branch_num, values),
         ),
         cli_explicit=dict(
             rule=r"^(?:(?P<minus>-)|(?P<equal>=)|(?P<plus_concat>\++)|(?:\+(?P<plus_index>[1-9][0-9]*)))$",
@@ -39,11 +45,12 @@ def get_regex(reg_name):
         ),
         def_alias=dict(
             name="definition alias",
-            rule=r"^({})([a-zA-Z0-9][a-zA-Z0-9\-]*)$".format(prefixes),
+            rule=r"^({})([a-zA-Z0-9][a-zA-Z0-9\-_]*)(?<![\-_])$".format(prefixes),
             hints=[
                 "First optional prefix can be any prefix from {}".format(get_alias_prefixes()),
                 "Required next char must be either a lowercase letter, an uppercase letter, or an integer.",
-                "Optional next chars can be any char from lowercase letter, uppercase letter, integer or dash.",
+                "Optional next chars can be any char from lowercase letter, uppercase letter, integer, underscore or hyphen.",
+                "Last optional char can't be an underscore or a hyphen.",
             ]
         ),
         def_theme_hexa=dict(
@@ -68,27 +75,10 @@ def get_regex(reg_name):
             hints=[
                 "_values can be either '*', '+', '?', an integer or a range.",
                 "If an integer is given then only a positive integer is authorized.",
-                "If a range is given then two positive integers separated with a dash are authorized i.e.: 4-5.",
+                "If a range is given then two positive integers separated with a hyphen are authorized i.e.: 4-5.",
                 "If a range is given then last positive integer can also be a star i.e.: 4-*.",
                 "A question mark can be appended for integer and range to set values as optional.",
             ],
-        ),
-        def_json_data=dict(
-            name="definition json data",
-            rule="".join([
-                r"^(?P<value_type>bool|float|int|str)(?P<list>\[((?P<min>[1-9][0-9]*)(?::(?P<max>[1-9][0-9]*|\*))?)?\])?(?P<qmark>\?)?$",
-            ]),
-            hints=[
-                "Required value type that can be either bool, float, int, or str.",
-                "Optional square brackets pair [] to define a list.",
-                "Optional one int between brackets for list length.",
-                "Optional two ints separated by a comma between brackets for list minimum length and list maximum length.",
-                "int minimum length must be smaller than int maximum length.",
-                "int minimum must be greater or equal than 1",
-                "Optional one int and a star separated by a comma between brackets for list minimum length and list infinite maximum length.",
-                "Optional question mark that returns null for a value and returns empty list for a list.",
-                "Examples: int, float?, str[], bool[1], int[1:9]?, str[1:*].",
-            ]
         ),
     )
     return dy[reg_name]

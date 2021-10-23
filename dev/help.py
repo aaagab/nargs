@@ -29,9 +29,9 @@ def get_values_notation(style, _in, _in_labels, _type, default, label, value_min
                 tmp_values=[]
                 for i, v in enumerate(_in):
                     tmp_values.append("{}({})".format(v, _in_labels[i]))
-                value+=",".join(tmp_values)
+                value+=", ".join(tmp_values)
             else:
-                value+=",".join(_in)
+                value+=", ".join(_in)
             value+="}"
         elif label is not None:
             value="{}{}:{}{}".format(lt, get_type_str(_type), label, gt)
@@ -89,11 +89,15 @@ def get_help_usage(
     examples=[],
     help=[],
     index=None,
+    keep_default_alias=False,
     node_dfn=None,
     usage=[],
     max_sibling_level=None,
     user_options=None,
-    verbose=False,
+    allflags=False,
+    allproperties=None,
+    properties=None,
+    wproperties=False,
     wexamples=False,
     whint=False,
     winfo=False,
@@ -102,6 +106,7 @@ def get_help_usage(
     top_node=True,
     
 ):
+
     prefix="Nargs at Usage"
     dy_help=dict()
     if node_dfn is None:
@@ -129,12 +134,12 @@ def get_help_usage(
     if node_dfn is not None and node_dfn.dy["show"] is True:
         str_alias_value=""
         node_dfn_aliases=deepcopy(node_dfn.dy["aliases"])
-        if len(node_dfn_aliases) > 1:
-            if node_dfn.dy["required"] is True:
-                index_default=node_dfn_aliases.index(node_dfn.dy["default_alias"])
-                default_alias="'{}'".format(node_dfn.dy["default_alias"])
-                node_dfn_aliases.insert(index_default, default_alias)
-                node_dfn_aliases.remove(node_dfn.dy["default_alias"])
+        # if len(node_dfn_aliases) > 1:
+        #     if node_dfn.dy["required"] is True:
+        #         index_default=node_dfn_aliases.index(node_dfn.dy["default_alias"])
+        #         default_alias="'{}'".format(node_dfn.dy["default_alias"])
+        #         node_dfn_aliases.insert(index_default, default_alias)
+        #         node_dfn_aliases.remove(node_dfn.dy["default_alias"])
         aliases=style.get_text(", ".join(node_dfn_aliases), "aliases_text")
         if node_dfn.is_root is True:
             str_alias_value+="{} {}".format(
@@ -159,15 +164,15 @@ def get_help_usage(
         if value_notation is not None:
             str_alias_value+=" {}".format(value_notation)
 
-        tmp_txt=""
-        if node_dfn.dy["repeat"] != "replace":
-            tmp_txt="&{}".format(node_dfn.dy["repeat"][0])
+        # tmp_txt=""
+        # if node_dfn.dy["repeat"] != "replace":
+        #     tmp_txt="&{}".format(node_dfn.dy["repeat"][0])
 
-        if node_dfn.dy["xor_notation"] is not None:
-            tmp_txt+=node_dfn.dy["xor_notation"].replace("^", style.get_caret_symbol())
+        # if node_dfn.dy["xor_notation"] is not None:
+            # tmp_txt+=node_dfn.dy["xor_notation"].replace("^", style.get_caret_symbol())
 
-        if tmp_txt != "":
-            str_alias_value+=" "+style.get_text(tmp_txt, "aliases_text")
+        # if tmp_txt != "":
+        #     str_alias_value+=" "+style.get_text(tmp_txt, "aliases_text")
 
 
         process_children=False
@@ -196,7 +201,7 @@ def get_help_usage(
             relem,
         )
 
-        if (top_node is True and output == "cmd_usage") or output in ["asciidoc", "cmd_help", "html", "markdown", "text"]:
+        if (top_node is True and output == "cmd_usage") or output in ["asciidoc", "cmd_help", "html", "markdown", "text"] or allflags is True:
             if node_dfn.dy["flags_notation"] is not None:
                 str_alias_value+=" {}".format(
                     style.get_text("@{}".format(node_dfn.dy["flags_notation"]), "flags"),
@@ -211,7 +216,7 @@ def get_help_usage(
             indent=style.get_space(4)*indent_size
 
         if wpath is True:
-            print("{}{}".format(indent, node_dfn.current_arg.get_path(wvalues=True)))
+            print("{}{}".format(indent, node_dfn.current_arg._get_path(wvalues=False, keep_default_alias=keep_default_alias)))
 
         add_expand_symbol=False
         if top_node is False:
@@ -247,6 +252,28 @@ def get_help_usage(
                 elif output in ["html", "text", "markdown", "asciidoc"]:
                     dy_help["hint"]=style.get_text(node_dfn.dy["hint"], "hint")
 
+        if wproperties is True:
+            selected_properties=[]
+            if output == "cmd_usage":
+                if len(properties) == 0:
+                    selected_properties=allproperties
+                else:
+                    selected_properties=properties
+            else:
+                selected_properties=allproperties
+
+            props=[]
+            for prop in selected_properties:
+                props.append("{}={}".format(prop, node_dfn.dy[prop]))
+            proptxt="properties: "+", ".join(props)
+
+            if output == "cmd_help":
+                dy_help["properties"]=get_wrap_text(columns, proptxt, "    ")
+            elif output == "cmd_usage":
+                print(get_wrap_text(columns, proptxt, indent+"     "))
+            elif output in ["html", "text", "markdown", "asciidoc"]:
+                dy_help["properties"]=proptxt
+
         if winfo is True:
             if node_dfn.dy["info"] is not None:
                 if output == "cmd_help":
@@ -260,7 +287,7 @@ def get_help_usage(
             if index is None:
                 index=""
 
-            node_dfn_path=shlex.split(node_dfn.current_arg.get_path())
+            node_dfn_path=shlex.split(node_dfn.current_arg._get_path())
             del node_dfn_path[0]
             node_dfn_path.insert(0, dy_metadata["executable"])
             tmp_path=[]
@@ -334,11 +361,15 @@ def get_help_usage(
                             examples=examples,
                             help=help,
                             index=tmp_index,
+                            keep_default_alias=keep_default_alias,
                             node_dfn=tmp_node,
                             usage=usage,
                             max_sibling_level=max_sibling_level,
                             user_options=user_options,
-                            verbose=verbose,
+                            allflags=allflags,
+                            allproperties=allproperties,
+                            properties=properties,
+                            wproperties=wproperties,
                             wexamples=wexamples,
                             whint=whint,
                             winfo=winfo,
@@ -370,7 +401,7 @@ def get_help_usage(
                 tmp_help.append("\t\t\t<dl>")
             
             for d, dy in enumerate(help):
-                for elem in ["path", "aliases", "hint", "info", "examples"]:
+                for elem in ["path", "aliases", "hint", "properties", "info", "examples"]:
                     if elem in dy:
                         if elem == "path":
                             if output == "cmd_help":
@@ -392,6 +423,15 @@ def get_help_usage(
                             elif output in ["asciidoc", "markdown"]:
                                 tmp_help.append("{}{}".format(style.get_space(4), dy[elem]))
                         elif elem == "hint":
+                            if output == "cmd_help":
+                                print(dy[elem])
+                            elif output == "html":
+                                tmp_help.append("\t\t\t\t\t"+dy[elem])
+                            elif output == "text":
+                                tmp_help.append("    "+dy[elem])
+                            elif output in ["asciidoc", "markdown"]:
+                                tmp_help.append("{}{}".format(style.get_space(8), dy[elem]))
+                        elif elem == "properties":
                             if output == "cmd_help":
                                 print(dy[elem])
                             elif output == "html":
@@ -563,6 +603,7 @@ def get_explicit_aliases_sort(node_dfn):
             if aliases_sort not in node_dfn.explicit_aliases_sort:
                 node_dfn.explicit_aliases_sort[aliases_sort]=[]
             node_dfn.explicit_aliases_sort[aliases_sort].append(node)
+
     return node_dfn.explicit_aliases_sort
 
 def get_md_text(sections, title):

@@ -11,11 +11,11 @@ from .set_dfn import get_dy
 
 from .aliases import set_explicit_aliases
 
-
 class Node():
     def __init__(self, name=None, parent=None):
         self.parent=parent
         self.is_leaf=True
+        self.dy_nodes=dict()
         self.nodes=[]
         self.parents=[]
         self.name=name
@@ -32,6 +32,7 @@ class Node():
             self.level=self.parent.level+1
             self.location="{} > {}".format(self.parent.location, name)
             self.parent.nodes.append(self)
+            self.parent.dy_nodes[self.name]=self
             for pnt in self.parent.parents:
                 self.parents.append(pnt)
             self.parents.append(parent)
@@ -44,8 +45,10 @@ class NodeDfn(Node):
         is_dy_preset=False,
         pretty=False,
         app_name=None,
-        dy_attr_aliases=dict()
+        dy_attr_aliases=None,
     ):
+        dy_attr_aliases= dy_attr_aliases or dict()
+        
         super().__init__(name=name, parent=parent)
         
         self.current_arg=None
@@ -67,6 +70,7 @@ class NodeDfn(Node):
                 pretty,
                 app_name,
                 dy_attr_aliases,
+                parent,
             )
             if self.is_root is False:
                 if self.dy["required"] is True:
@@ -74,97 +78,78 @@ class NodeDfn(Node):
                 if self.name in self.parent.dy["xor"]:
                     group_nums=sorted([int(num) for num in self.parent.dy["xor"][self.name]])
                     self.dy["xor_notation"]="^"+"^".join(map(str, group_nums))
-                    # pprint(self.dy["xor_notation"])
+                    self.dy["xor_groups"]=group_nums
 
-        if self.dy["enabled"] is True:
-            self.set_arg("init")
-            # if is_dy_preset is False:
-                # set_explicit_aliases(self, pretty, app_name)
-
-    def set_arg(self, action, index=None):
-        if action in ["init", "reset", "fork"]:
-            forks=[]
-            if action == "fork":
-                if self.current_arg is not None:
-                    forks=self.current_arg._forks
-
-            if self.is_root is True:
-                self.current_arg=CliArg(forks, self.name, aliases=self.dy["aliases"], default_alias=self.dy["default_alias"])
-            else:
-                self.current_arg=CliArg(forks, self.name, parent=self.parent.current_arg, aliases=self.dy["aliases"], default_alias=self.dy["default_alias"])
-
-                if action == "init":
-                    self.parent.current_arg._args.append(self.current_arg)
-                    setattr(self.parent.current_arg, self.name, self.current_arg)
-                    self.parent.current_arg._[self.name]=self.current_arg
-                
-                elif action == "reset":
-                    if hasattr(self.parent.current_arg, self.name):
-                        tmp_arg=self.parent.current_arg._[self.name]
-                        tmp_index=self.parent.current_arg._args.index(tmp_arg)
-                        self.parent.current_arg._args.insert(tmp_index, self.current_arg)
-                        self.parent.current_arg._args.remove(tmp_arg)
-                    else:
-                        self.parent.current_arg._args.append(self.current_arg)
-
-                    setattr(self.parent.current_arg, self.name, self.current_arg)
-                    self.parent.current_arg._[self.name]=self.current_arg
-                
-                elif action == "fork":
-                    if not hasattr(self.parent.current_arg, self.name):
-                        self.parent.current_arg._args.append(self.current_arg)
-                        setattr(self.parent.current_arg, self.name, self.current_arg)
-                        self.parent.current_arg._[self.name]=self.current_arg
-        
-        elif action == "select":
-            self.current_arg=self.current_arg._forks[index]
+        # if self.dy["enabled"] is True:
+        #     parent_arg=None
+        #     if self.is_root is False:
+        #         parent_arg=self.parent.current_arg
+        #     self.current_arg=CliArg(
+        #         self.dy["aliases"],
+        #         self.dy["default_alias"],
+        #         self.name,
+        #         branches=[],
+        #         parent=parent_arg,
+        #     )
 
 class CliArg():
     def __init__(self,
-        forks,
+        aliases,
+        default_alias,
         name,
-        aliases=[],
+        branches,
+        cmd_line,
         parent=None,
-        default_alias=None,
+        branch_index=None,
     ):
+        self._=dict()
         self._alias=None
-        self._aliases=[]
+        self._aliases=aliases
         self._args=[]
+        self._branches=branches
+        if branch_index is None:
+            self._branches.append(self)
+        else:
+            self._branches.insert(branch_index, self)
         self._cmd_line_index=None
         self._count=0
-        self._default_alias=None
-        self._forks=forks
+        self._default_alias=default_alias
+        self._dy_indexes=dict(
+            aliases=dict(),
+            values=[],
+        )
         self._here=False
+        self._implicit=False
         self._name=name
         self._parent=parent
         self._value=None
         self._values=[]
 
+        is_first_branch=self._branches.index(self) == 0
+
         if self._parent is None:
             self._root=self
             self._is_root=True
-            if len(self._forks) == 0:
-                self._cmd_line=None
+            if is_first_branch is True:
+                self._cmd_line=cmd_line
         else:
             self._root=self._parent._root
             self._is_root=False
 
-        self._=dict()
+            if is_first_branch is True:
+                setattr(self._parent, self._name, self)
+                self._parent._[self._name]=self
 
-        if default_alias is not None:
-            self._default_alias=default_alias
-            self._aliases=aliases
-
-    def get_cmd_line(self, cmd_line_index=None):
+    def _get_cmd_line(self, cmd_line_index=None):
         if cmd_line_index is None:
             if self._cmd_line_index is None:
                 return None
             else:
-                return self._root._forks[0]._cmd_line[:self._cmd_line_index]
+                return self._root._branches[0]._cmd_line[:self._cmd_line_index]
         else:
-            return self._root._forks[0]._cmd_line[:cmd_line_index]
+            return self._root._branches[0]._cmd_line[:cmd_line_index]
             
-    def get_path(self, wvalues=False):
+    def _get_path(self, wvalues=False, keep_default_alias=False):
         path=[]
         arg=self
         args=[]
@@ -175,22 +160,26 @@ class CliArg():
                 break
 
         implicit_aliases=set()
+
         for arg in args:
             alias=arg._alias
 
-            if alias is None:
+            if alias is None: 
                 alias=arg._default_alias
+            elif keep_default_alias is True:
+                if arg._is_root is False:
+                    alias=arg._default_alias
 
             if alias in implicit_aliases:
                     path.append("-")
 
             text=alias
 
-            add_index=len(arg._forks) > 1
+            add_index=len(arg._branches) > 1
             if add_index is True:
                 arg_index=1
                 if arg._here is True:
-                    arg_index=arg._forks.index(arg)+1
+                    arg_index=arg._branches.index(arg)+1
 
                 if arg._parent is None and arg_index == 1:
                     pass
@@ -217,7 +206,7 @@ class CliArg():
 
                 if arg._parent is not None:
                     for tmp_arg in arg._parent._args:
-                        if self not in tmp_arg._forks:
+                        if self not in tmp_arg._branches:
                             for tmp_alias in tmp_arg._aliases:
                                 if tmp_alias not in implicit_aliases:
                                     implicit_aliases.add(tmp_alias)

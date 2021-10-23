@@ -25,7 +25,11 @@ def get_cached_options(direpa_caller, cache_file, extension, md5_options, only_c
         if extension == ".json":
             with open(cache_file, "r") as f:
                 try:
-                    dy_cached_options=json.load(f)
+                    data=f.read().strip()
+                    if data == "":
+                        dy_cached_options=None
+                    else:
+                        dy_cached_options=json.loads(data)
                 except BaseException as e:
                     msg.warning("JSON syntax error for file '{}'.".format(cache_file), prefix=prefix, pretty=False)
         elif extension == ".pickle":
@@ -106,6 +110,69 @@ def get_user_files(direpa_caller, dy_options):
 
     return tmp_filenpas
 
+def dy_options_update(dy_filenpa_md5, prefix, pretty, dy_options):
+    filenpa_md5=dy_filenpa_md5["filenpa"]
+    file_label=dy_filenpa_md5["label"]
+    filen=os.path.basename(filenpa_md5)
+
+    filer, ext=os.path.splitext(filen)
+
+    authorized_exts=[".json", ".yaml"]
+    if ext not in authorized_exts:
+        msg.error("options file extension '{}' must be in {}".format(ext, authorized_exts), prefix=prefix, pretty=pretty, exit=1)
+
+    tmp_dy_options=dict()
+    if ext == ".json":
+        with open(filenpa_md5, "r") as f:
+            try:
+                data=f.read().strip()
+                if data == "":
+                    tmp_dy_options=None
+                else:
+                    tmp_dy_options=json.loads(data)
+                # print("error here")
+                # tmp_dy_options=json.load(f)
+            except BaseException:
+                print(traceback.format_exc())
+                msg.error("JSON syntax error in options file '{}'.".format(filenpa_md5), prefix=prefix, pretty=pretty)
+                sys.exit(1)
+    elif ext == ".yaml":
+        with open(filenpa_md5, "r") as f:
+            try:
+                import yaml
+            except:
+                msg.error(r"""
+                    YAML module not found to import options file.
+                    Do either:
+                    - pip install pyyaml.
+                    - use a JSON file for options file.
+                    - use a python dict for options file.
+                """, heredoc=True, prefix=prefix, pretty=pretty, exit=1)
+            try:
+                tmp_dy_options=yaml.safe_load(f)
+            except BaseException as e:
+                print(traceback.format_exc())
+                msg.error("YAML syntax error in definition file '{}'".format(filenpa_md5), prefix=prefix, pretty=pretty)
+                sys.exit(1)
+
+    if "user" in file_label:
+        for key in sorted(tmp_dy_options):
+            if key not in [
+                "pretty_help",
+                "pretty_msg",
+                "substitute",
+                "theme",
+            ]:
+                del tmp_dy_options[key]
+
+    if tmp_dy_options is not None:
+        dy_options.update(tmp_dy_options)
+
+    dy_options["md5_files"][file_label]=dict(
+        filenpa=filenpa_md5,
+        md5=hashlib.md5(open(filenpa_md5,"rb").read()).hexdigest(),
+    )
+
 def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
     prefix="At Nargs when setting options"
     pretty=False
@@ -114,7 +181,7 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
 
     dy_options["md5_options"]=md5_options
     dy_options["nargs_version"]=__version__
-
+    dy_options["md5_files"]=dict()
     filenpas_md5=[]
 
     if "options_file" in dy_options:
@@ -137,69 +204,15 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
             if not os.path.isfile(options_file):
                 msg.error("options file path is not a file '{}'".format(options_file), prefix=prefix, pretty=pretty, exit=1)
 
-            filenpas_md5.append(dict(filenpa=options_file, label="options_file"))
+            dy_filenpa_md5=dict(filenpa=options_file, label="options_file")
+            dy_options_update(dy_filenpa_md5, prefix, pretty, dy_options)
+            filenpas_md5.append(dy_filenpa_md5)
 
-    filenpas_md5.extend(get_user_files(direpa_caller, dy_options))
+    for dy_filenpa_md5 in get_user_files(direpa_caller, dy_options):
+        dy_options_update(dy_filenpa_md5, prefix, pretty, dy_options)
+        filenpas_md5.append(dy_filenpa_md5)
 
-    if "md5_files" not in dy_options:
-        dy_options["md5_files"]=dict()
-    
-    for dy_filenpa_md5 in filenpas_md5:
-        filenpa_md5=dy_filenpa_md5["filenpa"]
-        file_label=dy_filenpa_md5["label"]
-        filen=os.path.basename(filenpa_md5)
-        
-        filer, ext=os.path.splitext(filen)
-
-        authorized_exts=[".json", ".yaml"]
-        if ext not in authorized_exts:
-            msg.error("options file extension '{}' must be in {}".format(ext, authorized_exts), prefix=prefix, pretty=pretty, exit=1)
-
-        tmp_dy_options=dict()
-        if ext == ".json":
-            with open(filenpa_md5, "r") as f:
-                try:
-                    tmp_dy_options=json.load(f)
-                except BaseException:
-                    print(traceback.format_exc())
-                    msg.error("JSON syntax error in options file '{}'.".format(filenpa_md5), prefix=prefix, pretty=pretty)
-                    sys.exit(1)
-        elif ext == ".yaml":
-            with open(filenpa_md5, "r") as f:
-                try:
-                    import yaml
-                except:
-                    msg.error(r"""
-                        YAML module not found to import options file.
-                        Do either:
-                        - pip install pyyaml.
-                        - use a JSON file for options file.
-                        - use a python dict for options file.
-                    """, heredoc=True, prefix=prefix, pretty=pretty, exit=1)
-                try:
-                    tmp_dy_options=yaml.safe_load(f)
-                except BaseException as e:
-                    print(traceback.format_exc())
-                    msg.error("YAML syntax error in definition file '{}'".format(filenpa_md5), prefix=prefix, pretty=pretty)
-                    sys.exit(1)
-
-        if "user" in file_label:
-            for key in sorted(tmp_dy_options):
-                if key not in [
-                    "pretty_help",
-                    "pretty_msg",
-                    "substitute",
-                    "theme",
-                    "verbose",
-                ]:
-                    del tmp_dy_options[key]
-            
-        dy_options.update(tmp_dy_options)
-
-        dy_options["md5_files"][file_label]=dict(
-            filenpa=filenpa_md5,
-            md5=hashlib.md5(open(filenpa_md5,"rb").read()).hexdigest(),
-        )
+    # pprint(filenpas_md5)
 
     for field in ["pretty_help", "pretty_msg"]:
         if field in dy_options:
@@ -221,15 +234,13 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
     prefix="For '{}' At Nargs when setting options".format(app_name)
 
     data=dict(
-        args=[dict],
+        args=[dict, type(None)],
         auto_alias_style=[str],
         auto_alias_prefix=[str],
         builtins=[list, type(None)],
-        path_etc=[str, type(None)],
+        # path_etc=[str, type(None)],
         substitute=[bool],
         theme=[dict, type(None)],
-        usage_on_root=[bool],
-        verbose=[bool],
     )
 
     styles=[
@@ -273,12 +284,11 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
                             msg.error("option '{}' value '{}' is not in {}.".format(option, v, builtins), prefix=prefix, pretty=pretty, exit=1)
 
                 dy_options[option]=sorted(list(set(dy_options[option])))
+  
             elif option == "substitute":
                 pass
             elif option == "theme":
                 dy_options[option]=get_theme(default_theme=dy_default_theme, user_theme=dy_options[option], pretty=pretty, app_name=app_name)
-            elif option == "usage_on_root":
-                pass
             elif option == "args":
                 pass
         else:
@@ -292,10 +302,8 @@ def set_options(direpa_caller, dy_options, md5_options, dy_default_theme, main):
                 dy_options[option]=False
             elif option == "theme":
                 dy_options[option]=dy_default_theme
-            elif option == "usage_on_root":
-                dy_options[option]=True
             elif option == "args":
-                dy_options[option]=dict()
+                dy_options[option]=None
 
 def get_metadata_template():
     return dict(
@@ -337,21 +345,21 @@ def set_dy_metadata(direpa_caller, dy_options, pretty, main):
     dy_metadata=dy_options["metadata"]
 
     if "name" not in dy_metadata:
-        msg.error("at key 'name' not found.", prefix=prefix, pretty=pretty, exit=1)
+        msg.error("key 'name' not found.", prefix=prefix, pretty=pretty, exit=1)
 
     if "executable" not in dy_metadata:
         if "alias" in dy_metadata:
             dy_metadata["executable"]=dy_metadata["alias"]
         else:
-            msg.error("at key 'executable' not found.", prefix=prefix, pretty=pretty, exit=1)
+            msg.error("key 'executable' not found.", prefix=prefix, pretty=pretty, exit=1)
 
     for name in ["name", "executable"]:
         if not isinstance(dy_metadata[name], str):
-            msg.error("at key '{}' value type {} must be of type {}.".format(name, type(dy_metadata[name]), str), prefix=prefix, pretty=pretty, exit=1)
+            msg.error("key '{}' value type {} must be of type {}.".format(name, type(dy_metadata[name]), str), prefix=prefix, pretty=pretty, exit=1)
 
         dy_metadata[name]=dy_metadata[name].strip()
         if len(dy_metadata[name]) == 0:
-            msg.error("at key '{}' value can't be empty.".format(name), prefix=prefix, pretty=pretty, exit=1)
+            msg.error("key '{}' value can't be empty.".format(name), prefix=prefix, pretty=pretty, exit=1)
 
     del_keys=[]
     for key, value in dy_metadata.items():
@@ -369,4 +377,4 @@ def set_dy_metadata(direpa_caller, dy_options, pretty, main):
             defaut_value_type=type(defaults[default_key])
             if default_key in dy_metadata:
                 if type(dy_metadata[default_key]) != defaut_value_type:
-                    msg.error("at key '{}' value type {} must be of type {}.".format(default_key, type(dy_metadata[default_key]), defaut_value_type), prefix=prefix, pretty=pretty, exit=1)
+                    msg.error("key '{}' value type {} must be of type {}.".format(default_key, type(dy_metadata[default_key]), defaut_value_type), prefix=prefix, pretty=pretty, exit=1)

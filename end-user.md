@@ -3,7 +3,7 @@
 ### About Nargs
 `alias:` nargs<br>
 `authors:` Gabriel Auger<br>
-`deps:` cf09346e-b436-4259-b6dd-e56516b508a5|message|8.1.2|gpm<br>
+`deps:` cf09346e-b436-4259-b6dd-e56516b508a5|message|8.2.0|gpm<br>
 `description:` Command-line Arguments Parser<br>
 `filen_main:` main.py<br>
 `installer:` gpm<br>
@@ -17,7 +17,6 @@
 - `pretty_help:` When 'enabled' Nargs usage, and help are themed.
 - `pretty_msg:` When 'enabled' Nargs system messages are themed.
 - `substitute:` When 'enabled' strings on the command line with syntax \_\_input\_\_, \_\_hidden\_\_, \_\_input:label\_\_, \_\_hidden:label\_\_ trigger user prompt and strings are substituted with user input. Label must start with a letter and can only have letters or numbers. If only labels are provided then strings are substituted with values of matching environment variable names if any. i.e. \_\_input\_\_, \_\_input:username\_\_, \_\_USER\_\_, \_\_Session1\_\_ .
-- `verbose:` None
 - `yaml_syntax:` When 'enabled' means PyYAML is installed and yaml can be provided for arguments values types `.json` and `json`.
 
 ### User Option Files
@@ -29,39 +28,28 @@
 
 ### Argument Aliases Types
 - Arguments' aliases can have any prefixes from list `['', '+', '-', '--', '/', ':', '_']`. i.e. `arg`, `+arg`, `-arg`, `--arg`, `/arg`, `:arg`, and `_arg`.
-- Arguments' aliases accept index notation and may accept value(s).
-- Each argument has a default alias. Default alias notation is only shown for required arguments that have at least two aliases. Default alias notation surrounds alias with single-quotes i.e.: `-a, '--arg'`. Single quotes are not part of the alias. 
+- Arguments' aliases accept branch index notation and may accept value(s).
+- Each argument has a default alias. Default alias is the first alias on the argument's aliases list as shown in help or in usage.
 - One char only aliases may be selected as flags. i.e. `a`, `+a`, `-a`, `--a`, `/a`, `:a`, and `_a`.
 - A flag is an argument with at least a one char alias that is selected according to rules defined in Nargs developer's documentation at section 'Concatenated Flags Aliases'.
-- A flags set is a group of flag related to a particular argument. Each argument may have a different flags set. Some arguments may not have a flags set depending on arguments definition.
-- A flags set start with 'at symbol' and contains at least one char. i.e. `@chuv` where 'c' is cmd, 'h' is 'help', 'u' is 'usage' and 'v' is 'version'.
-- A flag may be repeated in a flags set depending on argument's definition. Flags order does not matter.
-- Only the latest flag of a flags set may accept a value and may have index notation.
+- A flags set is a group of flags related to a particular argument. Each argument may have a different flags set. Some arguments may not have a flags set depending on arguments definition.
+- A flags set starts with 'at symbol' and contains at least one char. i.e. `@chuv` where 'c' is cmd, 'h' is 'help', 'u' is 'usage' and 'v' is 'version'.
+- A flag may be repeated in a flags set depending on argument's definition. Flags order may not matter.
+- Only the latest flag of a flags set may accept a value and may have branch index notation.
+- A flag set may be concatenated to a command-line argument. i.e.: '`prog.py --usage@hip`'.
+- 'at symbol' may be repeated to nest multiple flags sets. i.e.: '`prog.py @u@hip`' is the same as '`prog.py --usage --hint --info --path`'.
+- When nesting multiple flags sets by using multiple 'at symbol' then the nested flags set is always related to the last flag used. i.e.: for '`prog.py @u@hip`' then flags set '`@hip`' is related to flag '`u`'.
 - A flag does not accept explicit notation. A flags set does accept explicit notation.
-- Flags set information details is only available through 'usage' argument.
-- To see what flags set is available for an argument, user can type: '`prog.py --arg --usage`' or '`prog.py --arg --usage --flags`' for information on each flag.
-- Only the the current argument's flags set information is available at a time.
+- To know which argument is related to a flag, end-user can use the usage argument. i.e.: '`prog.py @u?`', or '`prog.py @u@h?`', or '`prog.py @u@hiu`'.
 
 ### Argument Aliases States
-- Required: -m, '--mount'
-- Optional:  **[**-m, --mount **]**
-- Asterisk symbol means that nested arguments are available: `*`  **[**-m, --mount **]** or `*` -m, '--mount'
+- Required: --mount, -m
+- Optional:  **[**--mount, -m **]**
+- Asterisk symbol means that nested arguments are available: `*`  **[**--mount, -m **]** or `*` --mount, -m
 - When a required argument is omitted and argument accepts either no value(s), optional value(s), or required value(s) with default value(s) set then required argument is added implicitly and the selected alias set is the default alias.
 - When a required argument with required value(s) is omitted and argument has not default value(s) set then an error is thrown.
-- Omitted required argument process is repeated recursively on implicitly added argument's required children.
+- Omitted required argument process is repeated recursively and argument's required children may be added implicitly.
 - An optional argument may still be required in-code by developer. Nargs only represents a small subset of arguments' logical rules.
-
-### Repeated Argument's options
-- (`a`)ppend values: -m, '--mount' &a
-- (`e`)rror if repeated: -m, '--mount' &e
-- (`f`)ork new argument is created: -m, '--mount' &f
-- (`r`)eplace previous argument and reset children (implicit): -m, '--mount'
-
-### XOR Group Notation
-- When argument has notation: -m, --mount ^1^3
-- It means that argument is part of two '`exclusive either (XOR)`' groups: group 1 and group 3. An argument can belong to multiple XOR groups.
-- XOR groups define siblings arguments' groups where any argument from a group can't be present at the same time on the command-line with any other siblings' arguments of the same group.
-- i.e. sibling argument with notation '-u, --unmount ^3' can't be present at the same time with argument '-m, --mount ^1^3'.
 
 ### Arguments Tree Vocabulary
 - Arguments tree structure related to --self argument:
@@ -77,13 +65,25 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--ancestor-uncle<br>
 - `--self` is the current argument.
 - All `--self`'s parents may be called ancestors. The oldest ancestor is the root argument.
+- Arguments may be duplicated in multiple branches.
+- Each argument's branch has its own subset of child arguments.
+- Arguments may have multiple occurences per branch.
+- Arguments branches and occurences described:
+&nbsp;&nbsp;&nbsp;&nbsp;--parent<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`--self_1 (branch 1 occurence 1) --self (branch 1 occurence 2)`<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--child (relates only to branch 1<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`--self_2 (branch 2 occurence 1) --self (branch 2 occurence 2)`<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--child (relates only to branch 2)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`--self_ (branch 3 occurence 1) --self (branch 3 occurence 2)`<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--child (relates only to branch 3)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--sibling<br>
 
 ### Arguments Navigation
 - Implicit navigation uses only aliases and values.
 - Explicit navigation uses explicit notation with command-line symbols `+`, `=`, and `-`.
 - Explicit navigation searches for aliases only in children arguments.
-- Explicit navigation can reaches any argument described in arguments tree vocabulary.
-- Implicit navigation searches aliases in children' arguments, parents' arguments and parents' arguments' children.
+- Explicit navigation can reach any argument described in arguments tree vocabulary.
+- Implicit navigation searches aliases in children' arguments, parents' arguments and parents' children.
 - Command-line symbols `+`, `=`, and `-` help to explicitly navigate arguments' tree.
 - Explicit navigation with command-line symbols `+`, `=`, and `-` may be omitted most of the time.
 - Explicit navigation is required for an alias when selected alias is also present either in children's arguments, parents' arguments, or parents' children arguments.
@@ -104,14 +104,30 @@
 - 'prog --self `+4` --root-arg'.
 - Explicit navigation allows end-user to go back and forth to selected arguments in order to add values or nested arguments.
 
-### Arguments Index Notation
-- Argument's index notation allows selecting a specific argument's occurence.
-- Index notation consists in adding to argument's alias an underscore and an index number starting at one.
-- Index notation's index is the argument occurence number.
-- Argument with repeat option set to 'fork' allows to have an index greater than 1.
-- Argument with repeat option set to either 'append', 'error', or 'replace' only allows to have the index equals to 1.
-- Index notation examples: 'prog --help_1 --export_1' or 'prog --arg_1 --arg_2' or 'prog --arg_1 = --arg_2'.
-- Explicit notation and index notation allows to select accurately an argument's occurence in the arguments tree.
+### Arguments' Logical Properties
+- An argument logical properties can be shown with usage argument. i.e.: '`prog.py --arg --usage --properties`'
+- '`allow_parent_fork`' property is a boolean that describes if argument's parent may have fork(s) when argument is present.
+- '`allow_siblings`' property is a boolean that describes if argument's siblings may be present when argument is present.
+- '`fork`' property is a boolean that describes if argument's fork are allowed. To fork means to divide into two or more branches.
+- '`need_child`' property is a boolean that describes if at least one argument's child must be provided when argument is present.
+- '`repeat`' property is a string set with one option from '`append, error, replace`'. Property defines multiple argument's occurences behavior.
+- '`repeat=append`' means multiple argument's occurences are allowed and for each occurence the same argument is kept but argument's '`_count`' internal property is incremented and new argument's values are appended to argument's values list.
+- '`repeat=error`' means only one argument's occurence is allowed otherwise Nargs throws an error.
+- '`repeat=replace`' means multiple argument's occurences are allowed and for each occurence a new argument is created and the previous argument is replaced and all the previous argument's children are removed. Argument's '`_count`' internal property is not incremented and new argument's values start a new argument's values list.
+- '`required`' property is a boolean that describes if argument's must be present when argument's parent is present. '`required`' property has also been described in 'Argument Aliases States'.
+- '`xor_groups`' property is a list of integers where each integer represents a group. Argument's siblings arguments with the same '`xor`' group can't be present at the same time on the command-line with any other argument from that group. It is the definition of '`xor`' which means '`exclusive or`'. Group scope is at the siblings level on argument's branch, it means that the same group name is not related if it is located on argument's parents or argument's children or if on same argument but on a different branch.
+
+### Arguments Branch Index Notation
+- Argument's branch index notation allows selecting a specific argument's occurence.
+- Branch index notation consists in adding to argument's alias an underscore and an index number starting at one.
+- Branch index notation's index is the argument occurence number.
+- If only underscore is provided it means create a branch i.e.: '`prog --arg-one_`'
+- Argument with '`fork`' property set to '`True`' allows to have an index greater than 1.
+- Branch index notation examples: '`prog --help_1 --export_1`' or '`prog --arg_1 --arg_2`' or '`prog --arg_1 = --arg_2`' or '`prog --arg_ --arg_ --arg_`'.
+- Argument's branches and argument's occurences per branch are not the same.
+- Argument with '`repeat`' property set to either '`append`', or '`replace`' allows to have muliple occurences of an argument per branch.
+- Argument's multiple occurences examples: '`prog --arg --arg`' or '`prog --arg_1 --arg_1`'.
+- Explicit notation and branch index notation allows to select accurately an argument's branch in the arguments tree.
 
 ### Argument Values
 - required:  *`<str>`*
@@ -148,6 +164,7 @@
 - i.e. argument: *`value1`*
 - Values notation is useful to prevent values to be mistaken for aliases.
 - Values notation allows faster command-line parsing.
+- Last flag on a flags set can also accepts values i.e. @chu: *`value`*
 
 ### Argument Number of Values
 - required 1 value:  *`<str>`* 
@@ -163,8 +180,16 @@
 - required min 1 to int:  *`<str> ...3`*
 
 ### Argument Help Syntax Examples
--  **[**-m, --mount &e **]**
-- -m, '--mount'  *`<str:PATH> 1... (=mycustompath)`*
--  **[**-m, --mount  **[** *`<str:PATH> ...5 (=mycustompath)`* **]** &a **]**
-- -m, '--mount'  *`<str:{option1,option2,option3}> 2 (=option1, option2)`*
+-  **[**--mount, -m **]**
+- --mount, -m  *`<str:PATH> 1... (=mycustompath)`*
+-  **[**--mount, -m  **[** *`<str:PATH> ...5 (=mycustompath)`* **]**  **]**
+- --mount, -m  *`<str:{option1,option2,option3}> 2 (=option1, option2)`*
+
+### Arguments Syntax Pitfall
+- For value '`+4`' in command '`--arg +4`', '`+4`' is parsed as an explicit notation. In order to set '`+4`' as a value use '`--arg=+4`'.
+- For alias '`+4`' in command '`--arg +4`', '`+4`' is parsed as an explicit notation. In order to set '`+4`' as an alias use explicit notation before argument '`--arg = +4`'
+- For value '`@value`' in command '`--arg @value`', '`@value`' is parsed as a flags set. In order to set '`@value`' as a value use '`--arg=@value`'.
+- For alias '`-value`' in command '`--arg -value`', '`-value`' is parsed as an alias. In order to set '`-value`' as a value use '`--arg=-value`'.
+- Question mark alias '`?`' from usage may be misinterpreted by Bash as wildcard operator. If that happens end-user may want to use any other aliases provided for usage argument.
+- Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'unknown argument' else 'value' else 'unknown input'. If 'flags notation' then flags set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).
 
