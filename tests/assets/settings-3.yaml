@@ -1,0 +1,52 @@
+args:
+  _aliases: "--args,-a"
+  _xor:
+    - "arg_one,arg_three"
+    - "arg_two,arg_three"
+  arg_one:
+  arg_two:
+    nested_arg1:
+      _values: "?"
+      _type: int
+    nested_arg2:
+      _allow_siblings: false
+    nested_arg3:
+      _values: 1
+    nested_arg4:
+      _values: 2
+    nested_arg5:
+      _type: int
+      _in: [1, 2, 3]
+  arg_three:
+    _repeat: error
+  arg_four:
+    _fork: true
+    nested_arg1:
+      _allow_parent_fork: false
+    nested_arg2:
+  arg_five:
+    _aliases: "--arg-five"
+    _repeat: append
+    n_arg1:
+      _aliases: "--n-arg1,--arg-five"
+      _repeat: append
+      nn_arg1:
+  arg_six:
+    _aliases: "--arg-six"
+    _repeat: append
+    n_arg1:
+      _aliases: "--n-arg1,--arg-six"
+      _repeat: append
+      nn_arg1:
+        nnn_arg1:
+          _aliases: "--nnn-arg1,--arg-six"
+  arg_seven:
+    _need_child: true
+    n_arg1:
+  arg_height:
+    n_arg:
+      _required: true
+  arg_nine:
+    n_arg:
+      _required: true
+      _values: 1

@@ -1,1 +1,0 @@
---args --cmd tests/cmd.txt

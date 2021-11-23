@@ -1,0 +1,1 @@
+--args --cmd tests/assets/cmd.txt

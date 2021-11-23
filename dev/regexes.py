@@ -4,8 +4,6 @@ import json
 import os
 import sys
 
-# test def_alias regex 
-
 def get_alias_prefixes():
     return ["", "+", "--", "-", "/", ":", "_"]
     
@@ -13,27 +11,24 @@ def get_flags_precedence():
     return ['+', '-', '', '/', ':', '_', '--']
 
 def get_regex(reg_name):
-    # quotes=r"(?P<values>(?:\=|:)((?P<dquotes>\".*\")|(?P<squotes>\'.*\')|(?P<nquotes>.*)))?"
-    # quotes=r"(?:\=?|\:?)(?P<values>(.*))?"
-    # quotes=r"(?:\=?)(?P<values>(.*))?"
     values=r"(?P<values_str>(?:\=|:)(?P<values>.*))?"
     prefixes=r"(?P<prefix>\+|--|-|/|:|_)?"
-    branch_num=r"(?P<branch_num_str>_(?P<branch_num>[1-9][0-9]*)?)?"
-    branch_num2=r"(?P<branch_num_str2>_(?P<branch_num2>[1-9][0-9]*)?)?"
+    branch_num=r"(?P<branch_num_str>\+(?P<branch_num>[1-9][0-9]*)?)?"
+    branch_num2=r"(?P<branch_num_str2>\+(?P<branch_num2>[1-9][0-9]*)?)?"
+
     flags=r"@(?P<chars>[a-zA-Z0-9\?][a-zA-Z0-9@\?]*(?<!@))"
     dy=dict(
         alias_sort_regstr=dict(
             rule=r"^(\+|--|-|/|:|_)",
         ),
         cli_alias=dict(
-            # rule=r"^(?P<alias>{}[a-zA-Z0-9\?][a-zA-Z0-9\-_]*?(?<!\-|_)){}{}$".format(prefixes, branch_num, values),
-            rule=r"^(?P<alias>{}[a-zA-Z0-9\?][a-zA-Z0-9\-_]*?(?<!\-|_)){}(?P<flags_str>{}{})?{}$".format(prefixes, branch_num, flags, branch_num2, values),
+            rule=r"^(?P<alias>{}[a-zA-Z0-9\?][a-zA-Z0-9\-_]*?){}(?P<flags_str>{}{})?{}$".format(prefixes, branch_num, flags, branch_num2, values),
         ),
         cli_flags=dict(
             rule=r"^{}{}{}$".format(flags, branch_num, values),
         ),
         cli_explicit=dict(
-            rule=r"^(?:(?P<minus>-)|(?P<equal>=)|(?P<plus_concat>\++)|(?:\+(?P<plus_index>[1-9][0-9]*)))$",
+            rule=r"^(?:(?P<plus>\+)|(?P<equal>=)|(?P<minus_concat>\-+)|(?:\-(?P<minus_index>[1-9][0-9]*)))$",
         ),
         def_arg_name=dict(
             name="definition argument name",
@@ -45,12 +40,12 @@ def get_regex(reg_name):
         ),
         def_alias=dict(
             name="definition alias",
-            rule=r"^({})([a-zA-Z0-9][a-zA-Z0-9\-_]*)(?<![\-_])$".format(prefixes),
+            rule=r"^({})([a-zA-Z0-9\?][a-zA-Z0-9\-_]*)$".format(prefixes),
             hints=[
                 "First optional prefix can be any prefix from {}".format(get_alias_prefixes()),
-                "Required next char must be either a lowercase letter, an uppercase letter, or an integer.",
+                "Required next char must be either a lowercase letter, an uppercase letter, an integer.",
+                "Required next char can also be a question mark, if argument property '_is_usage' is set to True. In that case no other chars are accepted.",
                 "Optional next chars can be any char from lowercase letter, uppercase letter, integer, underscore or hyphen.",
-                "Last optional char can't be an underscore or a hyphen.",
             ]
         ),
         def_theme_hexa=dict(

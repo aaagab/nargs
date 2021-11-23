@@ -8,9 +8,6 @@ import sys
 def get_joined_list(lst):
     tmp_list=[]
     for value in lst:
-        # if len(value.split()) > 1 or "," in value:
-            # tmp_list.append(repr(value))
-        # else:
         tmp_list.append(value)
     return ", ".join(tmp_list)
 
@@ -36,15 +33,16 @@ def get_nargs_metadata():
     return dy
 
 def get_nargs_syntax(style, user_options, print_options=True):
-    lsbracket=style.get_text(style.get_symbol("["), "square_brackets")
-    rsbracket=style.get_text(style.get_symbol("]"), "square_brackets")
+    lsbracket=style.get_text(style.get_symbol("["), "brackets")
+    rsbracket=style.get_text(style.get_symbol("]"), "brackets")
     lt=style.get_symbol("<")
     gt=style.get_symbol(">")
 
+    asterisk=style.get_asterisk_symbol()
     plus=style.get_plus_symbol()
     caret=style.get_caret_symbol()
-    minus=style.get_text("-", "nargs_syntax_emphasize")
-    equal=style.get_text("=", "nargs_syntax_emphasize")
+    minus="-"
+    equal=style.get_text("=", "emphasize")
 
     dul="__"
     dur="__"
@@ -54,8 +52,6 @@ def get_nargs_syntax(style, user_options, print_options=True):
     elif style.output == "markdown":
         dul="\_\_"
         dur="\_\_"
-        # plus=style.get_text("\+", "nargs_syntax_emphasize")
-        # minus=style.get_text("-", "nargs_syntax_emphasize")
 
     text=[]
     if style.output == "html":
@@ -63,17 +59,19 @@ def get_nargs_syntax(style, user_options, print_options=True):
 
     text.append(style.get_text("NARGS ARGUMENTS SYNTAX", "headers"))
 
-    text.append("{}".format(style.get_text("About Nargs", "nargs_syntax_headers")))
+    text.append("{}".format(style.get_text("About Nargs", "syntax_headers")))
     open_ul_html(style, text)
     dy_nargs=get_nargs_metadata()
 
     for key in sorted(dy_nargs):
         value=dy_nargs[key]
+        if key in ["executable", "filen_main"]:
+            value=style.escape(".", value)
         if isinstance(value, list):
             value=get_joined_list(value)
         elif isinstance(value, dict):
             value=json.dumps(value, sort_keys=True)
-        text.append("{} {}".format(style.get_text(key+":", "nargs_syntax_emphasize"), value))
+        text.append("{} {}".format(style.get_text(key+":", "emphasize"), value))
         append_li_html(style, text)
 
     close_ul_html(style, text)
@@ -86,7 +84,7 @@ def get_nargs_syntax(style, user_options, print_options=True):
     user_options["yaml_syntax"]=has_yaml_module
 
     if print_options is True:
-        text.append("\n{}".format(style.get_text("Nargs Options State", "nargs_syntax_headers")))
+        text.append("\n{}".format(style.get_text("Nargs Options State", "syntax_headers")))
         open_ul_html(style, text)
 
         for option in sorted(user_options):
@@ -98,13 +96,13 @@ def get_nargs_syntax(style, user_options, print_options=True):
             text.append("{}{}: {}".format(
                 style.get_list_bullet(),
                 option,
-                style.get_text(state, "nargs_syntax_emphasize"), 
+                style.get_text(state, "emphasize"), 
             ))
             append_li_html(style, text)
 
         close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Nargs Options Explained", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Nargs Options Explained", "syntax_headers")))
     open_ul_html(style, text)
     for option in sorted(user_options):
         description=None
@@ -119,126 +117,128 @@ def get_nargs_syntax(style, user_options, print_options=True):
                 dur=dur,
             )
         elif option == "yaml_syntax":
-            description="When 'enabled' means PyYAML is installed and yaml can be provided for arguments values types {} and {}.".format(
-                style.get_text(".json", "nargs_syntax_emphasize"),
-                style.get_text("json", "nargs_syntax_emphasize"),
+            description="When 'enabled' means PyYAML is installed and YAML can be provided for arguments values types {} and {}.".format(
+                style.get_text(".json", "emphasize"),
+                style.get_text("json", "emphasize"),
             )
 
         text.append("{}{} {}".format(
             style.get_list_bullet(),
-            style.get_text(option+":", "nargs_syntax_emphasize"),
+            style.get_text(option+":", "emphasize"),
             description,
         ))
         append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("User Option Files", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("User Option Files", "syntax_headers")))
     open_ul_html(style, text)
     for tmp_text in [
         "The following Nargs options can be modified with a user file: {}, {}, {}, {}.".format(
-            style.get_text("pretty_help", "nargs_syntax_emphasize"),
-            style.get_text("pretty_msg", "nargs_syntax_emphasize"),
-            style.get_text("substitute", "nargs_syntax_emphasize"),
-            style.get_text("theme", "nargs_syntax_emphasize"),
+            style.get_text("pretty_help", "emphasize"),
+            style.get_text("pretty_msg", "emphasize"),
+            style.get_text("substitute", "emphasize"),
+            style.get_text("theme", "emphasize"),
         ),
         "A '{}' or '{}' user file can be placed in either the application executable directory or the application configuration path as set by path_etc argument if any i.e. --path-etc.".format(
-            style.get_text(".nargs-user.json", "nargs_syntax_emphasize"),
-            style.get_text(".nargs-user.yaml", "nargs_syntax_emphasize"),
+            style.get_text(".nargs-user.json", "emphasize"),
+            style.get_text(".nargs-user.yaml", "emphasize"),
         ),
         "If both '{}' and '{}' are present then only '{}' is selected.".format(
-            style.get_text(".nargs-user.json", "nargs_syntax_emphasize"),
-            style.get_text(".nargs-user.yaml", "nargs_syntax_emphasize"),
-            style.get_text(".nargs-user.yaml", "nargs_syntax_emphasize"),
+            style.get_text(".nargs-user.json", "emphasize"),
+            style.get_text(".nargs-user.yaml", "emphasize"),
+            style.get_text(".nargs-user.yaml", "emphasize"),
         ),
-        "If user option file is located at executable directory then user options overload matching program's options. If user option file is also located at application configuration then options overload any previously set matching options.",
-        "{}, {}, and {} are boolean options. {} is a dictionary. In order to set {}'s keys and values, please read Nargs developer's documentation at section 'get_default_theme'.".format(
-            style.get_text("pretty_help", "nargs_syntax_emphasize"),
-            style.get_text("pretty_msg", "nargs_syntax_emphasize"),
-            style.get_text("substitute", "nargs_syntax_emphasize"),
-            style.get_text("theme", "nargs_syntax_emphasize"),
-            style.get_text("theme", "nargs_syntax_emphasize"),
+        "If user option file is located at executable directory then user options overload matching program's options. If user option file is also located at application configuration path then options overload any previously set matching options.",
+        "{}, {}, and {} are Boolean options. {} is a dictionary. In order to set {}'s keys and values, please read Nargs developer's documentation at section 'get_default_theme'.".format(
+            style.get_text("pretty_help", "emphasize"),
+            style.get_text("pretty_msg", "emphasize"),
+            style.get_text("substitute", "emphasize"),
+            style.get_text("theme", "emphasize"),
+            style.get_text("theme", "emphasize"),
         ),
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
         append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Argument Aliases Types", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Argument Aliases Types", "syntax_headers")))
     open_ul_html(style, text)
     for tmp_text in [
-        "Arguments' aliases can have any prefixes from list {}. i.e. {}, {}, {}, {}, {}, {}, and {}.".format(
-            style.get_text("['', '+', '-', '--', '/', ':', '_']", "nargs_syntax_emphasize"),
-            style.get_text("arg", "nargs_syntax_emphasize"),
-            style.get_text("+arg", "nargs_syntax_emphasize"),
-            style.get_text("-arg", "nargs_syntax_emphasize"),
-            style.get_text("--arg", "nargs_syntax_emphasize"),
-            style.get_text("/arg", "nargs_syntax_emphasize"),
-            style.get_text(":arg", "nargs_syntax_emphasize"),
-            style.get_text("_arg", "nargs_syntax_emphasize"),
+        "Arguments' aliases can have any prefixes from list {}. i.e. {}.".format(
+            style.get_text("['', '+', '-', '--', '/', ':', '_']", "emphasize"),
+            style.get_text("arg, +arg, -arg, --arg, /arg, :arg, _arg", "emphasize"),
         ),
         "Arguments' aliases accept branch index notation and may accept value(s).",
         "Each argument has a default alias. Default alias is the first alias on the argument's aliases list as shown in help or in usage.",
-        "One char only aliases may be selected as flags. i.e. {}, {}, {}, {}, {}, {}, and {}.".format(
-            style.get_text("a", "nargs_syntax_emphasize"),
-            style.get_text("+a", "nargs_syntax_emphasize"),
-            style.get_text("-a", "nargs_syntax_emphasize"),
-            style.get_text("--a", "nargs_syntax_emphasize"),
-            style.get_text("/a", "nargs_syntax_emphasize"),
-            style.get_text(":a", "nargs_syntax_emphasize"),
-            style.get_text("_a", "nargs_syntax_emphasize"),
+        "One char only aliases may be selected as flags. i.e. {}.".format(
+            style.get_text("a, +a, -a, --a, /a, :a, _a", "emphasize"),
         ),
-        "A flag is an argument with at least a one char alias that is selected according to rules defined in Nargs developer's documentation at section 'Concatenated Flags Aliases'.",
-        "A flags set is a group of flags related to a particular argument. Each argument may have a different flags set. Some arguments may not have a flags set depending on arguments definition.",
-        "A flags set starts with 'at symbol' and contains at least one char. i.e. {} where 'c' is cmd, 'h' is 'help', 'u' is 'usage' and 'v' is 'version'.".format(
-            style.get_text("@chuv", "nargs_syntax_emphasize"),
+        "A flag is an argument with at least a one char alias that is selected according to rules defined in Nargs developer's documentation at section 'Concatenated Flag Aliases'.",
+        "In order to see available flag sets end-user can provide command-line '{}'".format(
+            style.get_text("prog.py --usage --flags", "emphasize"),
         ),
-        "A flag may be repeated in a flags set depending on argument's definition. Flags order may not matter.",
-        "Only the latest flag of a flags set may accept a value and may have branch index notation.",
+        "A flag set is a group of flags related to a particular argument. Each argument may have a different flag set. Some arguments may not have a flag set depending on arguments definition.",
+        "A flag set starts with 'at symbol' and contains at least one char. i.e. '{}' where '{}' is 'cmd', '{}' is 'help', '{}' is 'usage' and '{}' is 'version'.".format(
+            style.get_text("@chuv", "flags"),
+            style.get_text("c", "flags"),
+            style.get_text("h", "flags"),
+            style.get_text("u", "flags"),
+            style.get_text("v", "flags"),
+
+        ),
+        "Root argument aliases may start with a flag set. In that case this flag set is the one available on first command-line argument or when explicit notation reaches level 0.",
+        "A flag may be repeated in a flag set depending on argument's definition. Flags order may not matter.",
+        "Only the latest flag of a flag set may accept a value and may have branch index notation.",
         "A flag set may be concatenated to a command-line argument. i.e.: '{}'.".format(
-            style.get_text("prog.py --usage@hip", "nargs_syntax_emphasize"),
+            style.get_text("prog.py --usage @hip", "emphasize"),
         ),
-        "'at symbol' may be repeated to nest multiple flags sets. i.e.: '{}' is the same as '{}'.".format(
-            style.get_text("prog.py @u@hip", "nargs_syntax_emphasize"),
-            style.get_text("prog.py --usage --hint --info --path", "nargs_syntax_emphasize"),
+        "'at symbol' may be repeated to nest multiple flag sets. i.e.: '{} {}' is the same as '{}'.".format(
+            style.get_text("prog.py", "emphasize"),
+            style.get_text("@u@hip", "flags"),
+            style.get_text("prog.py --usage --hint --info --path", "emphasize"),
         ),
-        "When nesting multiple flags sets by using multiple 'at symbol' then the nested flags set is always related to the last flag used. i.e.: for '{}' then flags set '{}' is related to flag '{}'.".format(
-            style.get_text("prog.py @u@hip", "nargs_syntax_emphasize"),
-            style.get_text("@hip", "nargs_syntax_emphasize"),
-            style.get_text("u", "nargs_syntax_emphasize"),
+        "When nesting multiple flag sets by using multiple 'at symbol' then the nested flag set is always related to the latest flag used. i.e.: for '{} {}' then flag set '{}' is related to flag '{}'.".format(
+            style.get_text("prog.py", "emphasize"),
+            style.get_text("@u@hip", "flags"),
+            style.get_text("@hip", "flags"),
+            style.get_text("u", "flags"),
         ), 
-        "A flag does not accept explicit notation. A flags set does accept explicit notation.",
-        "To know which argument is related to a flag, end-user can use the usage argument. i.e.: '{}', or '{}', or '{}'.".format(
-            style.get_text("prog.py @u?", "nargs_syntax_emphasize"),
-            style.get_text("prog.py @u@h?", "nargs_syntax_emphasize"),
-            style.get_text("prog.py @u@hiu", "nargs_syntax_emphasize"),
+        "A flag does not accept explicit notation. A flag set does accept explicit notation.",
+        "End-user can rely on usage argument to get flag information i.e.: '{} {}', or '{} {}', or '{} {}'.".format(
+            style.get_text("prog.py", "emphasize"),
+            style.get_text("@u?", "flags"),
+            style.get_text("prog.py", "emphasize"),
+            style.get_text("@u@h?", "flags"),
+            style.get_text("prog.py", "emphasize"),
+            style.get_text("@u@hiu", "flags"),
         ),
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
         append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Argument Aliases States", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Argument Aliases States", "syntax_headers")))
     open_ul_html(style, text)
     text.append("{}Required: {}".format(
         style.get_list_bullet(),
-        style.get_text("--mount, -m", "aliases_text")
+        style.get_text("--mount, -m", "emphasize")
     ))
     append_li_html(style, text)
     text.append("{}Optional: {}{}{}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("--mount, -m", "aliases_text"),
+        style.get_text("--mount, -m", "emphasize"),
         rsbracket,
     ))
     append_li_html(style, text)
     text.append("{}Asterisk symbol means that nested arguments are available: {} {}{}{} or {} {}".format(
         style.get_list_bullet(),
-        style.get_text("*", "nargs_syntax_emphasize"),
+        style.get_text(asterisk, "emphasize"),
         lsbracket,
-        style.get_text("--mount, -m", "aliases_text"),
+        style.get_text("--mount, -m", "aliases"),
         rsbracket,
-        style.get_text("*", "nargs_syntax_emphasize"),
-        style.get_text("--mount, -m", "aliases_text")
+        style.get_text(asterisk, "emphasize"),
+        style.get_text("--mount, -m", "aliases")
 
     ))
     append_li_html(style, text)
@@ -254,23 +254,23 @@ def get_nargs_syntax(style, user_options, print_options=True):
         append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Arguments Tree Vocabulary", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Arguments Tree Vocabulary", "syntax_headers")))
     open_ul_html(style, text)
 
-    text.append("{}Arguments tree structure related to --self argument:".format(style.get_list_bullet()))
+    text.append("{}Arguments tree structure related to --self argument:{}".format(style.get_list_bullet(), style.start_newline()))
     append_li_html(style, text)
     space_width=2
     for tmp_str in [
-        "{}{}".format(style.get_space(space_width*2), style.get_text("--root-arg", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*4), style.get_text("--ancestor", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*6), style.get_text("--grand-parent", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*8), style.get_text("--parent", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*10), style.get_text("--self", "nargs_syntax_emphasize")),
-        "{}{}".format(style.get_space(space_width*12), style.get_text("--child", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*10), style.get_text("--sibling", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*8), style.get_text("--uncle", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*6), style.get_text("--grand-uncle", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*4), style.get_text("--ancestor-uncle", "aliases_text")),
+        "{}{}".format(style.get_space(space_width*2), style.get_text("--root", "aliases")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--ancestor", "aliases")),
+        "{}{}".format(style.get_space(space_width*6), style.get_text("--gd-parent", "aliases")),
+        "{}{}".format(style.get_space(space_width*8), style.get_text("--parent", "aliases")),
+        "{}{}".format(style.get_space(space_width*10), style.get_text("--self", "emphasize")),
+        "{}{}".format(style.get_space(space_width*12), style.get_text("--child", "aliases")),
+        "{}{}".format(style.get_space(space_width*10), style.get_text("--sibling", "aliases")),
+        "{}{}".format(style.get_space(space_width*8), style.get_text("--uncle", "aliases")),
+        "{}{}".format(style.get_space(space_width*6), style.get_text("--gd-uncle", "aliases")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--ancestor-uncle", "aliases")),
     ]:
         text.append("{}".format(
             tmp_str,
@@ -279,15 +279,18 @@ def get_nargs_syntax(style, user_options, print_options=True):
     
     for tmp_str in [
         "{} is the current argument.".format(
-            style.get_text("--self", "nargs_syntax_emphasize"),
+            style.get_text("--self", "emphasize"),
         ),
         "All {}'s parents may be called ancestors. The oldest ancestor is the root argument.".format(
-            style.get_text("--self", "nargs_syntax_emphasize"),
+            style.get_text("--self", "emphasize"),
         ),
         "Arguments may be duplicated in multiple branches.",
         "Each argument's branch has its own subset of child arguments.",
-        "Arguments may have multiple occurences per branch.",
-        "Arguments branches and occurences described:",
+        "Arguments may have multiple occurrences per branch.",
+        "Arguments branches and occurrences described for command-line '{}':{}".format(
+            style.get_text("--parent --self+1 --self --self+2 --self --self+ --self --sibling", "aliases"),
+            style.start_newline(),
+        ),
     ]:
         text.append("{}{}".format(
             style.get_list_bullet(),
@@ -296,14 +299,14 @@ def get_nargs_syntax(style, user_options, print_options=True):
         append_li_html(style, text)
 
     for tmp_str in [
-        "{}{}".format(style.get_space(space_width*2), style.get_text("--parent", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*4), style.get_text("--self_1 (branch 1 occurence 1) --self (branch 1 occurence 2)", "nargs_syntax_emphasize")),
-        "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 1", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*4), style.get_text("--self_2 (branch 2 occurence 1) --self (branch 2 occurence 2)", "nargs_syntax_emphasize")),
-        "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 2)", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*4), style.get_text("--self_ (branch 3 occurence 1) --self (branch 3 occurence 2)", "nargs_syntax_emphasize")),
-        "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 3)", "aliases_text")),
-        "{}{}".format(style.get_space(space_width*4), style.get_text("--sibling", "aliases_text")),
+        "{}{}".format(style.get_space(space_width*2), style.get_text("--parent", "aliases")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--self+1 (branch 1 occurrence 1) --self (branch 1 occurrence 2)", "emphasize")),
+        "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 1)", "aliases")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--self+2 (branch 2 occurrence 1) --self (branch 2 occurrence 2)", "emphasize")),
+        "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 2)", "aliases")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--self+ (branch 3 occurrence 1) --self (branch 3 occurrence 2)", "emphasize")),
+        "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 3)", "aliases")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--sibling", "aliases")),
     ]:
         text.append("{}".format(
             tmp_str,
@@ -311,55 +314,117 @@ def get_nargs_syntax(style, user_options, print_options=True):
         append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Arguments Navigation", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Arguments Navigation", "syntax_headers")))
     open_ul_html(style, text)
     for tmp_str in [
         "Implicit navigation uses only aliases and values.",
         "Explicit navigation uses explicit notation with command-line symbols {}, {}, and {}.".format(
-            style.get_text(plus, "nargs_syntax_emphasize"), 
+            style.get_text(minus, "emphasize"), 
             equal,
-            minus
+            style.get_text(plus, "emphasize"), 
         ),
         "Explicit navigation searches for aliases only in children arguments.",
         "Explicit navigation can reach any argument described in arguments tree vocabulary.",
         "Implicit navigation searches aliases in children' arguments, parents' arguments and parents' children.",
         "Command-line symbols {}, {}, and {} help to explicitly navigate arguments' tree.".format(
-            style.get_text(plus, "nargs_syntax_emphasize"), 
+            style.get_text(minus, "emphasize"),
             equal,
-            minus
+            style.get_text(plus, "emphasize"), 
         ),
         "Explicit navigation with command-line symbols {}, {}, and {} may be omitted most of the time.".format(
-            style.get_text(plus, "nargs_syntax_emphasize"), 
+            style.get_text(minus, "emphasize"),
             equal,
-            minus
+            style.get_text(plus, "emphasize"), 
         ),
         "Explicit navigation is required for an alias when selected alias is also present either in children's arguments, parents' arguments, or parents' children arguments.",
+        "Explicit navigation can reach ancestors with {}, siblings with {}, and children with {}.".format(
+            style.get_text(minus, "emphasize"),
+            equal,
+            style.get_text(plus, "emphasize"), 
+        ),
         "Command-line {} symbol may be concatenated {} or used with a multiplier {}.".format(
-            style.get_text(plus, "nargs_syntax_emphasize"),
-            style.get_text(plus*3,"nargs_syntax_emphasize"),
-            style.get_text("{}3".format(plus),"nargs_syntax_emphasize"),
+            style.get_text(minus, "emphasize"),
+            style.get_text(minus*3,"emphasize"),
+            style.get_text("{}3".format(minus),"emphasize"),
         ),
         "Explicit navigation allows faster arguments parsing.",
-        "Argument's alias is always required after explicit notation.",
-        "i.e.(implicit): {} 'prog --self --child --sibling --grand-parent --grand-uncle --ancestor-uncle'.".format(style.get_text(">", "examples_bullet"), style.get_text(plus, "nargs_syntax_emphasize"), minus),
-        "i.e.(explicit): {} 'prog --self {} --child {} --sibling {} --grand-parent {} --grand-uncle {} --ancestor-uncle'.".format(
-            style.get_text(">", "examples_bullet"),
-            minus,
-            style.get_text(plus, "nargs_syntax_emphasize"),
-            style.get_text(plus*2, "nargs_syntax_emphasize"),
-            equal,
-            style.get_text(plus, "nargs_syntax_emphasize"),
+        "Argument's alias or flag set is always required after explicit notation.",
+        "i.e.(implicit): {} '{}'.".format(
+            style.get_text(">", "bullets"),
+            style.get_text("prog --ancestor --gd-parent --parent --self --child --sibling --gd-parent --gd-uncle --ancestor-uncle", "aliases"),
         ),
-        "'prog --self {} --child'.".format(minus),
-        "'prog --self {} --sibling'.".format(equal),
-        "'prog --self {} --parent'.".format(style.get_text(plus*1, "nargs_syntax_emphasize")),
-        "'prog --self {} --uncle'.".format(style.get_text(plus*1, "nargs_syntax_emphasize")),
-        "'prog --self {} --grand-parent'.".format(style.get_text(plus*2, "nargs_syntax_emphasize")),
-        "'prog --self {} --grand-uncle'.".format(style.get_text(plus*2, "nargs_syntax_emphasize")),
-        "'prog --self {} --ancestor'.".format(style.get_text(plus*3, "nargs_syntax_emphasize")),
-        "'prog --self {} --ancestor-uncle'.".format(style.get_text(plus*3, "nargs_syntax_emphasize")),
-        "'prog --self {} --root-arg'.".format(style.get_text(plus*4, "nargs_syntax_emphasize")),
-        "'prog --self {} --root-arg'.".format(style.get_text(plus+"4", "nargs_syntax_emphasize")),
+        "i.e.(explicit): {} '{} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}'.".format(
+            style.get_text(">", "bullets"),
+            style.get_text("prog", "aliases"),
+            style.get_text(plus, "emphasize"), 
+            style.get_text("--ancestor", "aliases"),
+            style.get_text(plus, "emphasize"), 
+            style.get_text("--gd-parent", "aliases"),
+            style.get_text(plus, "emphasize"), 
+            style.get_text("--parent", "aliases"),
+            style.get_text(plus, "emphasize"), 
+            style.get_text("--self", "aliases"),
+            style.get_text(plus, "emphasize"), 
+            style.get_text("--child", "aliases"),
+            style.get_text(minus, "emphasize"),
+            style.get_text("--sibling", "aliases"),
+            style.get_text(minus*2, "emphasize"),
+            style.get_text("--gd-parent", "aliases"),
+            equal,
+            style.get_text("--gd-uncle", "aliases"),
+            style.get_text(minus, "emphasize"),
+            style.get_text("--ancestor-uncle", "aliases"),
+        ),
+        "'{} {} {}'.".format(
+            style.get_text("prog --ancestor --gd-parent --parent --self", "aliases"),
+            style.get_text(plus, "emphasize"),
+            style.get_text("--child", "aliases"),
+        ),
+        "'{} {} {}'.".format(
+            style.get_text("prog --ancestor --gd-parent --parent --self", "aliases"),
+            equal,
+            style.get_text("--sibling", "aliases"),
+        ),
+        "'{} {} {}'.".format(
+            style.get_text("prog --ancestor --gd-parent --parent --self", "aliases"),
+            style.get_text(minus*1, "emphasize"),
+            style.get_text("--parent", "aliases"),
+        ),
+        "'{} {} {}'.".format(
+            style.get_text("prog --ancestor --gd-parent --parent --self", "aliases"),
+            style.get_text(minus*1, "emphasize"),
+            style.get_text("--uncle", "aliases"),
+        ),
+        "'{} {} {}'.".format(
+            style.get_text("prog --ancestor --gd-parent --parent --self", "aliases"),
+            style.get_text(minus*2, "emphasize"),
+            style.get_text("--gd-parent", "aliases"),
+        ),
+        "'{} {} {}'.".format(
+            style.get_text("prog --ancestor --gd-parent --parent --self", "aliases"),
+            style.get_text(minus*2, "emphasize"),
+            style.get_text("--gd-uncle", "aliases"),
+        ),
+        "'{} {} {}'.".format(
+            style.get_text("prog --ancestor --gd-parent --parent --self", "aliases"),
+            style.get_text(minus*3, "emphasize"),
+            style.get_text("--ancestor", "aliases"),
+        ),
+        "'{} {} {}'.".format(
+            style.get_text("prog --ancestor --gd-parent --parent --self", "aliases"),
+            style.get_text(minus*3, "emphasize"),
+            style.get_text("--ancestor-uncle", "aliases"),
+        ),
+        "'{} {} {}'.".format(
+            style.get_text("prog --ancestor --gd-parent --parent --self", "aliases"),
+            style.get_text(minus*4, "emphasize"),
+            style.get_text("--root", "aliases"),
+        ),
+        "'{} {} {}'.".format(
+            style.get_text("prog --ancestor --gd-parent --parent --self", "aliases"),
+            style.get_text(minus+"4", "emphasize"),
+            style.get_text("--root", "aliases"),
+        ),
         "Explicit navigation allows end-user to go back and forth to selected arguments in order to add values or nested arguments.",
     ]:
         text.append("{}{}".format(
@@ -369,84 +434,90 @@ def get_nargs_syntax(style, user_options, print_options=True):
         append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Arguments' Logical Properties", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Arguments' Logical Properties", "syntax_headers")))
     open_ul_html(style, text)
     for tmp_text in [
         "An argument logical properties can be shown with usage argument. i.e.: '{}'".format(
-            style.get_text("prog.py --arg --usage --properties", "nargs_syntax_emphasize"),
+            style.get_text("prog.py --arg --usage --properties", "emphasize"),
         ),
-        "'{}' property is a boolean that describes if argument's parent may have fork(s) when argument is present.".format(
-            style.get_text("allow_parent_fork", "nargs_syntax_emphasize"),
+        "'{}' property is a bool that describes if argument's parent may have fork(s) when argument is present.".format(
+            style.get_text("allow_parent_fork", "emphasize"),
         ),
-        "'{}' property is a boolean that describes if argument's siblings may be present when argument is present.".format(
-            style.get_text("allow_siblings", "nargs_syntax_emphasize"),
+        "'{}' property is a bool that describes if argument's siblings may be present when argument is present.".format(
+            style.get_text("allow_siblings", "emphasize"),
         ),
-        "'{}' property is a boolean that describes if argument's fork are allowed. To fork means to divide into two or more branches.".format(
-            style.get_text("fork", "nargs_syntax_emphasize"),
+        "'{}' property is a bool that describes if argument's fork are allowed. To fork means to divide into two or more branches.".format(
+            style.get_text("fork", "emphasize"),
         ),
-        "'{}' property is a boolean that describes if at least one argument's child must be provided when argument is present.".format(
-            style.get_text("need_child", "nargs_syntax_emphasize"),
+        "'{}' property is a bool that describes if at least one argument's child must be provided when argument is present.".format(
+            style.get_text("need_child", "emphasize"),
         ),
-        "'{}' property is a string set with one option from '{}'. Property defines multiple argument's occurences behavior.".format(
-            style.get_text("repeat", "nargs_syntax_emphasize"),
-            style.get_text("append, error, replace", "nargs_syntax_emphasize"),
+        "'{}' property is a string set with one option from '{}'. Property defines multiple argument's occurrences behavior.".format(
+            style.get_text("repeat", "emphasize"),
+            style.get_text("append, error, replace", "emphasize"),
         ),
-        "'{}' means multiple argument's occurences are allowed and for each occurence the same argument is kept but argument's '{}' internal property is incremented and new argument's values are appended to argument's values list.".format(
-            style.get_text("repeat=append", "nargs_syntax_emphasize"),
-            style.get_text("_count", "nargs_syntax_emphasize"),
+        "'{}' means multiple argument's occurrences are allowed and for each occurrence the same argument is kept but argument's '{}' internal property is incremented and new argument's values are appended to argument's values list.".format(
+            style.get_text("repeat=append", "emphasize"),
+            style.get_text("_count", "emphasize"),
         ),
-        "'{}' means only one argument's occurence is allowed otherwise Nargs throws an error.".format(
-            style.get_text("repeat=error", "nargs_syntax_emphasize"),
+        "'{}' means only one argument's occurrence is allowed otherwise Nargs throws an error.".format(
+            style.get_text("repeat=error", "emphasize"),
         ),
-        "'{}' means multiple argument's occurences are allowed and for each occurence a new argument is created and the previous argument is replaced and all the previous argument's children are removed. Argument's '{}' internal property is not incremented and new argument's values start a new argument's values list.".format(
-            style.get_text("repeat=replace", "nargs_syntax_emphasize"),
-            style.get_text("_count", "nargs_syntax_emphasize"),
+        "'{}' means multiple argument's occurrences are allowed and for each occurrence a new argument is created, and the previous argument is replaced, and all the previous argument's children are removed. Argument's '{}' internal property is not incremented and new argument's values start a new argument's values list.".format(
+            style.get_text("repeat=replace", "emphasize"),
+            style.get_text("_count", "emphasize"),
         ),
-        "'{}' property is a boolean that describes if argument's must be present when argument's parent is present. '{}' property has also been described in 'Argument Aliases States'.".format(
-            style.get_text("required", "nargs_syntax_emphasize"),
-            style.get_text("required", "nargs_syntax_emphasize"),
+        "'{}' property is a bool that describes if argument's must be present when argument's parent is present. '{}' property has also been described in 'Argument Aliases States'.".format(
+            style.get_text("required", "emphasize"),
+            style.get_text("required", "emphasize"),
         ),
-        "'{}' property is a list of integers where each integer represents a group. Argument's siblings arguments with the same '{}' group can't be present at the same time on the command-line with any other argument from that group. It is the definition of '{}' which means '{}'. Group scope is at the siblings level on argument's branch, it means that the same group name is not related if it is located on argument's parents or argument's children or if on same argument but on a different branch.".format(
-            style.get_text("xor_groups", "nargs_syntax_emphasize"),
-            style.get_text("xor", "nargs_syntax_emphasize"),
-            style.get_text("xor", "nargs_syntax_emphasize"),
-            style.get_text("exclusive or", "nargs_syntax_emphasize"),
+        "'{}' property is a list of integers where each integer represents a group. Argument's siblings arguments with the same '{}' group can't be present at the same time on the command-line with any other argument from that group. It is the definition of '{}' which means '{}'. Siblings arguments have the same parent argument. Group scope is at the node level on argument's branch, it means that the same group name is not related if it is located on argument's parents or argument's children or if on same argument but on a different branch.".format(
+            style.get_text("xor_groups", "emphasize"),
+            style.get_text("xor", "emphasize"),
+            style.get_text("xor", "emphasize"),
+            style.get_text("exclusive or", "emphasize"),
         ),
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
         append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Arguments Branch Index Notation", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Arguments Branch Index Notation", "syntax_headers")))
     open_ul_html(style, text)
     for tmp_str in [
-        "Argument's branch index notation allows selecting a specific argument's occurence.",
-        "Branch index notation consists in adding to argument's alias an underscore and an index number starting at one.",
-        "Branch index notation's index is the argument occurence number.",
-        "If only underscore is provided it means create a branch i.e.: '{}'".format(
-            style.get_text("prog --arg-one_", "nargs_syntax_emphasize"),
+        "Argument's branch index notation allows selecting a specific argument's branch.",
+        "Branch index notation consists in adding to argument's alias a plus symbol and an index number starting at one.",
+        "Branch index notation's index is the argument branch number.",
+        "If only plus symbol is provided it means create a branch i.e.: '{}'".format(
+            style.get_text("prog --arg-one+", "emphasize"),
         ),
         "Argument with '{}' property set to '{}' allows to have an index greater than 1.".format(
-            style.get_text("fork", "nargs_syntax_emphasize"),
-            style.get_text("True", "nargs_syntax_emphasize"),
+            style.get_text("fork", "emphasize"),
+            style.get_text("True", "emphasize"),
         ),
         "Branch index notation examples: '{}' or '{}' or '{}' or '{}'.".format(
-            style.get_text("prog --help_1 --export_1", "nargs_syntax_emphasize"),
-            style.get_text("prog --arg_1 --arg_2", "nargs_syntax_emphasize"),
-            style.get_text("prog --arg_1 = --arg_2", "nargs_syntax_emphasize"),
-            style.get_text("prog --arg_ --arg_ --arg_", "nargs_syntax_emphasize"),
+            style.get_text("prog --help+1 --export+1", "emphasize"),
+
+            style.get_text("prog --arg+1 --arg+2", "emphasize"),
+
+            style.get_text("prog --arg+1 = --arg+2", "emphasize"),
+
+            style.get_text("prog --arg+ --arg+ --arg+", "emphasize"),
         ),
-        "Argument's branches and argument's occurences per branch are not the same.",
-        "Argument with '{}' property set to either '{}', or '{}' allows to have muliple occurences of an argument per branch.".format(
-            style.get_text("repeat", "nargs_syntax_emphasize"),
-            style.get_text("append", "nargs_syntax_emphasize"),
-            style.get_text("replace", "nargs_syntax_emphasize"),
+        "Argument's branches number and argument's occurrences number per branch are not the same.",
+        "Argument with '{}' property set to either '{}', or '{}' allows to have multiple occurrences of an argument per branch.".format(
+            style.get_text("repeat", "emphasize"),
+            style.get_text("append", "emphasize"),
+            style.get_text("replace", "emphasize"),
         ),
-        "Argument's multiple occurences examples: '{}' or '{}'.".format(
-            style.get_text("prog --arg --arg", "nargs_syntax_emphasize"),
-            style.get_text("prog --arg_1 --arg_1", "nargs_syntax_emphasize"),
+        "Argument's multiple occurrences examples: '{}' or '{}'.".format(
+            style.get_text("prog --arg --arg", "emphasize"),
+            style.get_text("prog --arg+1 --arg+1", "emphasize"),
         ),
         "Explicit notation and branch index notation allows to select accurately an argument's branch in the arguments tree.",
+        "Last flag on a flag set can also accepts branch index notation i.e. {}".format(
+            style.get_text("@chu+2", "emphasize"),
+        )
     ]:
         text.append("{}{}".format(
             style.get_list_bullet(),
@@ -455,65 +526,65 @@ def get_nargs_syntax(style, user_options, print_options=True):
         append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Argument Values", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Argument Values", "syntax_headers")))
     open_ul_html(style, text)
     text.append("{}required: {}".format(
         style.get_list_bullet(),
-        style.get_text("{}str{}".format(lt, gt), "values_text")))
+        style.get_text("{}str{}".format(lt, gt), "values")))
     append_li_html(style, text)
     text.append("{}optional: {}{}{}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("{}str{}".format(lt, gt), "values_text"),
+        style.get_text("{}str{}".format(lt, gt), "values"),
         rsbracket,
     ))
     append_li_html(style, text)
     text.append("{}default: {} or {}".format(
         style.get_list_bullet(),
-        style.get_text("{}str{} (=default_value)".format(lt, gt), "values_text"),
-        style.get_text("{}int:VALUE{} (=1, 3, 4, 5)".format(lt, gt), "values_text"),
+        style.get_text("{}str{} (=default_value)".format(lt, gt), "values"),
+        style.get_text("{}int{} (=1, 3, 4, 5)".format(lt, gt), "values"),
     ))
     append_li_html(style, text)
     text.append("{}preset: {}".format(
         style.get_list_bullet(),
-        style.get_text("{str:1, 2, 3}", "values_text")))
+        style.get_text("{str:1, 2, 3}", "values")))
     append_li_html(style, text)
     text.append("{}preset with label: {}".format(
         style.get_list_bullet(),
-        style.get_text("{str:1(value1),2(value2),3(value3)}", "values_text")))
+        style.get_text("{str:1(value1),2(value2),3(value3)}", "values")))
     append_li_html(style, text)
     text.append("{}label: {} i.e. {}".format(
         style.get_list_bullet(),
-        style.get_text("{}type:label{}".format(lt, gt), "values_text"),
-        style.get_text("{}str:PATH{}".format(lt, gt), "values_text"),
+        style.get_text("{}type:label{}".format(lt, gt), "values"),
+        style.get_text("{}str:PATH{}".format(lt, gt), "values"),
     ))
     append_li_html(style, text)
     text.append("{}standard types: {}, {}, {}, and {}".format(
         style.get_list_bullet(),
-        style.get_text("str", "values_text"),
-        style.get_text("bool", "values_text"),
-        style.get_text("int", "values_text"),
-        style.get_text("float", "values_text"),
+        style.get_text("str", "values"),
+        style.get_text("bool", "values"),
+        style.get_text("int", "values"),
+        style.get_text("float", "values"),
     ))
     append_li_html(style, text)
     text.append("{}Boolean argument's value(s) can be either case-insensitive string {}, case-insensitive string {}, {}, or {} where {} is False and {} is True. i.e. {}".format(
         style.get_list_bullet(),
-        style.get_text("true", "values_text"),
-        style.get_text("false", "values_text"),
-        style.get_text("0", "values_text"),
-        style.get_text("1", "values_text"),
-        style.get_text("0", "values_text"),
-        style.get_text("1", "values_text"),
-        style.get_text("prog.py true True 1 0 False falsE", "values_text"),
+        style.get_text("true", "values"),
+        style.get_text("false", "values"),
+        style.get_text("0", "values"),
+        style.get_text("1", "values"),
+        style.get_text("0", "values"),
+        style.get_text("1", "values"),
+        style.get_text("prog.py true True 1 0 False falsE", "values"),
     ))
     append_li_html(style, text)
-    text.append("{}Required value(s) are added implicitly when argument's default values are set and argument is either present or required.".format(
+    text.append("{}Required value(s) are added implicitly when argument's default values are set, and argument is either present with no given values or required and added implicitly.".format(
         style.get_list_bullet(),
     ))
     append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Argument Special Values Types", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Argument Special Values Types", "syntax_headers")))
     open_ul_html(style, text)
     for type_str in [
         "dir:existing directory.",
@@ -526,13 +597,13 @@ def get_nargs_syntax(style, user_options, print_options=True):
         _type, type_text=type_str.split(":")
         text.append("{}{}: {}".format(
             style.get_list_bullet(),
-            style.get_text(_type, "values_text"),
+            style.get_text(_type, "values"),
             type_text,
         ))
         append_li_html(style, text)
 
     for tmp_text in [
-        "Relative paths are resolved for types dir, file, path, vpath, and .json.",
+        "Relative paths are resolved according to terminal current path for types dir, file, path, vpath, and .json.",
         "JSON strings can be single quoted.",
     ]:
         text.append("{}{}".format(
@@ -542,195 +613,194 @@ def get_nargs_syntax(style, user_options, print_options=True):
         append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Aliases Equal/Colon Values Notation", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Aliases Equal/Colon Values Notation", "syntax_headers")))
     open_ul_html(style, text)
     for tmp_text in [
-        "All arguments's aliases accept equal/colon values notation.",
-        "i.e. {}='{}'".format(
-            style.get_text("--argument", "aliases_text"),
-            style.get_text("value1 value2 \"this is value3\"", "values_text"),
+        "All arguments' aliases accept equal/colon values notation.",
+        "i.e. {}{}".format(
+            style.get_text("--argument", "aliases"),
+            style.get_text("='value1 value2 \"this is value3\"'", "emphasize"),
         ),
-        "i.e. {}=\"{}\"".format(
-            style.get_text("--argument", "aliases_text"),
-            style.get_text("value1 value2 'this is value3'", "values_text"),
+        "i.e. {}{}".format(
+            style.get_text("--argument", "aliases"),
+            style.get_text("=\"value1 value2 'this is value3'\"", "emphasize"),
         ),
-        "i.e. {}=\"{}\"".format(
-            style.get_text("-a", "aliases_text"),
-            style.get_text("value1 value2 'this is value3'", "values_text"),
+        "i.e. {}{}".format(
+            style.get_text("-a", "aliases"),
+            style.get_text("=\"value1 value2 'this is value3'\"", "emphasize"),
         ),
-         "i.e. {}=\"{}\"".format(
-            style.get_text("argument", "aliases_text"),
-            style.get_text("value1 value2 'this is value3'", "values_text"),
+         "i.e. {}{}".format(
+            style.get_text("argument", "aliases"),
+            style.get_text("=\"value1 value2 'this is value3'\"", "emphasize"),
         ),
-           "i.e. {}={}".format(
-            style.get_text("argument", "aliases_text"),
-            style.get_text("value1", "values_text"),
+           "i.e. {}{}".format(
+            style.get_text("argument", "aliases"),
+            style.get_text("=value1", "emphasize"),
         ),
         
-        "i.e. {}:'{}'".format(
-            style.get_text("--argument", "aliases_text"),
-            style.get_text("value1 value2 \"this is value3\"", "values_text"),
+        "i.e. {}{}".format(
+            style.get_text("--argument", "aliases"),
+            style.get_text(":'value1 value2 \"this is value3\"'", "emphasize"),
         ),
-        "i.e. {}:\"{}\"".format(
-            style.get_text("--argument", "aliases_text"),
-            style.get_text("value1 value2 'this is value3'", "values_text"),
+        "i.e. {}{}".format(
+            style.get_text("--argument", "aliases"),
+            style.get_text(":\"value1 value2 'this is value3'\"", "emphasize"),
         ),
-        "i.e. {}:\"{}\"".format(
-            style.get_text("-a", "aliases_text"),
-            style.get_text("value1 value2 'this is value3'", "values_text"),
+        "i.e. {}{}".format(
+            style.get_text("-a", "aliases"),
+            style.get_text(":\"value1 value2 'this is value3'\"", "emphasize"),
         ),
-         "i.e. {}:\"{}\"".format(
-            style.get_text("argument", "aliases_text"),
-            style.get_text("value1 value2 'this is value3'", "values_text"),
+         "i.e. {}{}".format(
+            style.get_text("argument", "aliases"),
+            style.get_text(":\"value1 value2 'this is value3'\"", "emphasize"),
         ),
-           "i.e. {}:{}".format(
-            style.get_text("argument", "aliases_text"),
-            style.get_text("value1", "values_text"),
+           "i.e. {}{}".format(
+            style.get_text("argument", "aliases"),
+            style.get_text(":value1", "emphasize"),
         ),
         "Values notation is useful to prevent values to be mistaken for aliases.",
         "Values notation allows faster command-line parsing.",
-        "Last flag on a flags set can also accepts values i.e. {}:{}".format(
-            style.get_text("@chu", "aliases_text"),
-            style.get_text("value", "values_text"),
+        "Last flag on a flag set can also accepts values i.e. {}".format(
+            style.get_text("@chu:value", "emphasize"),
         )
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
         append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Argument Number of Values", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Argument Number of Values", "syntax_headers")))
     open_ul_html(style, text)
     text.append("{}required 1 value: {} ".format(
         style.get_list_bullet(),
-        style.get_text("{}str{}".format(lt, gt), "values_text")))
+        style.get_text("{}str{}".format(lt, gt), "values")))
     append_li_html(style, text)
     text.append("{}optional 1 value: {}{}{}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("{}str{}".format(lt, gt), "values_text"),
+        style.get_text("{}str{}".format(lt, gt), "values"),
         rsbracket,
     ))
     append_li_html(style, text)
     text.append("{}required int value(s): {}".format(
         style.get_list_bullet(),
-        style.get_text("{}str{} 5".format(lt, gt), "values_text")))
+        style.get_text("{}str{} 5".format(lt, gt), "values")))
     append_li_html(style, text)
     text.append("{}optional int value(s): {}{}{}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("{}str{} 3".format(lt, gt), "values_text"),
+        style.get_text("{}str{} 3".format(lt, gt), "values"),
         rsbracket,
     ))
     append_li_html(style, text)
     text.append("{}required min int to max int: {}".format(
         style.get_list_bullet(),
-        style.get_text("{}str{} 2..3".format(lt, gt), "values_text")))
+        style.get_text("{}str{} 2..3".format(lt, gt), "values")))
     append_li_html(style, text)
     text.append("{}optional min int to max int: {}{}{}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("{}str{} 4..5".format(lt, gt), "values_text"),
+        style.get_text("{}str{} 4..5".format(lt, gt), "values"),
         rsbracket,
     ))
     append_li_html(style, text)
     text.append("{}required min 1 to max infinite: {}".format(
         style.get_list_bullet(),
-        style.get_text("{}str{} ...".format(lt, gt), "values_text")))
+        style.get_text("{}str{} ...".format(lt, gt), "values")))
     append_li_html(style, text)
     text.append("{}optional min 1 to max infinite: {}{}{}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("{}str{} ...".format(lt, gt), "values_text"),
+        style.get_text("{}str{} ...".format(lt, gt), "values"),
         rsbracket,
     ))
     append_li_html(style, text)
     text.append("{}required min int to max infinite: {}".format(
         style.get_list_bullet(),
-        style.get_text("{}str{} 7...".format(lt, gt), "values_text"),
+        style.get_text("{}str{} 7...".format(lt, gt), "values"),
     ))
     append_li_html(style, text)
     text.append("{}optional min int to max infinite: {}{}{}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("{}str{} 8...".format(lt, gt), "values_text"),
+        style.get_text("{}str{} 8...".format(lt, gt), "values"),
         rsbracket,
     ))
     append_li_html(style, text)
     text.append("{}required min 1 to int: {}".format(
         style.get_list_bullet(),
-        style.get_text("{}str{} ...3".format(lt, gt), "values_text"),
+        style.get_text("{}str{} ...3".format(lt, gt), "values"),
     ))
     append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Argument Help Syntax Examples", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Argument Usage Full Syntax Examples", "syntax_headers")))
     open_ul_html(style, text)
     text.append("{}{}{}{}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("--mount, -m", "aliases_text"),
+        style.get_text("--mount, -m", "aliases"),
         rsbracket,
     ))
     append_li_html(style, text)
     text.append("{}{} {}".format(
         style.get_list_bullet(),
-        style.get_text("--mount, -m", "aliases_text"),
-        style.get_text("{}str:PATH{} 1... (=mycustompath)".format(lt, gt), "values_text"),
+        style.get_text("--mount, -m", "aliases"),
+        style.get_text("{}str:PATH{} 1... (=mycustompath)".format(lt, gt), "values"),
     ))
     append_li_html(style, text)
     text.append("{}{}{} {}{}{} {}".format(
         style.get_list_bullet(),
         lsbracket,
-        style.get_text("--mount, -m", "aliases_text"),
+        style.get_text("--mount, -m", "aliases"),
         lsbracket,
-        style.get_text("{}str:PATH{} ...5 (=mycustompath)".format(lt, gt), "values_text"),
+        style.get_text("{}str:PATH{} ...5 (=mycustompath)".format(lt, gt), "values"),
         rsbracket,
         rsbracket,
     ))
     append_li_html(style, text)
     text.append("{}{} {}".format(
         style.get_list_bullet(),
-        style.get_text("--mount, -m", "aliases_text"),
-        style.get_text("{}str:{{option1,option2,option3}}{} 2 (=option1, option2)".format(lt, gt), "values_text"),
+        style.get_text("--mount, -m", "aliases"),
+        style.get_text("{}str:{{option1,option2,option3}}{} 2 (=option1, option2)".format(lt, gt), "values"),
     ))
     append_li_html(style, text)
     close_ul_html(style, text)
 
-    text.append("\n{}".format(style.get_text("Arguments Syntax Pitfall", "nargs_syntax_headers")))
+    text.append("\n{}".format(style.get_text("Arguments Syntax Pitfalls", "syntax_headers")))
     open_ul_html(style, text)
     for tmp_text in [
         "For value '{}' in command '{}', '{}' is parsed as an explicit notation. In order to set '{}' as a value use '{}'.".format(
-            style.get_text("+4", "nargs_syntax_emphasize"),
-            style.get_text("--arg +4", "nargs_syntax_emphasize"),
-            style.get_text("+4", "nargs_syntax_emphasize"),
-            style.get_text("+4", "nargs_syntax_emphasize"),
-            style.get_text("--arg=+4", "nargs_syntax_emphasize"),
+            style.get_text("-4", "emphasize"),
+            style.get_text("--arg -4", "emphasize"),
+            style.get_text("-4", "emphasize"),
+            style.get_text("-4", "emphasize"),
+            style.get_text("--arg=-4", "emphasize"),
         ),
         "For alias '{}' in command '{}', '{}' is parsed as an explicit notation. In order to set '{}' as an alias use explicit notation before argument '{}'".format(
-            style.get_text("+4", "nargs_syntax_emphasize"),
-            style.get_text("--arg +4", "nargs_syntax_emphasize"),
-            style.get_text("+4", "nargs_syntax_emphasize"),
-            style.get_text("+4", "nargs_syntax_emphasize"),
-            style.get_text("--arg = +4", "nargs_syntax_emphasize"),
+            style.get_text("-4", "emphasize"),
+            style.get_text("--arg -4", "emphasize"),
+            style.get_text("-4", "emphasize"),
+            style.get_text("-4", "emphasize"),
+            style.get_text("--arg = -4", "emphasize"),
         ),
-        "For value '{}' in command '{}', '{}' is parsed as a flags set. In order to set '{}' as a value use '{}'.".format(
-            style.get_text("@value", "nargs_syntax_emphasize"),
-            style.get_text("--arg @value", "nargs_syntax_emphasize"),
-            style.get_text("@value", "nargs_syntax_emphasize"),
-            style.get_text("@value", "nargs_syntax_emphasize"),
-            style.get_text("--arg=@value", "nargs_syntax_emphasize"),
+        "For value '{}' in command '{}', '{}' is parsed as a flag set. In order to set '{}' as a value use '{}'.".format(
+            style.get_text("@value", "emphasize"),
+            style.get_text("--arg @value", "emphasize"),
+            style.get_text("@value", "emphasize"),
+            style.get_text("@value", "emphasize"),
+            style.get_text("--arg=@value", "emphasize"),
         ),
-        "For alias '{}' in command '{}', '{}' is parsed as an alias. In order to set '{}' as a value use '{}'.".format(
-            style.get_text("-value", "nargs_syntax_emphasize"),
-            style.get_text("--arg -value", "nargs_syntax_emphasize"),
-            style.get_text("-value", "nargs_syntax_emphasize"),
-            style.get_text("-value", "nargs_syntax_emphasize"),
-            style.get_text("--arg=-value", "nargs_syntax_emphasize"),
+        "For value '{}' in command '{}', '{}' is parsed as an alias. In order to set '{}' as a value use '{}'.".format(
+            style.get_text("-value", "emphasize"),
+            style.get_text("--arg -value", "emphasize"),
+            style.get_text("-value", "emphasize"),
+            style.get_text("-value", "emphasize"),
+            style.get_text("--arg=-value", "emphasize"),
         ),
         "Question mark alias '{}' from usage may be misinterpreted by Bash as wildcard operator. If that happens end-user may want to use any other aliases provided for usage argument.".format(
-            style.get_text("?", "nargs_syntax_emphasize"),
+            style.get_text("?", "emphasize"),
         ),
-        "Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'unknown argument' else 'value' else 'unknown input'. If 'flags notation' then flags set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).",  
+        "Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'unknown argument' else 'value' else 'unknown input'. If 'flags notation' then flag set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).",  
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
         append_li_html(style, text)
