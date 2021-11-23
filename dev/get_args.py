@@ -823,7 +823,7 @@ def get_args(
 
             cmd=" ".join(lines)
 
-            get_args(
+            return get_args(
                 app_name=app_name,
                 cmd=cmd,
                 exc=exc,
