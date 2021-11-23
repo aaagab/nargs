@@ -428,7 +428,15 @@ def get_node_from_alias(
 
 def process_values(values, tmp_node, dy_err, cmd_line_index, dy_chk):
     if values is not None:
-        values=shlex.split(values)
+        try:
+            values=shlex.split(values)
+        except ValueError as e:
+            if "closing quotation" in str(e):
+                msg.error("There is no closing quotation for value(s) '{}'.".format(values), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+            else:
+                raise(e) 
+
+
 
         if len(values) > 0:
             if tmp_node.dy["values_authorized"] is True:
@@ -611,7 +619,13 @@ def get_args(
     else:
         if not isinstance(cmd, str):
             msg.error("cmd type {} must be type {}.".format(type(cmd), str), prefix=prefix, pretty=pretty_msg, exc=exc, exit=1)
-        cmd=shlex.split(cmd)
+        try:
+            cmd=shlex.split(cmd)
+        except ValueError as e:
+            if "closing quotation" in str(e):
+                msg.error("There is no closing quotation for command-line '{}'.".format(cmd), prefix=prefix, pretty=pretty_msg, exc=exc, exit=1)
+            else:
+                raise(e) 
 
     cmd_line=" ".join(cmd)
 
