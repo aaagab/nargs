@@ -10,39 +10,21 @@ import pickle
 import re
 import sys
 import shlex
+import time
 import traceback
 
-from .get_args import get_args, delete_branch, create_branch
-from .set_options import get_cached_options, set_options
-from .get_node_dfn import get_node_dfn, get_cached_node_dfn
-from .get_types import get_type_str
-from .help import get_help_usage, get_md_text
-from .nargs_syntax import get_nargs_syntax
+from .exceptions import EndUserError, DeveloperError
+from .get_args import get_args
+from .get_properties import get_arg_properties, get_mapped_theme_props
+from .cached import get_args_dump, get_cached_node_dfn, get_cached_theme
+from .set_options import get_cached_options, set_options, get_default_builtins, get_metadata_template
+from .get_node_dfn import get_node_dfn
+from .help import get_help_usage
 
 from .regexes import get_regex
-from .style import get_theme, get_default_props, Style
+from .style import get_default_props, Style
 
 from ..gpkgs import message as msg
-
-debug=False
-cache=True
-
-def get_dump(node, dump=None):
-    if node is None:
-        return None
-
-    if node.is_root is True:
-        dump=dict()
-
-    dump[node.name]=deepcopy(node.dy)
-    dump[node.name]["type"]=get_type_str(node.dy["type"])
-    dump[node.name]["args"]=dict()
-
-    for tmp_node in node.nodes:
-        get_dump(tmp_node, dump[node.name]["args"])
-
-    if node.is_root is True:
-        return dump
 
 class Nargs():
     def __init__(self,
@@ -50,33 +32,42 @@ class Nargs():
         auto_alias_prefix="--",
         auto_alias_style="lowercase-hyphen",
         builtins=None,
-        cache_file="nargs-cache.json",
+        cache=True,
+        cache_file=None,
         metadata=None,
         options_file=None,
         only_cache=False,
         path_etc=None,
         pretty_help=True,
         pretty_msg=True,
+        raise_exc=False,
         substitute=False,
         theme=None,
-        need_=True,
     ):
-        self._reset_dfn_tree=False
-        prefix="At Nargs"
-
-        self._debug=debug
-
         if builtins is None:
-            builtins=["cmd", "help", "usage", "version"]
+            builtins=get_default_builtins()
         if metadata is None:
             metadata=dict()
         if theme is None:
             theme=dict()
+        if cache_file is None:
+            cache_file="nargs-cache.json"
+
+        
         dy_options=locals()
+
+        self._from_cache=True
+        self._reset_dfn_tree=None
+        self._dy_err=dict(
+            exc=None,
+            prefix="At Nargs when setting options",
+            pretty=False,
+        )
 
         del dy_options["self"]
 
         md5_options=hashlib.md5(json.dumps(dy_options, sort_keys=True).encode()).hexdigest()
+
 
         filenpa_caller=inspect.stack()[1].filename
         if not os.path.isabs(filenpa_caller):
@@ -86,105 +77,140 @@ class Nargs():
             filenpa_caller=os.path.realpath(filenpa_caller)
         direpa_caller=os.path.normpath(os.path.dirname(filenpa_caller))
 
-        if isinstance(only_cache, bool) is False:
-            msg.error("only_cache option wrong type {}. It must be of type {}.".format(type(only_cache), bool), prefix=prefix, pretty=False, exit=1)
+        for option, var in dict(
+            raise_exc=raise_exc,
+            only_cache=only_cache,
+            cache=cache,
+        ).items():
+            if isinstance(var, bool) is False:
+                msg.error("'{}' option wrong type {}. It must be of type {}.".format(option, type(var), bool), prefix=self._dy_err["prefix"], pretty=self._dy_err["pretty"], exc=DeveloperError, exit=1)
+
+        self._raise_exc=raise_exc
+        if self._raise_exc is True:
+            self._dy_err["exc"]=DeveloperError
+
+        if only_cache is True and cache is False:
+            msg.error("'only_cache' option must be set to '{}' when cache is '{}'.".format(False, False), prefix=self._dy_err["prefix"], pretty=self._dy_err["pretty"], exc=self._dy_err["exc"], exit=1)
 
         dy_cached_options=None
+
         cache_extension=None
-        if isinstance(cache_file, str) is True:
-            filer, cache_extension = os.path.splitext(cache_file)
-            auth_exts=[".json", ".pickle"]
-            if cache_extension in auth_exts:
-                if not os.path.isabs(cache_file):
-                    cache_file=os.path.normpath(os.path.abspath(os.path.join(direpa_caller, cache_file)))
-                dy_cached_options=get_cached_options(direpa_caller, cache_file, cache_extension, md5_options, only_cache)
+        if cache is True:
+            if isinstance(cache_file, str) is True:
+                filer, cache_extension = os.path.splitext(cache_file)
+                auth_exts=[".json", ".pickle"]
+                if cache_extension.lower() in auth_exts:
+                    if not os.path.isabs(cache_file):
+                        cache_file=os.path.normpath(os.path.abspath(os.path.join(direpa_caller, cache_file)))
+                    dy_cached_options=get_cached_options(direpa_caller, cache_file, cache_extension, md5_options, only_cache, self._dy_err)
+                else:
+                    msg.error("cache_file option file extension '{}' not found in '{}'.".format(cache_extension, auth_exts), prefix=self._dy_err["prefix"], pretty=self._dy_err["pretty"], exc=self._dy_err["exc"], exit=1)
             else:
-                msg.error("cache_file option file extension '{}' not found in '{}'.".format(cache_extension, auth_exts), prefix=prefix, pretty=False, exit=1)
-        else:
-            msg.error("cache_file option wrong type {}. It must be of type {}.".format(type(cache_file), str), prefix=prefix, pretty=False, exit=1)
+                msg.error("cache_file option wrong type {}. It must be of type {}.".format(type(cache_file), str), prefix=self._dy_err["prefix"], pretty=self._dy_err["pretty"], exc=self._dy_err["exc"], exit=1)
 
-        if cache is False:
-            dy_cached_options=None
         if dy_cached_options is None:
-            if self._debug is True:
-                print("not cached")
-            if only_cache is True:
-                msg.error("option 'only_cache' is set to True but Nargs was unable to retrieve cache from cache_file '{}'.".format(cache_file), prefix=prefix, pretty=False, exit=1)
-            set_options(direpa_caller, dy_options, md5_options, self.get_default_theme(), sys.argv[0])
-            self._set_basic_vars(dy_options)
-            if dy_options["path_etc"] is not None:
-                dy_options["builtins"].append("path_etc")
+            self._from_cache=False
+            if cache is True:
+                if only_cache is True and os.path.exists(cache_file):
+                    msg.error("option 'only_cache' is set to True but Nargs retrieved cache from cache_file '{}' is None. If arguments definition is provided then cache file may be manually deleted to regenerate the cache.".format(cache_file), prefix=self._dy_err["prefix"], pretty=self._dy_err["pretty"], exc=self._dy_err["exc"], exit=1)
+            set_options(direpa_caller, dy_options, md5_options, self.get_default_theme(), sys.argv[0], self._dy_err)
 
-            if dy_options["args"] is None:
-                self._node_dfn=None
+            if cache is True:
+                self._theme=deepcopy(dy_options["theme"])
             else:
-                self._node_dfn=get_node_dfn(
+                self._theme=dy_options["theme"]
+
+            self._set_basic_vars(dy_options)
+            if dy_options["path_etc"] is None:
+                if "path_etc" in dy_options["builtins"]:
+                    del dy_options["builtins"]["path_etc"]
+
+            if dy_options["args"] is None and len(dy_options["builtins"]) == 0:
+                self.dfn=None
+            else:
+                exc=None
+                if self._raise_exc is True:
+                    exc=DeveloperError
+
+                self.dfn=get_node_dfn(
                     builtins=dy_options["builtins"],
-                    dy_metadata=dy_options["metadata"],
-                    dy_args=dy_options["args"],
-                    pretty=self._pretty_msg,
-                    app_name=self._app_name,
                     dy_attr_aliases=self._dy_attr_aliases,
+                    pretty=self._dy_err["pretty"],
+                    app_name=self._app_name,
+                    dy_args=dy_options["args"],
+                    exc=exc,
                 )
 
             del dy_options["args"]
 
-            os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+            if cache is True:
+                os.makedirs(os.path.dirname(cache_file), exist_ok=True)
 
-            if cache_extension == ".json":
-                dy_dump=get_dump(self._node_dfn)
-                dy_options["dump"]=dy_dump
-                with open(cache_file, "w") as f:
-                    f.write(json.dumps(dy_options, sort_keys=True, separators=(',', ':')))
-            elif cache_extension == ".pickle":
-                dy_options["dump"]=self._node_dfn
-                with open(cache_file, "wb") as f:
-                    pickle.dump(dy_options, f)
+                theme_props=get_mapped_theme_props()
+                dy_options["map"]=dict(
+                    arg_props={dy["map"]:prop for prop, dy in get_arg_properties().items() if dy["for_cache"] is True},
+                    arg_defaults={dy["map"]:dy["default"] for prop, dy in get_arg_properties().items() if dy["for_cache"] is True and dy["has_default"] is True},
+                )
+
+                if dy_options["pretty_help"] is True:
+                    dy_options["map"]["theme_props"]={dy["map"]:prop for prop, dy in theme_props.items()}
+                    dy_options["map"]["theme_defaults"]={dy["map"]:dy["default"] for prop, dy in theme_props.items()}
+
+                dy_theme=dict()
+                for name in dy_options["theme"]:
+                    dy_theme[name]=dict()
+                    for prop, value in dy_options["theme"][name].items():
+                        if value != theme_props[prop]["default"]:
+                            dy_theme[name][theme_props[prop]["map"]]=value
+
+                dy_options["theme"]=dy_theme
+
+                if cache_extension == ".json":
+                    dy_dump=get_args_dump(self.dfn)
+                    dy_options["dump"]=dy_dump
+                    with open(cache_file, "w") as f:
+                        f.write(json.dumps(dy_options, sort_keys=True, separators=(',', ':')))
+
+                elif cache_extension == ".pickle":
+                    dy_options["dump"]=self.dfn
+                    with open(cache_file, "wb") as f:
+                        try:
+                            pickle.dump(dy_options, f)
+                        except RecursionError as e:
+                            msg.error("Pickle cache limit reached '{}'. Please switch cache_file option to '.json' extension to overcome Pickle file limit for arguments definition tree size.".format(str(e)), prefix=self._dy_err["prefix"], pretty=self._dy_err["pretty"], exc=self._dy_err["exc"], exit=1)
         else:
-            if self._debug is True:
-                print("cached")
+            self._from_cache=True
             dy_options=dy_cached_options
             self._set_basic_vars(dy_options)
 
-            if cache_extension == ".json":
-                self._node_dfn=self._get_node_dfn_cached_trigger_error_if(
-                    dy_options["dump"],
-                    cache_file,
-                )
-            elif cache_extension == ".pickle":
-                self._node_dfn=dy_options["dump"]
-        try:
-            self._dy_metadata=dy_options["metadata"]
-            self._substitute=dy_options["substitute"]
-            self._theme=dy_options["theme"]
-
-            self._user_options=dict(
-                pretty_help=self._pretty_help,
-                pretty_msg=self._pretty_msg,
-                substitute=self._substitute,
-            )
-        except KeyError as e:
-            if dy_cached_options is None:
-                msg.error(
-                    "For '{}' at Nargs with definition data, key {} not found. It is a bug please contact developer.".format(
-                        self._app_name,
-                        e,
-                    ), pretty=self._pretty_msg)
-                sys.exit(1)
+            if dy_options["pretty_help"] is True:
+                self._theme=get_cached_theme(dy_options)
             else:
-                msg.error(
-                    "For '{}' at Nargs with cached data, key {} not found. Cache must be reset please delete file '{}'.".format(
-                        self._app_name,
-                        e,
-                        cache_file,
-                    ), pretty=self._pretty_msg)
-                sys.exit(1)
+                self._theme=None
 
-        # pprint(get_dump(self._node_dfn))
-        # pprint(vars(self._node_dfn))
+            if dy_options["dump"] is None:
+                self.dfn=None
+            else:
+                if cache_extension == ".json":
+                    self.dfn=get_cached_node_dfn(
+                        dy_args=dy_options["dump"],
+                        arg_defaults=dy_options["map"]["arg_defaults"],
+                        arg_props=dy_options["map"]["arg_props"],
+                    )
+                elif cache_extension == ".pickle":
+                    self.dfn=dy_options["dump"]
+
+        self._dy_metadata=dy_options["metadata"]
+        self._substitute=dy_options["substitute"]
+
+        self._user_options=dict(
+            pretty_help=self._pretty_help,
+            pretty_msg=self._dy_err["pretty"],
+            substitute=self._substitute,
+        )
 
     def _set_basic_vars(self, dy_options):
-        self._pretty_msg=dy_options["pretty_msg"]
+        self._dy_err["pretty"]=dy_options["pretty_msg"]
         self._pretty_help=dy_options["pretty_help"]
         self._app_name=dy_options["metadata"]["name"]
         self._path_etc=dy_options["path_etc"]
@@ -192,25 +218,6 @@ class Nargs():
             auto_alias_prefix=dy_options["auto_alias_prefix"],
             auto_alias_style=dy_options["auto_alias_style"],
         )
-
-    def _get_node_dfn_cached_trigger_error_if(self, dy_args_dump, filenpa_cache):
-        try:
-            if dy_args_dump is None:
-                return None
-            else:
-                return get_cached_node_dfn(
-                    dy_args=dy_args_dump,
-                    pretty=self._pretty_msg,
-                    app_name=self._app_name,
-                )
-        except Exception as e:
-            msg.error([
-                "For '{}' at Nargs with cached definition, unexpected error occured when loading definition from dumped data.".format(self._app_name),
-                "Dumped data is obtained from file '{}'.".format(filenpa_cache),
-                "File should be deleted and program re-executed to regenerate the cache. It may solve the issue.",
-            ], pretty=self._pretty_msg)
-            raise Exception(e)
-            sys.exit(1)
 
     def get_default_theme(self):
         black="#2b2b2b"
@@ -227,7 +234,7 @@ class Nargs():
             about_fields=dict(
                 foreground=green,
             ),
-            aliases_text=dict(
+            aliases=dict(
                 foreground=blue,
             ),
             arg_index=dict(
@@ -236,10 +243,17 @@ class Nargs():
             arg_path=dict(
                 foreground=green,
             ),
-            examples=dict(
+            brackets=dict(
+                bold=True,
+                foreground=green,
             ),
-            examples_bullet=dict(
+            bullets=dict(
                 foreground=gray,
+            ),
+            emphasize=dict(
+                foreground=red,
+            ),
+            examples=dict(
             ),
             flags=dict(
                 italic=True,
@@ -254,17 +268,13 @@ class Nargs():
             ),
             info=dict(
             ),
-            nargs_syntax_emphasize=dict(
-                foreground=red,
+
+            properties=dict(
             ),
-            nargs_syntax_headers=dict(
+            syntax_headers=dict(
                 foreground=green,
             ),
-            square_brackets=dict(
-                bold=True,
-                foreground=green,
-            ),
-            values_text=dict(
+            values=dict(
                 italic=True,
                 foreground=purple,
             ),
@@ -289,49 +299,51 @@ class Nargs():
     def get_args(self, 
         cmd=None, 
     ):
+        exc=None
+        if self._raise_exc is True:
+            exc=EndUserError
+
+        if self._reset_dfn_tree is None:
+            self._reset_dfn_tree=False
+        else:
+            self._reset_dfn_tree=True
+
         args=get_args(
             app_name=self._app_name,
             cmd=cmd,
-            debug=self._debug,
+            exc=exc,
             dy_metadata=self._dy_metadata,
-            node_dfn=self._node_dfn,
+            node_dfn=self.dfn,
             path_etc=self._path_etc,
             pretty_help=self._pretty_help,
-            pretty_msg=self._pretty_msg,
+            pretty_msg=self._dy_err["pretty"],
             substitute=self._substitute,
             theme=self._theme,
             get_documentation=self.get_documentation,
             reset_dfn_tree=self._reset_dfn_tree,
         )
-        self._reset_dfn_tree=True
         return args
-
-    def _update_nargs_syntax(self):
-        filenpa=os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "end-user.md")
-        nargs_syntax=get_md_text(
-            title="NARGS END-USER DOCUMENTATION", 
-            sections=[get_nargs_syntax(
-                    Style(pretty_help=self._pretty_help, pretty_msg=self._pretty_msg, output="markdown", theme=self._theme, prefix="For '{}' at Nargs update syntax".format(self._app_name)), 
-                    self._user_options,
-                    print_options=False,
-
-                )
-            ],
-        )
-        with open(filenpa, "w") as f:
-            f.write("{}".format(nargs_syntax))
             
-    def get_documentation(self, output, filenpa=None, wsyntax=False, overwrite=False):
+    def get_documentation(self, output, filenpa=None, wsyntax=None, overwrite=False, only_syntax=False):
+
         prefix="For '{}' at Nargs get_documentation".format(self._app_name)
 
-        props_node=self._node_dfn.dy_nodes["_usage_"].dy_nodes["properties"]
-        allproperties=props_node.dy["in"]
+        outputs=["asciidoc", "cmd_help", "cmd_usage", "html", "markdown", "text"]
+        if output not in outputs:
+            msg.error("output '{}' not found in {}.".format(output, outputs), prefix=prefix, pretty=self._dy_err["pretty"], exc=self._dy_err["exc"], exit=1)
 
+        if wsyntax is False and only_syntax is True:
+            msg.error("option wsyntax must be 'True' when option only_syntax is 'True'.", prefix=prefix, pretty=self._dy_err["pretty"], exc=self._dy_err["exc"], exit=1)
+
+        if wsyntax is None:
+            wsyntax=False
+
+        allproperties=sorted([prop for prop, dy in get_arg_properties().items() if dy["for_help"] is True])
         documentation=get_help_usage(
             dy_metadata=self._dy_metadata,
-            node_ref=self._node_dfn,
+            node_ref=self.dfn,
             output=output,
-            style=Style(pretty_help=self._pretty_help, pretty_msg=self._pretty_msg, output=output, theme=self._theme, prefix=prefix),
+            style=Style(pretty_help=self._pretty_help, output=output, theme=self._theme),
             user_options=self._user_options,
             allproperties=allproperties,
             properties=allproperties,
@@ -340,19 +352,20 @@ class Nargs():
             whint=True,
             winfo=True,
             wsyntax=wsyntax,
+            only_syntax=only_syntax,
         )
 
         if output not in ["cmd_usage", "cmd_help"]:
             if filenpa is not None:
                 if not isinstance(filenpa, str):
-                    msg.error("filenpa type {} is not type {}".format(type(filenpa), str), prefix=prefix, pretty=self._pretty_msg, exit=1)
+                    msg.error("filenpa type {} is not type {}".format(type(filenpa), str), prefix=prefix, pretty=self._dy_err["pretty"], exc=self._dy_err["exc"], exit=1)
 
                 if not os.path.isabs(filenpa):
                     filenpa=os.path.abspath(filenpa)
                 filenpa=os.path.normpath(filenpa)
                 if overwrite is False:
                     if os.path.exists(filenpa):
-                        msg.error("file already exists '{}'".format(filenpa), prefix=prefix, pretty=self._pretty_msg, exit=1)
+                        msg.error("file already exists '{}'".format(filenpa), prefix=prefix, pretty=self._dy_err["pretty"], exc=self._dy_err["exc"], exit=1)
                 with open(filenpa, "w") as f:
                     f.write("{}".format(documentation))
 

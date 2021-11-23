@@ -5,27 +5,16 @@ import sys
 import traceback
 
 from ..dev.nargs import Nargs
-from ..dev import nargs
+from ..dev.exceptions import EndUserError, DeveloperError
+from .helpers import CatchEx, err
 
 from ..gpkgs import message as msg
+
+import yaml
 
 def single_test(
     dy_metadata,
 
 ):
-    nargs.debug=True
-    nargs.cache=True
-    # nargs.cache=False
-  
-
-    narg=Nargs(
-        builtins=[],
-        options_file="settings-3.yaml",
-        metadata=dy_metadata,
-    )
-
-    args=narg.get_args("--args --arg-one --arg-two")
-    print(args.arg_one._here)
-    print(args.arg_two._here)
-    print(args.arg_three._here)
-    
+    pass
+ 

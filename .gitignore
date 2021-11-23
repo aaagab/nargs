@@ -9,8 +9,6 @@ gpkgs/
 /todo.txt
 .directory
 /nargs-dump.json
-/nargs-dump.pickle
-/nargs-cache.json
-/nargs-cache.pickle
-/.nargs-user.json
-/.nargs-user.yaml
+.nargs-user.json
+.nargs-user.yaml
+nargs-cache.json
