@@ -11,3 +11,5 @@ __pycache__/
 .directory
 /tests
 /test.py
+nargs-cache.json
+nargs-cache.pickle
