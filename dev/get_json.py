@@ -18,9 +18,14 @@ try:
 except:
     has_yaml_module=False
 
+def get_arg_prefix(dy_err, cmd_line_index):
+    return "{} '{}'".format(dy_err["prefix"], dy_err["cmd_line"][:cmd_line_index])
+
 def get_json(
-    prefix,
     value,
+    node,
+    dy_err,
+    cmd_line_index,
     search_file=False, 
 ):
     dy=dict()
@@ -39,30 +44,29 @@ def get_json(
                     filenpa=os.path.abspath(filenpa)
                 filenpa=os.path.normpath(filenpa)
 
-                if ext == "json":
-                    try:
-                        with open(filenpa, "r") as f:
-                            dy=json.load(f)
-                    except BaseException:
-                        msg.error("json syntax error in file '{}'".format(filenpa), prefix=prefix)
-                        print(traceback.format_exc())
-                        sys.exit(1)
-                elif ext in ["yml", "yaml"]:
-                    if has_yaml_module is True:
+                if os.path.exists(filenpa):
+                    if ext == "json":
                         try:
                             with open(filenpa, "r") as f:
-                                dy=yaml.safe_load(f)
+                                dy=json.load(f)
                         except BaseException:
-                            msg.error("yaml syntax error in file '{}'".format(filenpa), prefix=prefix)
-                            print(traceback.format_exc())
-                            sys.exit(1)
-                    else:
-                        msg.error(r"""
-                            yaml module not found to import file '{}'.
-                            Either do:
-                            - pip install pyyaml
-                            - use a json file or a json string as argument
-                        """.format(filenpa), heredoc=True, prefix=prefix, exit=1)
+                            msg.error("json syntax error in file '{}'".format(filenpa), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+                    elif ext in ["yml", "yaml"]:
+                        if has_yaml_module is True:
+                            try:
+                                with open(filenpa, "r") as f:
+                                    dy=yaml.safe_load(f)
+                            except BaseException:
+                                msg.error("yaml syntax error in file '{}'".format(filenpa), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+                        else:
+                            msg.error(r"""
+                                yaml module not found to import file '{}'.
+                                Either do:
+                                - pip install pyyaml
+                                - use a json file or a json string as argument
+                            """.format(filenpa), heredoc=True, prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+                else:
+                    msg.error("File not found '{}'".format(filenpa), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
 
         if json_set is False:
             failed=False
@@ -70,7 +74,7 @@ def get_json(
             try:
                 dy=json.loads(value)
             except BaseException as e:
-                errors.append(e)
+                errors.append(repr(e))
 
                 yaml_parsed=False
                 if has_yaml_module is True:
@@ -78,7 +82,7 @@ def get_json(
                         dy=yaml.safe_load(value)
                         yaml_parsed=True
                     except BaseException as e:
-                        errors.append(e)
+                        errors.append(repr(e))
 
                 if yaml_parsed is False:
                     # for single-quoted json string
@@ -91,15 +95,16 @@ def get_json(
                             dy=ast.literal_eval(value)
                         except BaseException as e:
                             failed=True
-                            errors.append(e)
+                            errors.append(repr(e))
                     else:
                         failed=True
                         errors.append("value length is >= than '100000'.")
 
+
             if failed is True:
-                msg.error("Error when trying to load dict from '{}'.".format(value[:200]), prefix=prefix)
-                for error in errors:
-                    print(error)
-                sys.exit(1)
+                msg.error([
+                    "Error when trying to load dict from '{}'.".format(value[:50]),
+                    *errors,
+                ], prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
 
     return dy

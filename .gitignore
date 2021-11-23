@@ -8,3 +8,7 @@ gpkgs/
 /.etconf/
 /todo.txt
 .directory
+/nargs-dump.json
+.nargs-user.json
+.nargs-user.yaml
+nargs-cache.json

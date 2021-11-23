@@ -1,191 +1,338 @@
 #!/usr/bin/env python3
 from copy import deepcopy
 from pprint import pprint
+import json
 import os 
 import shlex
 import sys
 
-from .get_types import get_type_str, get_type_from_str
-from .set_dfn import get_dy
+from .regexes import get_flags_precedence
 
-from .aliases import set_explicit_aliases
-
-
-class Node():
-    def __init__(self, name=None, parent=None):
-        self.parent=parent
-        self.is_leaf=True
-        self.nodes=[]
-        self.parents=[]
+class NodeDfn():
+    def __init__(self,
+        dy,
+        location,
+        name,
+        parent=None,
+    ):
+        self.current_arg=None
+        self.dy=dy
+        self.dy_nodes=dict()
+        self.dy_xor=dict()
+        self.explicit_aliases=dict()
+        self.implicit_aliases=dict()
+        self.is_root=None
+        self.level=None
+        self.location=location
         self.name=name
+        self.nodes=[]
+        self.parent=parent
+        self.root=None
 
+        self._dy_flags=None
+        self._dy_flags_aliases=None
+        self._explicit_aliases_sort=None
+        self._explicit_flags=dict()
+        self._implicit_flags=dict()
+        self._pool_aliases=None
+        self._pool_flags=None
+        
         if self.parent is None:
             self.root=self
             self.is_root=True
             self.level=1
-            self.location=name
+            for alias in self.dy["aliases"]:
+                self.implicit_aliases[alias]=[self]
+                set_root_flags(self, alias)
         else:
             self.root=self.parent.root
             self.is_root=False
-            self.parent.is_leaf=False
             self.level=self.parent.level+1
-            self.location="{} > {}".format(self.parent.location, name)
             self.parent.nodes.append(self)
-            for pnt in self.parent.parents:
-                self.parents.append(pnt)
-            self.parents.append(parent)
+            self.parent.dy_nodes[self.name]=self
 
-class NodeDfn(Node):
-    def __init__(self,
-        dy,
-        name,
-        is_a_dump,
-        is_dy_preset,
-        parent=None,
-    ):
-        super().__init__(name=name, parent=parent)
+            for alias in self.dy["aliases"]:
+                self.parent.explicit_aliases[alias]=self
+                set_explicit_flags(self, alias, self.parent)
 
-        self.arg_id=None
-        self.dy_arg=dict()
-        self.explicit_aliases=dict()
-        self.implicit_aliases=None
-        self.explicit_aliases_sort=None
+            if self.parent._pool_aliases is None:
+                self.parent._pool_aliases={}
+                self.parent._pool_flags={}
 
-        if is_dy_preset is True or is_a_dump is True:
-            self.dy=dy
-            self.dy["type"]=get_type_from_str(self.dy["type"])
-        else:
-            self.dy=get_dy(self.location, self.name, dy, self.is_root)
-            if self.is_root is False:
-                if self.dy["required"] is True:
-                    self.parent.dy["required_children"].append(self.name)
-
-        if self.dy["enabled"] is True:
-            if is_a_dump is False:
-                self.dy["aliases"]=[]
-                self.dy["default_alias"]=None
-    
-            set_explicit_aliases(self, is_a_dump)
-
-            if is_a_dump is False:
-                # if len(self.dy["aliases"]) == 0:
-                    # self.dy["enabled"]=False
-                # else:
-                if self.is_root is True:
-                    self.dump={ self.name: deepcopy(self.dy)}
+                if self.parent.is_root is True:
+                    for alias in self.parent.dy["aliases"]:
+                        if alias not in self.parent._pool_aliases:
+                            self.parent._pool_aliases[alias]=[]
+                        self.parent._pool_aliases[alias].append(self.parent)
+                        set_implicit_flags(self.parent, alias, self.parent)
                 else:
-                    self.parent.dump[self.parent.name]["args"][self.name]=deepcopy(self.dy)
-                    self.dump=self.parent.dump[self.parent.name]["args"]
-                self.dump[self.name]["args"]=dict()
-                self.dump[self.name]["type"]=get_type_str(self.dump[self.name]["type"])
+                    for alias in self.parent.parent._pool_aliases:
+                        self.parent._pool_aliases[alias]=[]
+                        for node in self.parent.parent._pool_aliases[alias]:
+                            self.parent._pool_aliases[alias].append(node)
+                            set_implicit_flags(node, alias, self.parent)
 
-                self.set_first_arg()
-                if self.is_root is False:
-                    setattr(self.parent.get_arg(), self.name, self.get_arg())
-                    self.parent.get_arg()._[self.name]=self.get_arg()
+            set_implicit_aliases_and_flags(self.parent, self)
+            self.implicit_aliases=self.parent._pool_aliases
+            self._implicit_flags=self.parent._pool_flags
+            self._set_parent_xor()
 
-    def set_first_arg(self):
-        forks=[]
-        parent=None
+        parent_arg=None
         if self.is_root is False:
-            parent=self.parent.get_arg()
-        first_arg=CliArg(forks, self.name, self.get_pre_id(), parent=parent)
+            parent_arg=self.parent.current_arg
+        self.current_arg=CliArg(
+            branches=[],
+            node_dfn=self,
+            parent=parent_arg,
+        )
 
-        self.arg_id=first_arg._id
-        self.dy_arg={
-            self.arg_id: dict(
-                arg=first_arg,
-                forks=forks,
-                single=None,
-            )
-        }
+    def _set_parent_xor(self):
+        if self.name in self.parent.dy["xor"]:
+            if len(self.parent.dy_xor) == 0:
+                for name in self.parent.dy["xor"]:
+                    if name == self.name:
+                        self.parent.dy_xor[self]=dict()
+                    else:
+                        self.parent.dy_xor[name]=dict()
 
-    def get_pre_id(self):
-        if self.is_root is True:
-            return ""
+                    for group_num in self.parent.dy["xor"][name]:
+                        append_group=[]
+                        if name == self.name:
+                            self.parent.dy_xor[self][group_num]=[]
+                        else:
+                            self.parent.dy_xor[name][group_num]=[]
+                        for ref_name in self.parent.dy["xor"][name][group_num]:
+                            if name == self.name:
+                                if ref_name == self.name:
+                                    self.parent.dy_xor[self][group_num].append(self)
+                                else:
+                                    self.parent.dy_xor[self][group_num].append(ref_name)
+                            else:
+                                if ref_name == self.name:
+                                    self.parent.dy_xor[name][group_num].append(self)
+                                else:
+                                    self.parent.dy_xor[name][group_num].append(ref_name)
+            else:
+                self.parent.dy_xor[self]=self.parent.dy_xor.pop(self.name)
+                for name in self.parent.dy_xor:
+                    if name != self:
+                        for group_num in self.parent.dy_xor[name]:
+                            if self.name in self.parent.dy_xor[name][group_num]:
+                                index_elem=self.parent.dy_xor[name][group_num].index(self.name)
+                                self.parent.dy_xor[name][group_num].remove(self.name)
+                                self.parent.dy_xor[name][group_num].insert(index_elem, self)
+
+    def get_dy_flags(self):
+        if self._dy_flags is None:
+            self._dy_flags=dict()
+            for flag, dy in self._implicit_flags.items():
+                self._dy_flags[flag]=dict(node=dy["node"], alias=dy["alias"])
+
+            for flag, dy in self._explicit_flags.items():
+                if flag in self._dy_flags and self._dy_flags[flag]["node"].dy["show"] != dy["node"].dy["show"]:
+                    if dy["node"].dy["show"] is True:
+                        self._dy_flags[flag]=dict(node=dy["node"], alias=dy["alias"])
+                else:
+                    self._dy_flags[flag]=dict(node=dy["node"], alias=dy["alias"])
+        return self._dy_flags
+
+def set_root_flags(flag_node, alias):
+    if flag_node.dy["aliases_info"][alias]["is_flag"] is True:
+        c=flag_node.dy["aliases_info"][alias]["text"]
+        to_set=None
+        if c in flag_node._implicit_flags:
+            to_set=has_precedence(alias, flag_node, flag_node._implicit_flags[c]["node"], flag_node._implicit_flags[c]["alias"])
         else:
-            return self.parent.arg_id
+            to_set=True
 
-    def get_arg(self):
-        return self.dy_arg[self.arg_id]["arg"]
+        if to_set is True:
+            flag_node._implicit_flags[c]=dict(node=flag_node, alias=alias)
 
-    def get_forks(self):
-        return self.dy_arg[self.arg_id]["forks"]
+def set_explicit_flags(flag_node, alias, node_to_set_flag):
+    if flag_node.dy["aliases_info"][alias]["is_flag"] is True:
+        c=flag_node.dy["aliases_info"][alias]["text"]
+        to_set=None
+        if c in node_to_set_flag._explicit_flags:
+            to_set=has_precedence(alias, flag_node, node_to_set_flag._explicit_flags[c]["node"], node_to_set_flag._explicit_flags[c]["alias"])
+        else:
+            to_set=True
+
+        if to_set is True:
+            node_to_set_flag._explicit_flags[c]=dict(node=flag_node, alias=alias)
+
+def has_precedence(flag_candidate_alias, flag_candidate_node, existing_flag_node, existing_flag_alias):
+    if flag_candidate_node.dy["show"] != existing_flag_node.dy["show"]:
+        if flag_candidate_node.dy["show"] is True:
+            return True
+        else:
+            return False
+    else:
+        flags_precedence=get_flags_precedence()
+        existing_flag_node_prefix=existing_flag_node.dy["aliases_info"][existing_flag_alias]["prefix"]
+        flag_node_prefix=flag_candidate_node.dy["aliases_info"][flag_candidate_alias]["prefix"]
+        if flags_precedence.index(flag_node_prefix) < flags_precedence.index(existing_flag_node_prefix):
+            return True
+        else:
+            return False
+
+def set_implicit_flags(flag_node, alias, node_to_set_flag):
+    if flag_node.dy["aliases_info"][alias]["is_flag"] is True:
+        c=flag_node.dy["aliases_info"][alias]["text"]
+        to_set=None
+        if has_xor_conflict(flag_node, node_to_set_flag) is False:
+            if c in node_to_set_flag._pool_flags:
+                tmp_flag_node=node_to_set_flag._pool_flags[c]["node"]
+                if tmp_flag_node.level > flag_node.level:
+                    to_set=False
+                elif tmp_flag_node.level == flag_node.level:
+                    to_set=has_precedence(alias, flag_node, tmp_flag_node, node_to_set_flag._pool_flags[c]["alias"])
+                else: # tmp_flag_node.level < flag_node.level:
+                    to_set=True
+            else:
+                to_set=True
+        else:
+            to_set=False
+
+        if to_set is True:
+            node_to_set_flag._pool_flags[c]=dict(node=flag_node, alias=alias)
+
+def set_implicit_aliases_and_flags(tree_node, ref_node):
+    if tree_node._pool_aliases is not None:
+        for alias in ref_node.dy["aliases"]:
+            if alias not in tree_node._pool_aliases:
+                tree_node._pool_aliases[alias]=[]
+            tree_node._pool_aliases[alias].append(ref_node)
+            set_implicit_flags(ref_node, alias, tree_node)
+
+        for tmp_node in tree_node.nodes:
+            set_implicit_aliases_and_flags(tmp_node, ref_node)
+
+def has_xor_conflict(first_node, second_node):
+    if first_node != second_node:
+        if first_node.level == second_node.level:
+            if first_node in first_node.parent.dy_xor:
+                for group_num in first_node.parent.dy_xor[first_node]:
+                    xor_group=first_node.parent.dy_xor[first_node][group_num]
+                    if second_node in xor_group:
+                        return True
+    return False
 
 class CliArg():
     def __init__(self,
-        # default_alias,
-        forks,
-        name,
-        pre_id, 
+        branches,
+        node_dfn,
         parent=None,
-        default_alias=None,
+        branch_index=None,
     ):
+        self._=dict()
         self._alias=None
-        self._default_alias=None
-        # default_alias
-        self._index=len(forks)+1
-        if pre_id == "":
-            self._id="{}".format(self._index)
+        self._aliases=node_dfn.dy["aliases"]
+        self._args=[]
+        self._branches=branches
+        if branch_index is None:
+            self._branches.append(self)
         else:
-            self._id="{}.{}".format(pre_id, self._index)
-        # forks.append(self)
-        self._forks=forks
-        # self._forks=forks
+            self._branches.insert(branch_index, self)
+        self._cmd_line_index=None
+        self._count=0
+        self._default_alias=node_dfn.dy["default_alias"]
+        self._dy_indexes=dict(
+            aliases=dict(),
+            values=[],
+        )
         self._here=False
-        self._name=name
+        self._implicit=False
+        self._name=node_dfn.name
+        self._dfn=node_dfn
         self._parent=parent
+        self._previous_dfn=None
         self._value=None
         self._values=[]
 
-        # to update _alias, _here, _value, _values but not in the self._
-        self._=dict(
-            _alias=self._alias,
-            _default_alias=self._default_alias,
-            _index=self._index,
-            _id=self._id,
-            _forks=self._forks,
-            _here=self._here,
-            _name=self._name,
-            _parent=self._parent,
-            _value=self._value,
-            _values=self._values,
-        )
+        is_first_branch=self._branches.index(self) == 0
 
-        if default_alias is not None:
-            self.set_default_alias(default_alias)
+        if self._parent is None:
+            self._root=self
+            self._is_root=True
+            if is_first_branch is True:
+                self._cmd_line=None
+        else:
+            self._root=self._parent._root
+            self._is_root=False
 
-    def set_default_alias(self, default_alias):
-        self._default_alias=default_alias
-        self._["_default_alias"]=default_alias
+            if is_first_branch is True:
+                setattr(self._parent, self._name, self)
+                self._parent._[self._name]=self
 
-    def get_path(self, explicit=False, wvalues=False):
+    def _get_cmd_line(self, cmd_line_index=None):
+        if cmd_line_index is None:
+            if self._cmd_line_index is None:
+                return None
+            else:
+                return self._root._branches[0]._cmd_line[:self._cmd_line_index]
+        else:
+            return self._root._branches[0]._cmd_line[:cmd_line_index]
+            
+    def _get_path(self, wvalues=False, keep_default_alias=False):
         path=[]
-        arg=None
         arg=self
+        args=[]
         while True:
-            text=arg._alias
-            if text is None:
-                text=arg._default_alias
-            add_index=len(arg._forks) > 1
+            args.insert(0, arg)
+            arg=arg._parent
+            if arg is None:
+                break
+
+        implicit_aliases=set()
+
+        for arg in args:
+            alias=arg._alias
+
+            if alias is None: 
+                alias=arg._default_alias
+            elif keep_default_alias is True:
+                if arg._is_root is False:
+                    alias=arg._default_alias
+
+            if alias in implicit_aliases:
+                    path.append("+")
+
+            text=alias
+
+            add_index=len(arg._branches) > 1
             if add_index is True:
-                if arg._parent is None and arg._index == 1:
+                arg_index=1
+                if arg._here is True:
+                    arg_index=arg._branches.index(arg)+1
+
+                if arg._parent is None and arg_index == 1:
                     pass
                 else:
-                    text+="_{}".format(arg._index)
+                    text+="+{}".format(arg_index)
 
             if wvalues is True:
                 if len(arg._values) > 0 and arg == self:
                     for value in arg._values:
+                        if isinstance(value, dict):
+                            value=json.dumps(value)
+                        else:
+                            value=str(value)
                         text+=" {}".format(shlex.quote(value))
 
-            path.insert(0, text)
+            path.append(text)
 
-            arg=arg._parent
-            if arg is None:
+            if arg == self:
                 break
             else:
-                if explicit is True:
-                    path.insert(0, "-")
+                for tmp_alias in arg._dfn.dy["aliases"]:
+                    if tmp_alias not in implicit_aliases:
+                        implicit_aliases.add(tmp_alias)
+
+                if arg._parent is not None:
+                    for tmp_arg in arg._parent._args:
+                        if self not in tmp_arg._branches:
+                            for tmp_alias in tmp_arg._dfn.dy["aliases"]:
+                                if tmp_alias not in implicit_aliases:
+                                    implicit_aliases.add(tmp_alias)
 
         return " ".join(path)

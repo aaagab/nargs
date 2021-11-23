@@ -1,0 +1,39 @@
+Nodes, ,From,Cache,CFile,COnly,Time, ,From,Cache,CFile,COnly,Time, ,From,Cache,CFile,COnly,Time, ,From,Cache,CFile,COnly,Time, ,From,Cache,CFile,COnly,Time, ,From,Cache,CFile,COnly,Time, ,From,Cache,CFile,COnly,Time
+50, ,dict,False,None,False,0.017, ,json,False,None,False,0.006, ,json/yaml,True,json,False,0.003, ,json/yaml,True,json,True,0.004, ,yaml,False,None,False,0.013, ,json/yaml,True,pickle,False,0.002, ,json/yaml,True,pickle,True,0.003
+100, ,dict,False,None,False,0.008, ,json,False,None,False,0.009, ,json/yaml,True,json,False,0.004, ,json/yaml,True,json,True,0.005, ,yaml,False,None,False,0.026, ,json/yaml,True,pickle,False,0.004, ,json/yaml,True,pickle,True,0.002
+150, ,dict,False,None,False,0.012, ,json,False,None,False,0.012, ,json/yaml,True,json,False,0.007, ,json/yaml,True,json,True,0.016, ,yaml,False,None,False,0.033, ,json/yaml,True,pickle,False,0.004, ,json/yaml,True,pickle,True,0.003
+200, ,dict,False,None,False,0.014, ,json,False,None,False,0.014, ,json/yaml,True,json,False,0.008, ,json/yaml,True,json,True,0.009, ,yaml,False,None,False,0.042, ,json/yaml,True,pickle,False,0.005, ,json/yaml,True,pickle,True,0.005
+250, ,dict,False,None,False,0.018, ,json,False,None,False,0.035, ,json/yaml,True,json,False,0.011, ,json/yaml,True,json,True,0.009, ,yaml,False,None,False,0.052, ,json/yaml,True,pickle,False,0.005, ,json/yaml,True,pickle,True,0.005
+300, ,dict,False,None,False,0.020, ,json,False,None,False,0.020, ,json/yaml,True,json,False,0.032, ,json/yaml,True,json,True,0.011, ,yaml,False,None,False,0.056, ,json/yaml,True,pickle,False,0.006, ,json/yaml,True,pickle,True,0.006
+350, ,dict,False,None,False,0.020, ,json,False,None,False,0.020, ,json/yaml,True,json,False,0.013, ,json/yaml,True,json,True,0.037, ,yaml,False,None,False,0.068, ,json/yaml,True,pickle,False,0.006, ,json/yaml,True,pickle,True,0.006
+400, ,dict,False,None,False,0.022, ,json,False,None,False,0.022, ,json/yaml,True,json,False,0.039, ,json/yaml,True,json,True,0.014, ,yaml,False,None,False,0.072, ,json/yaml,True,pickle,False,0.007, ,json/yaml,True,pickle,True,0.007
+450, ,dict,False,None,False,0.025, ,json,False,None,False,0.049, ,json/yaml,True,json,False,0.015, ,json/yaml,True,json,True,0.015, ,yaml,False,None,False,0.081, ,json/yaml,True,pickle,False,0.009, ,json/yaml,True,pickle,True,0.032
+500, ,dict,False,None,False,0.028, ,json,False,None,False,0.028, ,json/yaml,True,json,False,0.016, ,json/yaml,True,json,True,0.017, ,yaml,False,None,False,0.112, ,json/yaml,True,pickle,False,0.009, ,json/yaml,True,pickle,True,0.008
+550, ,dict,False,None,False,0.030, ,json,False,None,False,0.029, ,json/yaml,True,json,False,0.018, ,json/yaml,True,json,True,0.018, ,yaml,False,None,False,0.099, ,json/yaml,True,pickle,False,0.009, ,json/yaml,True,pickle,True,0.034
+600, ,dict,False,None,False,0.031, ,json,False,None,False,0.031, ,json/yaml,True,json,False,0.019, ,json/yaml,True,json,True,0.046, ,yaml,False,None,False,0.108, ,json/yaml,True,pickle,False,0.010, ,json/yaml,True,pickle,True,0.010
+650, ,dict,False,None,False,0.061, ,json,False,None,False,0.034, ,json/yaml,True,json,False,0.021, ,json/yaml,True,json,True,0.021, ,yaml,False,None,False,0.142, ,json/yaml,True,pickle,False,0.011, ,json/yaml,True,pickle,True,0.011
+700, ,dict,False,None,False,0.062, ,json,False,None,False,0.036, ,json/yaml,True,json,False,0.023, ,json/yaml,True,json,True,0.023, ,yaml,False,None,False,0.151, ,json/yaml,True,pickle,False,0.012, ,json/yaml,True,pickle,True,0.012
+750, ,dict,False,None,False,0.065, ,json,False,None,False,0.039, ,json/yaml,True,json,False,0.024, ,json/yaml,True,json,True,0.024, ,yaml,False,None,False,0.160, ,json/yaml,True,pickle,False,0.013, ,json/yaml,True,pickle,True,0.013
+800, ,dict,False,None,False,0.040, ,json,False,None,False,0.040, ,json/yaml,True,json,False,0.025, ,json/yaml,True,json,True,0.050, ,yaml,False,None,False,0.141, ,json/yaml,True,pickle,False,0.033, ,json/yaml,True,pickle,True,0.014
+850, ,dict,False,None,False,0.043, ,json,False,None,False,0.043, ,json/yaml,True,json,False,0.027, ,json/yaml,True,json,True,0.027, ,yaml,False,None,False,0.171
+900, ,dict,False,None,False,0.046, ,json,False,None,False,0.045, ,json/yaml,True,json,False,0.056, ,json/yaml,True,json,True,0.029, ,yaml,False,None,False,0.158
+950, ,dict,False,None,False,0.068, ,json,False,None,False,0.048, ,json/yaml,True,json,False,0.054, ,json/yaml,True,json,True,0.031, ,yaml,False,None,False,0.166
+1000, ,dict,False,None,False,0.073, ,json,False,None,False,0.050, ,json/yaml,True,json,False,0.057, ,json/yaml,True,json,True,0.032, ,yaml,False,None,False,0.177
+2000, ,dict,False,None,False,0.122, ,json,False,None,False,0.120, ,json/yaml,True,json,False,0.097, ,json/yaml,True,json,True,0.064, ,yaml,False,None,False,0.380
+3000, ,dict,False,None,False,0.149, ,json,False,None,False,0.171, ,json/yaml,True,json,False,0.124, ,json/yaml,True,json,True,0.129, ,yaml,False,None,False,0.554
+4000, ,dict,False,None,False,0.215, ,json,False,None,False,0.241, ,json/yaml,True,json,False,0.174, ,json/yaml,True,json,True,0.179, ,yaml,False,None,False,0.768
+5000, ,dict,False,None,False,0.275, ,json,False,None,False,0.315, ,json/yaml,True,json,False,0.293, ,json/yaml,True,json,True,0.256, ,yaml,False,None,False,1.105
+6000, ,dict,False,None,False,0.376, ,json,False,None,False,0.409, ,json/yaml,True,json,False,0.296, ,json/yaml,True,json,True,0.274, ,yaml,False,None,False,1.159
+7000, ,dict,False,None,False,0.411, ,json,False,None,False,0.440, ,json/yaml,True,json,False,0.319, ,json/yaml,True,json,True,0.323, ,yaml,False,None,False,1.482
+8000, ,dict,False,None,False,0.509, ,json,False,None,False,0.555, ,json/yaml,True,json,False,0.378, ,json/yaml,True,json,True,0.363, ,yaml,False,None,False,1.583
+9000, ,dict,False,None,False,0.535, ,json,False,None,False,0.561, ,json/yaml,True,json,False,0.461, ,json/yaml,True,json,True,0.448, ,yaml,False,None,False,1.789
+10000, ,dict,False,None,False,0.661, ,json,False,None,False,0.685, ,json/yaml,True,json,False,0.481, ,json/yaml,True,json,True,0.450, ,yaml,False,None,False,1.987
+20000, ,dict,False,None,False,1.340, ,json,False,None,False,1.392, ,json/yaml,True,json,False,1.102, ,json/yaml,True,json,True,1.142, ,yaml,False,None,False,4.186
+30000, ,dict,False,None,False,2.126, ,json,False,None,False,2.223, ,json/yaml,True,json,False,1.700, ,json/yaml,True,json,True,1.861, ,yaml,False,None,False,6.459
+40000, ,dict,False,None,False,3.012, ,json,False,None,False,3.080, ,json/yaml,True,json,False,2.356, ,json/yaml,True,json,True,2.404, ,yaml,False,None,False,8.759
+50000, ,dict,False,None,False,3.801, ,json,False,None,False,3.803, ,json/yaml,True,json,False,3.000, ,json/yaml,True,json,True,2.909, ,yaml,False,None,False,10.841
+60000, ,dict,False,None,False,4.328, ,json,False,None,False,4.356, ,json/yaml,True,json,False,3.581, ,json/yaml,True,json,True,3.590, ,yaml,False,None,False,13.106
+70000, ,dict,False,None,False,5.908, ,json,False,None,False,5.284, ,json/yaml,True,json,False,4.110, ,json/yaml,True,json,True,4.040, ,yaml,False,None,False,15.273
+80000, ,dict,False,None,False,6.515, ,json,False,None,False,6.106, ,json/yaml,True,json,False,4.693, ,json/yaml,True,json,True,5.022, ,yaml,False,None,False,17.984
+90000, ,dict,False,None,False,6.883, ,json,False,None,False,7.348, ,json/yaml,True,json,False,5.403, ,json/yaml,True,json,True,5.513, ,yaml,False,None,False,20.169
+100000, ,dict,False,None,False,7.165, ,json,False,None,False,7.909, ,json/yaml,True,json,False,6.352, ,json/yaml,True,json,True,6.108, ,yaml,False,None,False,22.302
