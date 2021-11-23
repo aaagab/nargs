@@ -61,11 +61,12 @@ if __name__ == "__main__":
 
         # chk.exc(pkg.test_performance, dy_metadata, direpa_tmp, filenpa_cache_json)
 
-
     direpa_tests=os.path.join(os.path.dirname(os.path.realpath(__file__)), "tests")
     filenpa_tmp_cache=os.path.join(direpa_tests, "nargs-cache.json")
+    filenpa_src_cache=os.path.join(os.path.dirname(direpa_tests), "nargs-cache.json")
     for filenpa in [
         filenpa_tmp_cache,
+        filenpa_src_cache,
     ]:
         try:
             os.remove(filenpa)

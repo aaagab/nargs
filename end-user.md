@@ -1,4 +1,4 @@
-# Samples
+# NARGS END-USER DOCUMENTATION
 
 ## Table of Contents
 - [NARGS ARGUMENTS SYNTAX](#nargs-arguments-syntax)
@@ -29,9 +29,9 @@
 `installer:` gpm<br>
 `licenses:` MIT<br>
 `name:` Nested Arguments<br>
-`timestamp:` 1620747900.8213155<br>
+`timestamp:` 1637700704.137397<br>
 `uuid4:` 89d8676a-6b02-43fa-8694-e97de5680cd0<br>
-`version:` 0.1.0<br>
+`version:` 1.0.5<br>
 
 ### Nargs Options State
 - pretty_help: `enabled`
@@ -179,7 +179,7 @@
 - JSON strings can be single quoted.
 
 ### Aliases Equal/Colon Values Notation
-- All arguments' aliases accept equal/colon values notation.
+- All arguments' aliases accept equal/colon values notation. (Warning: external single quotes trigger error on Windows CMD terminal)
 - i.e. --argument`='value1 value2 "this is value3"'`
 - i.e. --argument`="value1 value2 'this is value3'"`
 - i.e. -a`="value1 value2 'this is value3'"`
@@ -219,5 +219,6 @@
 - For value '`@value`' in command '`--arg @value`', '`@value`' is parsed as a flag set. In order to set '`@value`' as a value use '`--arg=@value`'.
 - For value '`-value`' in command '`--arg -value`', '`-value`' is parsed as an alias. In order to set '`-value`' as a value use '`--arg=-value`'.
 - Question mark alias '`?`' from usage may be misinterpreted by Bash as wildcard operator. If that happens end-user may want to use any other aliases provided for usage argument.
+- For values notation on Windows CMD terminal emulator, command-line `prog.py --arg='value value value'` single quotes trigger shlex `ValueError: No closing quotation`. Instead end-user must type `prog.py --arg="value value value"` or `prog.py --arg="value1 value2 'value 3'"`.
 - Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'unknown argument' else 'value' else 'unknown input'. If 'flags notation' then flag set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).
 
