@@ -12,3 +12,4 @@ gpkgs/
 .nargs-user.json
 .nargs-user.yaml
 nargs-cache.json
+nargs-cache.pickle
