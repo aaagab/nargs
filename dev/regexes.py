@@ -4,27 +4,31 @@ import json
 import os
 import sys
 
+def get_alias_prefixes():
+    return ["", "+", "--", "-", "/", ":", "_"]
+    
+def get_flags_precedence():
+    return ['+', '-', '', '/', ':', '_', '--']
+
 def get_regex(reg_name):
+    values=r"(?P<values_str>(?:\=|:)(?P<values>.*))?"
+    prefixes=r"(?P<prefix>\+|--|-|/|:|_)?"
+    branch_num=r"(?P<branch_num_str>\+(?P<branch_num>[1-9][0-9]*)?)?"
+    branch_num2=r"(?P<branch_num_str2>\+(?P<branch_num2>[1-9][0-9]*)?)?"
+
+    flags=r"@(?P<chars>[a-zA-Z0-9\?][a-zA-Z0-9@\?]*(?<!@))"
     dy=dict(
-        cli_dashless_alias=dict(
-            name="command-line dashless alias",
-            rule=r"^(?P<alias>[a-zA-Z0-9][a-zA-Z0-9\-]*)(?:_(?P<index>[1-9][0-9]*))?(?:(\=\"(?P<dquotes>.*)\"|\=\'(?P<squotes>.*)\'))?$",
+        alias_sort_regstr=dict(
+            rule=r"^(\+|--|-|/|:|_)",
         ),
-        cli_long_alias=dict(
-            name="command-line long alias",
-            rule=r"^(?P<alias>--[a-zA-Z0-9][a-zA-Z0-9\-]*)(?:_(?P<index>[1-9][0-9]*))?(?:(\=\"(?P<dquotes>.*)\"|\=\'(?P<squotes>.*)\'))?$",
+        cli_alias=dict(
+            rule=r"^(?P<alias>{}[a-zA-Z0-9\?][a-zA-Z0-9\-_]*?){}(?P<flags_str>{}{})?{}$".format(prefixes, branch_num, flags, branch_num2, values),
+        ),
+        cli_flags=dict(
+            rule=r"^{}{}{}$".format(flags, branch_num, values),
         ),
         cli_explicit=dict(
-            name="command-line explicit",
-            rule=r"^(?:(?P<minus>-)|(?P<plus_concat>\++)|(?:\+(?P<plus_index>[1-9][0-9]*)))$",
-        ),
-        cli_short_alias=dict(
-            name="command-line short alias",
-            rule=r"^(?P<alias>-[a-zA-Z0-9])(?:_(?P<index>[1-9][0-9]*))?(?:(\=\"(?P<dquotes>.*)\"|\=\'(?P<squotes>.*)\'))?$",
-        ),
-        cli_short_alias_concat=dict(
-            name="command-line short aliases concatenated",
-            rule=r"^-(?P<short_aliases>[a-zA-Z0-9][a-zA-Z0-9]+)$",
+            rule=r"^(?:(?P<plus>\+)|(?P<equal>=)|(?P<minus_concat>\-+)|(?:\-(?P<minus_index>[1-9][0-9]*)))$",
         ),
         def_arg_name=dict(
             name="definition argument name",
@@ -34,29 +38,14 @@ def get_regex(reg_name):
                 "Optional next chars can be any char from lowercase letter, uppercase letter, integer, or underscore.",
             ]
         ),
-        def_dashless_alias=dict(
-            name="definition dashless alias",
-            rule=r"^[a-zA-Z0-9][a-zA-Z0-9\-]*$",
+        def_alias=dict(
+            name="definition alias",
+            rule=r"^({})([a-zA-Z0-9\?][a-zA-Z0-9\-_]*)$".format(prefixes),
             hints=[
-                "Required first char must be either a lowercase letter, an uppercase letter, or an integer.",
-                "Optional next chars can be any char from lowercase letter, uppercase letter, integer or dash.",
-            ]
-        ),
-        def_long_alias=dict(
-            name="definition long alias",
-            rule=r"^--[a-zA-Z0-9][a-zA-Z0-9\-]*$",
-            hints=[
-                "Required first and second char are dashes.",
-                "Required third char must be either a lowercase letter, an uppercase letter, or an integer.",
-                "Optional next chars can be any char from lowercase letter, uppercase letter, integer or dash.",
-            ]
-        ),
-        def_short_alias=dict(
-            name="definition short alias",
-            rule=r"^-[a-zA-Z0-9]$",
-            hints=[
-                "Required first char must be a dash.",
-                "Required second char must be either a lowercase letter, an uppercase letter, or an integer.",
+                "First optional prefix can be any prefix from {}".format(get_alias_prefixes()),
+                "Required next char must be either a lowercase letter, an uppercase letter, an integer.",
+                "Required next char can also be a question mark, if argument property '_is_usage' is set to True. In that case no other chars are accepted.",
+                "Optional next chars can be any char from lowercase letter, uppercase letter, integer, underscore or hyphen.",
             ]
         ),
         def_theme_hexa=dict(
@@ -79,72 +68,15 @@ def get_regex(reg_name):
             name="definition values",
             rule=r"^(?P<star>\*)|(?P<plus>\+)|(?P<qmark>\?)|(?P<min>[1-9][0-9]*)(?:\-(?P<max>(?:[1-9][0-9]*|\*)))?(?P<optional>\?)?$",
             hints=[
-                "_values can be either '*', '+', '?', an integer or a range",
-                "If integer then only a positive integer is accepted",
-                "If range then two positive integers separated with a dash are accepted i.e.: 4-5",
-                "If range then last positive integer can be a star i.e.: 4-*",
+                "_values can be either '*', '+', '?', an integer or a range.",
+                "If an integer is given then only a positive integer is authorized.",
+                "If a range is given then two positive integers separated with a hyphen are authorized i.e.: 4-5.",
+                "If a range is given then last positive integer can also be a star i.e.: 4-*.",
                 "A question mark can be appended for integer and range to set values as optional.",
             ],
         ),
-        special_cmd=dict(
-            name="special command",
-            rule=r"^(?:(?P<at1>@{1,3})(?P<cmark1>:{1,3})?|(?P<cmark2>:{1,3})(?P<at2>@{1,3})?)(?P<params>e?h?i?|e?i?h?|h?e?i?|h?i?e?|i?e?h?|i?h?e?)?$",
-            hints=[
-                "Start with `:` for usage or `@` for argument's path.",
-                "Both `:` and `@` can be used in the command and they are related to current argument on the command-line.",
-                "`:` and `@` can be repeated three times each for verbosity.",
-                "`:`: Print usage of current argument, and first nested arguments.",
-                "`::`: Print usage of current argument, nested arguments and sub-nested arguments.",
-                "`:::`: Print usage of current argument, and all nested arguments.",
-                "`@`: Print current argument's path.",
-                "`@@`: Print current argument's path with argument indexes.",
-                "`@@@`: Print current argument's path with argument indexes and values.",
-                "Params can be added. param `e` print arguments' examples and param `h` print arguments' hint.",
-                "Examples: `@:eh`, `:@h`, `@@@?eh`, `:@@@he`, `:ie`",
-            ]
-        ),
-        def_json_data=dict(
-            name="definition json data",
-            rule="".join([
-                r"^(?P<value_type>bool|float|int|str)(?P<list>\[((?P<min>[1-9][0-9]*)(?::(?P<max>[1-9][0-9]*|\*))?)?\])?(?P<qmark>\?)?$",
-            ]),
-            hints=[
-                "Required value type that can be either bool, float, int, or str.",
-                "Optional square brackets pair [] to define a list.",
-                "Optional one int between brackets for list length.",
-                "Optional two ints separated by a comma between brackets for list minimum length and list maximum length.",
-                "int minimum length must be smaller than int maximum length.",
-                "int minimum must be greater or equal than 1",
-                "Optional one int and a star separated by a comma between brackets for list minimum length and list infinite maximum length.",
-                "Optional question mark that returns null for a value and returns empty list for a list.",
-                "Examples: int, float?, str[], bool[1], int[1:9]?, str[1:*].",
-            ]
-        ),
     )
     return dy[reg_name]
-
-# e?h?i?|e?h?i?|
-
-# e?h?i?|e?i?h?|h?e?i?|h?i?e?|i?e?h?|i?h?e?
-# e i h
-# e
-# eh
-# ei
-# ehi
-# eih
-
-# h
-# he
-# hi
-# hei
-# hie
-
-# i
-# ie
-# ih
-# ieh
-# ihe
-
 
 def get_regex_hints(reg_name):
     dy_regex=get_regex(reg_name)

@@ -5,326 +5,572 @@ import os
 import re
 import sys
 
+from .aliases import check_aliases_conflict
 from .nodes import NodeDfn
-from .set_dfn import get_dfn_prefix
 from .regexes import get_regex, get_regex_hints
+from .set_dfn import get_auto_alias
+from .set_dfn import get_filtered_dy
+from .get_properties import get_arg_properties
 
 from ..gpkgs import message as msg
 
-def verify_name(name, location, verified_names):
-    prefix="Nargs in definition for key '{}'".format(location)
-    if name not in verified_names:
-        if re.match(get_regex("def_arg_name")["rule"], name):
-            verified_names.append(name)
-        else:
-            msg.error([
-                "Argument name '{}' does not match regex:".format(name),
-                *get_regex_hints("def_arg_name"),
-            ], prefix=prefix, exit=1)
+def get_dfn_prefix(app_name, location, option=None):
+    return "For '{}' at Nargs in definition for argument '{}'".format(app_name, location)
+
+def get_location(pnode_dfn, arg_name):
+    if pnode_dfn is None:
+        return arg_name
+    else:
+        return "{} > {}".format(pnode_dfn.location, arg_name)
+
+def verify_name(name, verified_names, dy_err):
+    if isinstance(name, str):
+        if name not in verified_names:
+            if re.match(get_regex("def_arg_name")["rule"], name):
+                verified_names.append(name)
+            else:
+                lst_errors=[
+                    "name '{}' does not match argument regex:".format(name),
+                    *get_regex_hints("def_arg_name"),
+                ]
+                if name[0] == "_":
+                    properties=sorted(["_{}".format(prop) for prop, dy in get_arg_properties().items() if dy["for_definition"] is True])
+                    lst_errors.append("Name '{}' not found in available properties: {}".format(name, properties))
+                msg.error(lst_errors, prefix=dy_err["prefix"], pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+    else:
+        msg.error("Argument name '{}' wrong type {}. Type must match {}.".format(name, type(name), str), prefix=dy_err["prefix"], pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+
+
+def verify_type(dy_args, arg_name, dy_err):
+    if dy_args[arg_name] is None:
+        dy_args[arg_name]=dict()
+    elif not isinstance(dy_args[arg_name], dict):
+        msg.error("nested argument '{}' type {} must be of type {}.".format(arg_name, type(dy_args[arg_name]), dict), prefix=dy_err["prefix"], pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
 
 def get_node_dfn(
-    dy_metadata=dict(),
-    dy_dfn=dict(),
+    builtins,
+    dy_attr_aliases,
+    pretty,
+    app_name,
+    dy_args,
+    exc,
     arg_name=None,
     pnode_dfn=None,
-    verified_names=[],
-    dy_replicate=dict(),
+    verified_names=None,
+    dy_replicate=None,
+    dy_chk=None,
+    usage_node=None,
 ):
     if pnode_dfn is None:
-        if len(dy_dfn) == 0:
-            return None
-        elif len(dy_dfn) != 1: 
-            msg.error("definition accepts only one root key.", prefix=get_dfn_prefix(), exit=1)
-        else:
-            arg_name=next(iter(dy_dfn))
-            
+        if dy_args is None:
+            dy_args=dict()
+        verified_names=[]
+        dy_replicate=dict()
+        dy_chk=dict()
+
+        arg_name="args"
+        dy_args=dict(args=dy_args)
+
+    location=get_location(pnode_dfn, arg_name)
+    dy_err=dict(
+        exc=exc,
+        location=location,
+        prefix=get_dfn_prefix(app_name, location),
+        pretty=pretty,
+    )
+
     if arg_name == "@":
-        if pnode_dfn is None:
-            msg.error("'@' not allowed at root key.", prefix=get_dfn_prefix(), exit=1)
-        else:
-            elems=[]
-            if isinstance(dy_dfn[arg_name], str):
-                elems.append(dy_dfn[arg_name])
-            elif isinstance(dy_dfn[arg_name], list):
-                for entry in dy_dfn[arg_name]:
-                    if isinstance(entry, str):
-                        if entry not in elems:
-                            elems.append(entry)
-                    else:
-                        msg.error("Wrong value type {} in list. It must be {}.".format(type(entry), str), prefix=get_dfn_prefix(pnode_dfn.location, arg_name), exit=1)
-            else:            
-                msg.error("Wrong value type {}. It must be either {} or {}.".format(type(dy_dfn[arg_name]), str, list), prefix=get_dfn_prefix(pnode_dfn.location, arg_name), exit=1)
+        elems=[]
+        if isinstance(dy_args[arg_name], str):
+            for elem in dy_args[arg_name].split(","):
+                elem=elem.strip()
+                if elem == "":
+                    msg.error("'@' does not accept empty string.", prefix=dy_err["prefix"], pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+                elems.append(elem)
+        elif isinstance(dy_args[arg_name], list):
+            for entry in dy_args[arg_name]:
+                if isinstance(entry, str):
+                    entry=entry.strip()
+                    if entry == "":
+                        msg.error("'@' does not accept empty string.", prefix=dy_err["prefix"], pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
 
-            at_address=".".join(pnode_dfn.location.split(" > "))
-            dy_replicate[at_address]=dict(
-                at_adresses=elems,
-                pnode=pnode_dfn,
-            )
+                    if entry not in elems:
+                        elems.append(entry)
+                else:
+                    msg.error("Wrong value type {} in list. It must be {}.".format(type(entry), str), prefix=dy_err["prefix"], pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+        else:            
+            msg.error("Wrong value type {}. It must be either {} or {}.".format(type(dy_args[arg_name]), str, list), prefix=dy_err["prefix"], pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+
+        set_dy_replicate(pnode_dfn, dy_replicate, elems)
     else:
-        if pnode_dfn is not None:
-            verify_name(arg_name, pnode_dfn.location, verified_names)
-
-        node_dfn=NodeDfn(dy=dy_dfn[arg_name], name=arg_name, is_a_dump=False, is_dy_preset=False, parent=pnode_dfn)
-
-        node_arg=None
-        if node_dfn.dy["enabled"] is True:
-            continue_process=True
-            if node_dfn.is_root is True:
-                add_builtins(node_dfn, dy_dfn, arg_name, dy_metadata)
-            else:
-                if node_dfn.dy["is_builtin"] is True:
-                    if len(node_dfn.dy["aliases"]) == 0:
-                        node_dfn.parent.nodes.remove(node_dfn)
-                        continue_process=False
-
-            if dy_dfn[arg_name] is not None and continue_process is True:
-                for key in sorted(dy_dfn[arg_name]):
-                    get_node_dfn(
-                        dy_metadata=dy_metadata,
-                        dy_dfn=dy_dfn[arg_name],
-                        arg_name=key,
-                        pnode_dfn=node_dfn,
-                        verified_names=verified_names,
-                        dy_replicate=dy_replicate,
-                    )
+        node_level=None
+        if pnode_dfn is None:
+            node_level=1
         else:
-            if node_dfn.is_root is False:
-                node_dfn.parent.nodes.remove(node_dfn)
+            node_level=pnode_dfn.level+1
 
-        if node_dfn.is_root is True:
-            if node_dfn.dy["enabled"] is True:
-                process_at_addresses(node_dfn, dy_replicate, verified_names)
-                process_aliases(node_dfn)
+        if node_level != 2:
+            verify_name(arg_name, verified_names, dy_err)
+        verify_type(dy_args, arg_name, dy_err)
+
+        filtered_dy=get_filtered_dy(
+            pnode_dfn,
+            arg_name,
+            dy_args[arg_name],
+            dy_attr_aliases,
+            dy_err,
+        )
+
+        check_aliases_conflict(pnode_dfn, filtered_dy, dy_err)
+
+        if filtered_dy["enabled"] is True:
+            node_dfn=NodeDfn(
+                dy=filtered_dy,
+                location=location,
+                name=arg_name,
+                parent=pnode_dfn,
+            )
+
+            set_chk(dy_chk, node_dfn)
+
+            if node_dfn.is_root is False:
+                if node_dfn.dy["required"] is True:
+                    node_dfn.parent.dy["required_children"].append(node_dfn.name)
+                if node_dfn.name in node_dfn.parent.dy["xor"]:
+                    group_nums=sorted([int(num) for num in node_dfn.parent.dy["xor"][node_dfn.name]])
+                    node_dfn.dy["xor_groups"]=group_nums
+
+            if node_dfn.is_root is True:
+                node_dfn.dy["is_builtin"]=False
+            elif node_dfn.parent.is_root is False:
+                node_dfn.dy["is_builtin"]=node_dfn.parent.dy["is_builtin"]
+
+            if node_dfn.is_root is True:
+                add_builtins(builtins, dy_args, arg_name, verified_names, dy_attr_aliases, dy_err)
+
+            for key in sorted(dy_args[arg_name]):
+                get_node_dfn(
+                    builtins=builtins,
+                    dy_attr_aliases=dy_attr_aliases,
+                    pretty=pretty,
+                    app_name=app_name,
+                    dy_args=dy_args[arg_name],
+                    exc=exc,
+                    arg_name=key,
+                    pnode_dfn=node_dfn,
+                    verified_names=verified_names,
+                    dy_replicate=dy_replicate,
+                    dy_chk=dy_chk,
+                )
+
+            if node_dfn.is_root is True:
+                process_at_addresses(node_dfn, dy_replicate, verified_names, dy_attr_aliases, dy_chk, dy_err)
+                final_check(dy_chk, dy_err, app_name)
                 return node_dfn
-            else:
+        else:
+            if pnode_dfn is None:
                 return None
 
-def get_aliases_sort(node):
-    aliases_sort=None
-    if len(node.dy["aliases"]) > 0:
-        tmp_aliases=[]
-        dy_aliases=dict()
-        for alias in node.dy["aliases"]:
-            tmp_alias=re.sub(r"^-+", "", alias)
-            if tmp_alias not in dy_aliases:
-                dy_aliases[tmp_alias]=[]
-            dy_aliases[tmp_alias].append(alias)
+def final_check(dy_chk, dy_err, app_name):
+    usage_nodes=[]
+    builtin=None
+    for node, chks in dy_chk.items():
+        if "chk_xor" in chks:
+            child_names=sorted([cnode.name for cnode in node.nodes])
+            for name in sorted(node.dy["xor"]):
+                if name not in child_names:
+                    msg.error("at key '_xor' child argument name '{}' not found.".format(name), prefix=get_dfn_prefix(app_name, node.location), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
 
-        aliases_sort=[]
-        for tmp_alias in sorted(dy_aliases):
-            aliases_sort.append(tmp_alias)
-            for alias in sorted(dy_aliases[tmp_alias]):
-                tmp_aliases.append(alias)
+        if "chk_need_child" in chks:
+            if len(node.nodes) == 0:
+                node.dy["need_child"]=False
+            else:
+                if node.level == 1:
+                    node.dy["need_child"]=False
+                    for cnode in node.nodes:
+                        if cnode.dy["is_builtin"] is False and cnode.dy["is_custom_builtin"] is False and cnode.dy["is_usage"] is False:
+                            node.dy["need_child"]=True
+                            break
 
-        node.dy["aliases"]=tmp_aliases
-        
-        aliases_sort=",".join(aliases_sort)
+        if "chk_is_usage" in chks:
+            if node.dy["is_builtin"] is True:
+                builtin=node
+            usage_nodes.append(node)
 
-    return aliases_sort
+    if len(usage_nodes) > 1:
+        error_msgs=[
+            "property '_is_usage' can only be declared for one argument but it has been declared for multiple arguments:",
+            *sorted([ "- {}".format(node.location) for node in usage_nodes]),
+        ]
 
-def get_either(node):
-    node_names={n.name: n for n in node.nodes}
-    either_names=[]
-    for lst_names in node.dy["either"]:
-        for name in lst_names:
-            if name not in either_names:
-                either_names.append(name)
-
-    _either=dict()
-    for name in either_names:
-        _either[name]=[]
-        if name in node_names:
-            if node_names[name].dy["required"] is True:
-                msg.error("child argument '{}' can't be both with option '_required:True' and belonging in parent '_either' option.".format(name), prefix=get_dfn_prefix(node.location, "_either"), exit=1)
-            if node_names[name].dy["single"] is True:
-                msg.error("child argument '{}' can't be both with option '_single:True' and belonging in parent '_either' option.".format(name), prefix=get_dfn_prefix(node.location, "_either"), exit=1)
-        else:
-            msg.error("argument name '{}' does not exist in children names {}".format(name, node_names), prefix=get_dfn_prefix(node.location, "_either"), exit=1)
-
-    for g, group in enumerate(node.dy["either"]):
-        index=str(g+1)
-        for name in group:
-            if node_names[name].dy["either_notation"] is None:
-                node_names[name].dy["either_notation"]=[]
-            node_names[name].dy["either_notation"].append(index)
-            for g in group:
-                if g != name:
-                    if g not in _either[name]:
-                        _either[name].append(g)
-    return _either
-
-def process_aliases(node_dfn):
-    if node_dfn.dy["either"] is not None:
-        node.dy["either"]=get_either(node_dfn)
-    node_dfn.get_arg().set_default_alias(node_dfn.dy["default_alias"])
-    node_dfn.dy["aliases_sort"]=get_aliases_sort(node_dfn)
-    for node in node_dfn.nodes:
-        process_aliases(node)
-
-def add_builtins(node_dfn, dy_dfn, arg_name, dy_metadata):
-    if node_dfn.level == 1:
-        if dy_dfn[arg_name] is None:
-            dy_dfn[arg_name]=dict()
-        
-        for key in dy_dfn[arg_name]:
-            if isinstance(dy_dfn[arg_name][key], dict):
-                if "_is_builtin" in dy_dfn[arg_name][key]:
-                    del dy_dfn[arg_name][key]["_is_builtin"]
-
-        if "cmd" not in dy_dfn[arg_name]:
-            dy_dfn[arg_name]["cmd"]=dict(
-                _aliases="-c,--cmd",
-                _hint="Load program's arguments from a file.",
-                _info="Arguments can be typed with indentation and new lines in the text file. Lines are then striped and new lines are joined with spaces and the whole text is split with shlex and fed again to the program. Root argument alias needs to be provided as first argument. Empty lines and lines starting with '#' are ignored.",
-                _single=True,
-                _type="file",
-                _is_builtin=True,
+        if builtin is not None:
+            error_msgs.append(
+                "Built-in node '{}' may be disabled through Nargs 'builtins' option.".format(builtin.location),
             )
-        if "conf_path" in dy_metadata:
-            if "conf_path" not in dy_dfn[arg_name]:
-                dy_dfn[arg_name]["conf_path"]=dict(
-                    _aliases="--conf_path",
-                    _hint="Print program configuration path.",
-                    _single=True,
-                    _is_builtin=True,
-                )
-        if "examples" not in dy_dfn[arg_name]:
-            dy_dfn[arg_name]["examples"]=dict(
-                _aliases="--examples",
-                _hint="Print program examples.",
-                _single=True,
-                _is_builtin=True,
-            )
-        if "help" not in dy_dfn[arg_name]:
-            dy_dfn[arg_name]["help"]=dict(
-                _aliases="-h,--help",
-                _hint="Print program help.",
-                _single=True,
-                _is_builtin=True,
-                syntax=dict(
-                    _hint="Print arguments Cheat Sheet syntax."
-                ),
-                export=dict(
-                    _hint="Export help to selected format.",
-                    _in="asciidoc,html,markdown,text",
-                    to=dict(
-                        _hint="Export help to selected path.",
-                        _type="vpath",
-                    ),
-                ),
-            )
-        if "uuid4" in dy_metadata:
-            if "uuid4" not in dy_dfn[arg_name]:
-                dy_dfn[arg_name]["uuid4"]=dict(
-                    _aliases="--uuid4",
-                    _hint="Print program UUID4.",
-                    _single=True,
-                    _is_builtin=True,
-                )
-        if "usage" not in dy_dfn[arg_name]:
-            dy_dfn[arg_name]["usage"]=dict(
-                _aliases="--usage",
-                _hint="Print program usage.",
-                _single=True,
-                _is_builtin=True,
-            )
-        if "version" in dy_metadata:
-            if "version" not in dy_dfn[arg_name]:
-                dy_dfn[arg_name]["version"]=dict(
-                    _aliases="-v,--version",
-                    _hint="Print program version.",
-                    _single=True,
-                    _is_builtin=True,
-                )
 
-def process_at_addresses(node_dfn, dy_replicate, verified_names):
-    while True:
-        found_one=False
-        recursives=set()
-        not_founds=set()
-        for at_address in sorted(dy_replicate):
-            dy=dy_replicate[at_address]
-            for nested_at_address in dy["at_adresses"].copy():
-                if nested_at_address in dy_replicate:
-                    recursives.add(nested_at_address)
-                else:
-                    if set_at_address(node_dfn, dy["pnode"], nested_at_address, verified_names) is True:
-                        found_one=True
-                        dy["at_adresses"].remove(nested_at_address)
-                    else:
-                        not_founds.add(nested_at_address)
-            if len(dy["at_adresses"]) == 0:
-                del dy_replicate[at_address]
 
-        if len(dy_replicate) == 0:
-            break
-        else:
-            if found_one is False:
-                error=[
-                    "Nargs in definition: Couldn't resolve @ addresses",
-                ]
-                if len(not_founds) > 0:
-                    error.append("Address(es) not found:")
-                    if len(recursives) > 0:
-                        error.append("Probably comes from recursive address(es):")
-                    for not_found in not_founds:
-                        error.append("- {}".format(not_found))
-                if len(recursives) > 0:
-                    if len(not_founds) > 0:
-                        error.append("Potential recursive address(es):")
-                    else:
-                        error.append("Recursive address(es):")
-                    for recursive in recursives:
-                        error.append("- {}".format(recursive))
-                msg.error(error, exit=1)
+        msg.error(error_msgs
+        , prefix=get_dfn_prefix(app_name, node.location), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
 
-def set_at_address(node_root, node_dst, at_address, verified_names):
-    prefix="Nargs in definition at key '{}' for @:{}".format(node_dst.location, at_address)
-    node_src=node_root
-    for n, name in enumerate(at_address.split(".")):
-        if n == 0:
-            if name != node_root.name:
-                msg.error("@ adresses are absolute, first name must be equal to '{}' not '{}'".format(node_root.name, name), prefix=prefix, exit=1)
-        else:
-            verify_name(name, "{} for @:{}".format(node_dst.location, at_address), verified_names)
-            found=False
-            for node in node_src.nodes:
-                if node.name == name:
-                    found=True
-                    node_src=node
-                    break
-            if found is False:
-                return False
+    if len(usage_nodes) == 1:
+        node_usage=usage_nodes[0]
 
-    duplicate_node(node_src, node_dst)
-    return True
+        for key, value in dict(
+            allow_parent_fork=True,
+            allow_siblings=True,
+            is_custom_builtin=True,
+            fork=False,
+            repeat="replace",
+            required=False,
+        ).items():
+            if node_usage.dy[key] != value:
+                ignore=node_usage.name == "_usage_" and key == "is_custom_builtin"
+                if ignore is False:
+                    msg.error("'_is_usage' node at key '{}' value '{}' must be '{}'.".format(key, node_usage.dy[key], value), prefix=get_dfn_prefix(app_name, node_usage.location), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
 
-def duplicate_node(pnode_src, pnode_dst):
-    node_dst=NodeDfn(dy=deepcopy(pnode_src.dy), name=pnode_src.name, is_a_dump=False, is_dy_preset=True, parent=pnode_dst)
-    for node_src in pnode_src.nodes:
+        if node_usage in node_usage.parent.dy_xor:
+            msg.error("'_is_usage' node can't be present in parent '{}' '_xor' groups.".format(node_usage.parent.location), prefix=get_dfn_prefix(app_name, node_usage.location), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+
+def set_chk(dy_chk, node_dfn):
+    if len(node_dfn.dy["xor"]) > 0:
+        dy_chk[node_dfn]=["chk_xor"]
+
+    for prop in ["need_child", "is_usage"]:
+        if node_dfn.dy[prop] is True:
+            if node_dfn in dy_chk:
+                dy_chk[node_dfn].append("chk_{}".format(prop))
+            else:
+                dy_chk[node_dfn]=["chk_{}".format(prop)]
+    
+
+def duplicate_node(tmp_prefix, dy_err, node_to_copy, pnode_at, dy_chk, first_node=True):
+    if first_node is True:
+        if node_to_copy.dy["is_builtin"] is True:
+            msg.error("Built-in argument '{}' can't be duplicated.".format(node_to_copy.name, pnode_at.location), prefix=tmp_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+
+        check_aliases_conflict(pnode_at, node_to_copy.dy, dy_err)
+
+    node_at=NodeDfn(
+        dy=deepcopy(node_to_copy.dy),
+        location=get_location(pnode_at, node_to_copy.name),
+        name=node_to_copy.name,
+        parent=pnode_at,
+    )
+    
+    set_chk(dy_chk, node_at)
+
+    for child_node_to_copy in node_to_copy.nodes:
         duplicate_node(
-            pnode_src=node_src,
-            pnode_dst=node_dst,
+            tmp_prefix=tmp_prefix,
+            dy_err=dy_err,
+            node_to_copy=child_node_to_copy,
+            pnode_at=node_at,
+            dy_chk=dy_chk,
+            first_node=False,
         )
 
-def get_cached_node_dfn(dy_dfn, arg_name=None, pnode_dfn=None):
-    tmp_dy_dfn=dict()
-    if pnode_dfn is None:
-        arg_name=next(iter(dy_dfn))
-    
-    for key, value in dy_dfn[arg_name].items():
-        if key != "args":
-            tmp_dy_dfn[key]=value
-    
-    node_dfn=NodeDfn(dy=tmp_dy_dfn, name=arg_name, is_a_dump=True, is_dy_preset=False, parent=pnode_dfn)
-    node_dfn.get_arg()._default_alias=dy["_default_alias"]
+def set_dy_replicate(node_dfn, dy_replicate, addresses):
+    at_address=".".join(node_dfn.location.split(" > "))
+    dy_replicate[at_address]=dict(
+        at_addresses=addresses,
+        pnode=node_dfn,
+    )
 
-    for key in dy_dfn[arg_name]["args"]:
-        get_cached_node_dfn(
-            dy_dfn=dy_dfn[arg_name]["args"],
-            arg_name=key,
-            pnode_dfn=node_dfn,
-        )
+def get_node_to_copy(tmp_prefix, dy_err, at_path, root_node, pnode=None):
+    ref_nodes=[]
+    at_path_index=None
+    if pnode is None:
+        pnode=root_node
+        at_path_index=0
+        at_path=at_path.split(".")
+        ref_nodes=[root_node]
+    else:
+        at_path_index=pnode.level
+        ref_nodes=pnode.nodes
+    
+    node_name=at_path[at_path_index]
+    for ref_node in ref_nodes:
+        if node_name == ref_node.name:
+            if at_path_index == len(at_path) - 1:
+                return ref_node
+            else:
+                return get_node_to_copy(tmp_prefix, dy_err, at_path, root_node, ref_node) 
 
-    if node_dfn.is_root is True:
-        return node_dfn
+    msg.error("argument path '{}' does not exist in arguments tree.".format(" > ".join(at_path)), prefix=tmp_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+
+def get_recursive_loops(dy_unsolved, at_address, loops=None, loop=None, addresses_done=None):
+    is_root=False
+    if addresses_done is None:
+        is_root=True
+        addresses_done=[]
+        loops=[]
+        loop=[at_address]
+        loops.append(loop)
+    else:
+        loop.append(at_address)
+
+    if at_address in dy_unsolved:
+        if at_address not in addresses_done:
+            addresses_done.append(at_address)
+            index=0
+            for addr in dy_unsolved[at_address]:
+                if at_address in dy_unsolved:
+                    index+=1
+                    tmp_loop=None
+                    if index > 1:
+                        tmp_loop=deepcopy(loop)
+                        loops.append(tmp_loop)
+                    else:
+                        tmp_loop=loop
+                    get_recursive_loops(dy_unsolved, addr, loops, tmp_loop, addresses_done)
+
+    if is_root is True:
+        return loops
+
+def is_in_dy_replicate(dy_replicate, address):
+    if address in dy_replicate:
+        return True
+    else:
+        addresses=sorted(dy_replicate)
+        for addr in addresses:
+            if len(address) <= len(addr):
+                if addr[:len(address)] == address:
+                    return True
+        return False
+
+def process_at_addresses(node_dfn, dy_replicate, verified_names, dy_attr_aliases, dy_chk, dy_err):
+    if len(dy_replicate) > 0:
+        dy_unsolved=dict()
+        ref_nodes=dict()
+        ref_prefixes=dict()
+    
+        while True:
+            element_deleted=False
+            for at_address in sorted(dy_replicate):
+                dy=dy_replicate[at_address]
+                for nested_at_address in dy["at_addresses"].copy():
+                    tmp_prefix="{} for argument '{}' at key '@' with value '{}'".format(dy_err["prefix"], dy["pnode"].location, nested_at_address)
+                    if is_in_dy_replicate(dy_replicate, nested_at_address) is True:
+                        if at_address not in dy_unsolved:
+                            dy_unsolved[at_address]=[]
+                            ref_nodes[at_address]=dy["pnode"]
+                            ref_prefixes[at_address]=tmp_prefix
+
+                        if nested_at_address not in dy_unsolved[at_address]:
+                            dy_unsolved[at_address].append(nested_at_address)
+                    else:
+                        node_to_copy=get_node_to_copy(tmp_prefix, dy_err, nested_at_address, node_dfn.root)
+                        
+                        node_dst_names=[node.name for node in dy["pnode"].nodes]
+                        if node_to_copy.name in node_dst_names:
+                            msg.error("argument '{}' can't be duplicated at location '{}' because one sibling argument has already the same name.".format(node_to_copy.name, dy["pnode"].location), prefix=dy_err["prefix"], pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+
+                        if node_to_copy.dy["enabled"] is True:
+                            duplicate_node(
+                                tmp_prefix,
+                                dy_err,
+                                node_to_copy,
+                                dy["pnode"],
+                                dy_chk,
+                            )        
+                        dy_replicate[at_address]["at_addresses"].remove(nested_at_address)
+                        if at_address in dy_unsolved:
+                            if nested_at_address in dy_unsolved[at_address]:
+                                dy_unsolved[at_address].remove(nested_at_address)
+                                if len(dy_unsolved[at_address]) == 0:
+                                    del dy_unsolved[at_address]
+                        element_deleted=True
+                        if len(dy_replicate[at_address]["at_addresses"]) == 0:
+                            del dy_replicate[at_address]
+
+                        if len(dy_replicate) == 0:
+                            break
+            
+            if element_deleted is True:
+                if len(dy_replicate) == 0:
+                    break
+            else:
+                recursive_loop=None
+                recursive_addr=None
+                recursive_element=None
+                for at_address in sorted(dy_unsolved):
+                    for recursive_loop in get_recursive_loops(dy_unsolved, at_address):
+                        for addr in sorted(dy_unsolved):
+                            num_occurrences=recursive_loop.count(addr)
+                            for elem in recursive_loop:
+                                if len(elem) < len(addr):
+                                    if addr[:len(elem)] == elem: 
+                                        num_occurrences+=1
+                            if num_occurrences > 1:
+                                recursive_addr=at_address
+                                recursive_element=addr
+                                break
+                        if recursive_addr is not None:
+                            break
+                    if recursive_addr is not None:
+                        break
+
+                tmp_prefix=None
+                error_msg="Infinite recursion"
+                if recursive_addr is None:
+                    tmp_prefix=dy_err["prefix"]
+                    error_msg+=" not defined for key '@' in {}.".format(sorted(dy_unsolved));
+                else:
+                    tmp_prefix=ref_prefixes[recursive_addr]
+                    error_msg+=" at address {} with loop {}.".format(recursive_element, recursive_loop)
+
+                msg.error(error_msg, prefix=tmp_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+
+def add_builtins(builtins, dy_args, arg_name, verified_names, dy_attr_aliases, dy_err):
+    for key in dy_args[arg_name].copy():
+        if key != "@":
+            verify_name(key, verified_names, dy_err)
+            verify_type(dy_args[arg_name], key, dy_err)
+            dy_args[arg_name][key]["_is_builtin"]=False
+
+    flag_prefix=dy_attr_aliases["auto_alias_prefix"]
+    if flag_prefix == "--":
+        flag_prefix="-"
+
+    properties=sorted([prop for prop, dy in get_arg_properties().items() if dy["for_help"] is True])
+
+    dy_builtins={
+        "_cmd_": {
+            "_aliases": "{}".format(get_auto_alias(dy_attr_aliases, "cmd")),
+            "_allow_parent_fork": False,
+            "_allow_siblings": False, 
+            "_hint": "Load program's arguments from a file.",
+            "_info": "Arguments can be typed with indentation and new lines in the text file. Lines are then striped and new lines are joined with spaces and the whole text is split with shlex and fed again to the program. Root argument alias needs to be provided as first argument. Empty lines and lines starting with '#' are ignored.",
+            "_type": "file",
+        },
+        "_help_": {
+            "_aliases": "{},{}h".format(get_auto_alias(dy_attr_aliases, "help"), flag_prefix),
+            "_allow_parent_fork": False,
+            "_allow_siblings": False, 
+            "_hint": "Print program help and exit.",
+            "examples" : {
+                "_aliases": "{},{}e".format(get_auto_alias(dy_attr_aliases, "examples"), flag_prefix),
+                "_allow_siblings": False,
+                "_hint": "Print program examples and exit.",
+            },
+            "export": {
+                "_hint": "Export help to selected format.",
+                "_in": "asciidoc,html,markdown,text",
+                "overwrite": {
+                    "_hint": "Implicitly overwrites exported documentation file if it exists already."
+                },
+                "to": {
+                    "_hint": "Export help to selected path.",
+                    "_type": "vpath",
+                },
+            },
+            "metadata" : {
+                "_aliases": "{},{}m".format(get_auto_alias(dy_attr_aliases, "metadata"), flag_prefix),
+                "_allow_siblings": False,
+                "_hint": "Print program metadata and exit.",
+                "_info": "KEY can be provided to get only selected key(s) from metadata dictionary. If KEY is not provided then all keys from metadata dictionary are selected.",
+                "_label": "KEY",
+                "_values": "*",
+                "_xor": "keys,values",
+                "keys": {
+                    "_aliases": "{},{}k".format(get_auto_alias(dy_attr_aliases, "keys"), flag_prefix),
+                    "_hint": "Return only keys from metadata dictionary",
+                },
+                "values": {
+                    "_aliases": "{},{}v".format(get_auto_alias(dy_attr_aliases, "values"), flag_prefix),
+                    "_hint": "Return only values from metadata dictionary",
+                },
+                "json": {
+                    "_aliases": "{},{}j".format(get_auto_alias(dy_attr_aliases, "json"), flag_prefix),
+                    "_hint": "Selected metadata is returned as json dictionary",
+                },
+            },
+            "syntax": {
+                "_aliases": get_auto_alias(dy_attr_aliases, "syntax"),
+                "_hint": "Print arguments Cheat Sheet syntax and exit.",
+                "only": {
+                    "_aliases": get_auto_alias(dy_attr_aliases, "only"),
+                    "_hint": "Print only arguments Cheat Sheet syntax and exit.",
+                },
+            },
+        },
+        "_path_etc_": {
+            "_aliases": get_auto_alias(dy_attr_aliases, "path_etc"),
+            "_allow_parent_fork": False,
+            "_allow_siblings": False, 
+            "_hint": "Print program configuration path and exit.",
+        },
+        "_usage_": {
+            "_aliases": "{},{}u,?".format(get_auto_alias(dy_attr_aliases, "usage"), flag_prefix),
+            "_hint": "Print program usage and exit.",
+            "_info": "LEVEL is an integer >= 0. LEVEL number describes the number of nested node levels to print. LEVEL number is relative to current argument node level. If LEVEL == 0 then all nested node levels are printed. If LEVEL == 1 then only current argument is printed. If LEVEL > 1 current argument's node levels are printed and LEVEL sets the depth of node levels nesting.",
+            "_is_usage": True,
+            "examples": {
+                "_aliases": "{},{}e".format(get_auto_alias(dy_attr_aliases, "examples"), flag_prefix),
+                "_hint": "Print argument(s) examples if any",
+            },
+            "depth": {
+                "_aliases": "{},{}d".format(get_auto_alias(dy_attr_aliases, "depth"), flag_prefix),
+                "_default": 1,
+                "_required": True,
+                "_hint": "Provide the printing depth of nested arguments.",
+                "_info": "If LEVEL == -1 then all nested arguments are printed. If LEVEL == 0 then only selected argument is printed. If LEVEL > 0 then the bigger the LEVEL number is, the bigger the children nesting level is if any children are available.",
+                "_label": "LEVEL",
+                "_type": "int",
+                "_values": "1",
+            },
+            "from_": {
+                "_aliases": "{},{}f".format(get_auto_alias(dy_attr_aliases, "from"), flag_prefix),
+                "_default": 0,
+                "_required": True,
+                "_hint": "This option allows to start printing usage from a parent.",
+                "_info": "If LEVEL == -1 then selected argument is the root argument. If LEVEL == 0 then selected argument is the current argument. If LEVEL > 0 then one argument parent is selected and the bigger the LEVEL number is, the older the selected parent is unless parent's limit is reached. Argument's parent's limit is the oldest parent also called the root argument.",
+                "_label": "LEVEL",
+                "_type": "int",
+                "_values": "1",
+            },
+            "flags": {
+                "_aliases": "{},{}F".format(get_auto_alias(dy_attr_aliases, "flags"), flag_prefix),
+                "_hint": "Print flag set if any for all arguments available on the terminal.",
+            },
+            "hint": {
+                "_aliases": "{},{}h".format(get_auto_alias(dy_attr_aliases, "hint"), flag_prefix),
+                "_hint": "Print argument(s) hint if any.",
+            },
+            "info": {
+                "_aliases": "{},{}i".format(get_auto_alias(dy_attr_aliases, "info"), flag_prefix),
+                "_hint": "Print argument(s) info if any.",
+            },
+            "path": {
+                "_aliases": "{},{}p".format(get_auto_alias(dy_attr_aliases, "path"), flag_prefix),
+                "_hint": "Print argument(s) path with values.",
+            },
+            "properties": {
+                "_aliases": "{},{}r".format(get_auto_alias(dy_attr_aliases, "properties"), flag_prefix),
+                "_hint": "Print argument(s) properties.",
+                "_in": properties,
+                "_values": "1-{}?".format(len(properties)),
+            }
+
+        },
+        "_version_": {
+            "_aliases": "{},{}v".format(get_auto_alias(dy_attr_aliases, "version"), flag_prefix),
+            "_allow_parent_fork": False,
+            "_allow_siblings": False, 
+            "_hint": "Print program version and exit.",
+        },
+    }
+    for builtin in builtins:
+        tmp_name="_{}_".format(builtin)
+        aliases=builtins[builtin]
+        if aliases is not None:
+            dy_builtins[tmp_name]["_aliases"]=aliases
+        set_builtin_child(dy_builtins, tmp_name)
+        dy_args[arg_name][tmp_name]=dy_builtins[tmp_name]
+
+def set_builtin_child(dy, name):
+    dy[name]["_is_builtin"]=True
+    for prop in dy[name]:
+        if prop[0] != "_":
+            set_builtin_child(dy[name], prop)
+

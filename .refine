@@ -9,3 +9,5 @@ __pycache__/
 /.gitattributes
 /todo.txt
 .directory
+/tests
+/test.py
