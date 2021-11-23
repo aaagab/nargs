@@ -616,7 +616,7 @@ def get_nargs_syntax(style, user_options, print_options=True):
     text.append("\n{}".format(style.get_text("Aliases Equal/Colon Values Notation", "syntax_headers")))
     open_ul_html(style, text)
     for tmp_text in [
-        "All arguments' aliases accept equal/colon values notation.",
+        "All arguments' aliases accept equal/colon values notation. (Warning: external single quotes trigger error on Windows CMD terminal)",
         "i.e. {}{}".format(
             style.get_text("--argument", "aliases"),
             style.get_text("='value1 value2 \"this is value3\"'", "emphasize"),
@@ -800,7 +800,13 @@ def get_nargs_syntax(style, user_options, print_options=True):
         "Question mark alias '{}' from usage may be misinterpreted by Bash as wildcard operator. If that happens end-user may want to use any other aliases provided for usage argument.".format(
             style.get_text("?", "emphasize"),
         ),
-        "Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'unknown argument' else 'value' else 'unknown input'. If 'flags notation' then flag set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).",  
+        "For values notation on Windows CMD terminal emulator, command-line {} single quotes trigger shlex {}. Instead end-user must type {} or {}.".format(
+            style.get_text("prog.py --arg='value value value'", "emphasize"),
+            style.get_text("ValueError: No closing quotation", "emphasize"),
+            style.get_text("prog.py --arg=\"value value value\"", "emphasize"),
+            style.get_text("prog.py --arg=\"value1 value2 'value 3'\"", "emphasize"),
+        ),
+        "Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'unknown argument' else 'value' else 'unknown input'. If 'flags notation' then flag set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).",
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
         append_li_html(style, text)
