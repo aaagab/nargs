@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import traceback
+import yaml
 
 from ..dev.nargs import Nargs
 from ..dev.exceptions import EndUserError
@@ -361,3 +362,21 @@ def test_get_args(
 
     args=nargs.get_args("--args --arg-nine --n-arg value")
     if not (len(args.arg_nine.n_arg._values) == 1): err()
+
+    args="""
+        arg:
+            _values: "*"
+    """
+    nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True)
+    with CatchEx(EndUserError) as c:
+        c.text="There is no closing quotation for command-line"
+        args=nargs.get_args("args arg=val1'")
+
+    args="""
+        arg:
+            _values: "*"
+    """
+    nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True)
+    with CatchEx(EndUserError) as c:
+        c.text="There is no closing quotation for value(s)"
+        args=nargs.get_args("args arg=\"val1'\"")

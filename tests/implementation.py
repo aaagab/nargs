@@ -2101,11 +2101,11 @@ def test_implementation(
 
     args="""
         arg:
-            _values: "?"
+            _values: "*"
         other:
             _aliases: "-4"
     """
-    nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True, cache=False)
+    nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(cmd=None), raise_exc=True, cache=False)
     with CatchEx(EndUserError) as c:
         c.text="not an explicit notation '-4'"
         args=nargs.get_args("args arg -4")
@@ -2126,3 +2126,21 @@ def test_implementation(
 
     args=nargs.get_args("args arg=-value")
     if args.arg._value != "-value": err()
+
+
+    args="""
+        arg:
+            _values: "*"
+        other:
+            _values: "*"
+            nested:
+                _values: "*"
+    """
+    nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(cmd=None), raise_exc=True, cache=False)
+
+    args=nargs.get_args("args cmd='tests/assets/cmd2.txt'")
+    if len(args.arg._values) != 3: err()
+    if "val 3" not in args.arg._values: err()
+    if len(args.other._values) != 1: err()
+    if len(args.other.nested._values) != 4: err()
+    if "".join(args.other.nested._values) != "1234": err()
