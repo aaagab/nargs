@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from copy import deepcopy
 from pprint import pprint
+import platform
 import os 
 import sys
 import re
@@ -18,7 +19,11 @@ class Style():
         self.pretty_help=pretty_help
         self.theme=theme
         self.output=output
-        self.is_tty="/dev/tty" in os.ttyname(1)
+        if platform.system() == "linux":
+            self.is_tty="/dev/tty" in os.ttyname(1)
+        else:
+            self.is_tty=False
+
 
     def get_adoc_elem(self, text, elem):
         # white, silver, gray, black, red, maroon, yellow, olive, lime, green, aqua, teal, blue, navy, fuchsia, purple,
