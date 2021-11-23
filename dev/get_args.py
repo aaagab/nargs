@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pprint import pprint
+import copy
 import json
 import getpass
 import os
@@ -436,8 +437,6 @@ def process_values(values, tmp_node, dy_err, cmd_line_index, dy_chk):
             else:
                 raise(e) 
 
-
-
         if len(values) > 0:
             if tmp_node.dy["values_authorized"] is True:
                 cmd_line=dy_err["cmd_line"]
@@ -615,7 +614,9 @@ def get_args(
     from_sys_argv=False
     if cmd is None:
         from_sys_argv=True
-        cmd=sys.argv
+        cmd=copy.deepcopy(sys.argv)
+        root_arg=os.path.basename(cmd.pop(0))
+        cmd.insert(0, root_arg)
     else:
         if not isinstance(cmd, str):
             msg.error("cmd type {} must be type {}.".format(type(cmd), str), prefix=prefix, pretty=pretty_msg, exc=exc, exit=1)
@@ -669,7 +670,6 @@ def get_args(
         if at_start is True:
             at_start=False
             if from_sys_argv is True:
-                elem=os.path.basename(elem)
                 activate_arg(node_dfn.current_arg, elem, dy_err, cmd_line_index, dy_chk)
                 continue
             else:
