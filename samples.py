@@ -58,7 +58,7 @@ if __name__ == "__main__":
             executable="samples.py",
             name="Samples",
         ),
-        cache=False,
+        cache=True,
     )
 
     args=nargs.get_args()
