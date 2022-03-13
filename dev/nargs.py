@@ -200,7 +200,7 @@ class Nargs():
                 elif cache_extension == ".pickle":
                     self.dfn=dy_options["dump"]
 
-        self._dy_metadata=dy_options["metadata"]
+        self.metadata=dy_options["metadata"]
         self._substitute=dy_options["substitute"]
 
         self._user_options=dict(
@@ -312,7 +312,7 @@ class Nargs():
             app_name=self._app_name,
             cmd=cmd,
             exc=exc,
-            dy_metadata=self._dy_metadata,
+            dy_metadata=self.metadata,
             node_dfn=self.dfn,
             path_etc=self._path_etc,
             pretty_help=self._pretty_help,
@@ -340,7 +340,7 @@ class Nargs():
 
         allproperties=sorted([prop for prop, dy in get_arg_properties().items() if dy["for_help"] is True])
         documentation=get_help_usage(
-            dy_metadata=self._dy_metadata,
+            dy_metadata=self.metadata,
             node_ref=self.dfn,
             output=output,
             style=Style(pretty_help=self._pretty_help, output=output, theme=self._theme),
