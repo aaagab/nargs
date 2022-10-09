@@ -401,15 +401,15 @@ class NodeDfn():
  'u': <src.dev.nodes.NodeDfn object at 0x7f312fed1f98>,
  'usage': <src.dev.nodes.NodeDfn object at 0x7f312fed1f98>}
 ```
-- `self.implicit_aliases`: It returns a dictionary with explicit arguments' aliases as keys and their related NodeDfn instance as values. Related NodeDfn instances are provided as a list because one alias can have multiple related implicit arguments. i.e. for root argument's child argument arg1:
+- `self.implicit_aliases`: It returns a dictionary with explicit arguments' aliases as keys and for each key a NodeDfn instance is provided as value. Implicit alias is searched in current parent child, then it goes up one parent and repeat the process until reaching root node. i.e. for root argument's child argument arg1:
 ```python
-{'?': [<src.dev.nodes.NodeDfn object at 0x7f8d8dfbe9e8>],
- 'arg1': [<src.dev.nodes.NodeDfn object at 0x7f8d8df78e80>],
- 'arg2': [<src.dev.nodes.NodeDfn object at 0x7f8d8e0dd550>],
- 'arg3': [<src.dev.nodes.NodeDfn object at 0x7f8d8dfbefd0>],
- 'args': [<src.dev.nodes.NodeDfn object at 0x7f8d8dfbeb38>],
- 'u': [<src.dev.nodes.NodeDfn object at 0x7f8d8dfbe9e8>],
- 'usage': [<src.dev.nodes.NodeDfn object at 0x7f8d8dfbe9e8>]}
+{'?': <src.dev.nodes.NodeDfn object at 0x7f8d8dfbe9e8>,
+ 'arg1': <src.dev.nodes.NodeDfn object at 0x7f8d8df78e80>,
+ 'arg2': <src.dev.nodes.NodeDfn object at 0x7f8d8e0dd550>,
+ 'arg3': <src.dev.nodes.NodeDfn object at 0x7f8d8dfbefd0>,
+ 'args': <src.dev.nodes.NodeDfn object at 0x7f8d8dfbeb38>,
+ 'u': <src.dev.nodes.NodeDfn object at 0x7f8d8dfbe9e8>,
+ 'usage': <src.dev.nodes.NodeDfn object at 0x7f8d8dfbe9e8>}
 ```
 - `self.is_root`: It returns if NodeDfn node is at the top of the arguments' definition tree.  
 - `self.level`: It returns the arguments tree node level. It starts at 1 for root argument then it increments by 1 for each child.  
@@ -1047,8 +1047,9 @@ In order to navigate through the arguments tree, end-user can provide arguments 
 
 ### Explicit Notation
 Explicit notation describes exactly the arguments position in the arguments tree using `+`, `=`, and `-` symbols. Explicit notation is used to exactly select one alias argument from multiple other argument with same alias located at different node levels. Explicit notation is optional most of the time and it can be mixed with implicit notation. Explicit notation is required when either:  
-- An alias is found multiple times in argument's parents' children.
-- An alias is found both in one argument's parent's children and argument's children.  
+- An alias is found multiple times in argument's parents' children and end-user wants to reach a node at a lower level.
+- An alias is found both in one argument's parent's children and argument's children and end-user wants to reach the node in parent's children.  
+
 Explicit notation uses the following syntax before an argument:  
 **plus symbol `+`**: It stays at the same node level but it only searches aliases in current argument's children and search for flags available in current argument's flag set. Only one plus symbol can be used before an argument.  
 **equal symbol `=`**: It goes up one level and it only searches aliases in current argument's parent's children and search for flags available in current argument's parent's flag set. It means basically that it only searches aliases and flags in current argument and current argument's siblings. Only one equal symbol can be used before an argument.  
@@ -1065,9 +1066,8 @@ After an explicit notation end-user has to provide an argument otherwise Nargs t
 ### Implicit Notation
 Implicit notation allows to navigate through the arguments tree without using **dash**, **equal**, or **plus** symbols. Arguments' aliases are searched implicitly in the arguments tree. For instance the root argument does not need to use the `+` symbol for its nested arguments because root argument is the only sibling at level 1. Then for higher node level, explicit notation may be needed. Implicit notation is optional and can be mixed with explicit notation. For a given argument's alias in the terminal, implicit notation follows the rules:  
 - Alias is searched in explicit aliases which means current argument's child arguments' aliases.
-- Alias is also searched in implicit aliases. Implicit aliases are all the current argument's parents' aliases and parent arguments' direct child arguments' aliases.
-- When typing an argument's alias on the command-line and if this alias is found multiple times in current argument's pool of explicit aliases and implicit aliases then Nargs throws an alias conflict error and ask end-user to explicitly select desired alias.
-- For instance end-user needs explicit notation to select chosen alias when chosen alias is both located in current argument's parent argument's aliases and in current argument's child's aliases.
+- Alias is also searched in implicit aliases. Implicit aliases are all the current argument's parents' aliases and parent arguments' direct child arguments' aliases. Search starts at the first parent and once an argument is found then the implicit argument is selected and search stops. In other words there is only one or none implicit argument per alias for current argument.
+
 **Implicit notation pros**:  
 - Shorter notation.
 - Closer to command-line arguments "standard syntax". 
@@ -1111,9 +1111,8 @@ main.py + --arg-one = --arg-two
 # implicit
 main.py --arg-one --arg-two
 
-# explicit notation is needed in some scenarios. 
-# implicit creates a conflict here
-main.py -a -n -b # -b may be arg_two or nested_arg_two
+# explicit notation is needed in some scenarios.
+main.py -a -n -b # -b selects nested_arg_two
 # explicit 
 main.py -a -n - -b # -b selects arg_two
 ```
