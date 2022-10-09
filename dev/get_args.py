@@ -308,54 +308,6 @@ def get_explicit_path(node_dfn,  conflict_node_dfn, alias):
         conflict_node_dfn.dy["aliases"],
     )
 
-def get_closest_parent(nodes):
-    min_level=None
-    max_level=None
-
-    for node in nodes:
-        if min_level is None:
-            min_level=node.level
-            max_level=node.level
-        else:
-            if node.level < min_level:
-                min_level=node.level
-
-            if node.level > max_level:
-                max_level=node.level
-
-    ref_node=None
-    if min_level > 1:
-        min_level-=1
-
-    while min_level > 1:
-        tmp_nodes=[]
-        same_parent=True
-        for node in nodes:
-            tmp_node=node
-            while tmp_node.level > min_level:
-                tmp_node=tmp_node.parent
-            if ref_node is None:
-                ref_node=tmp_node
-            else:
-                if same_parent is True:
-                    if tmp_node != ref_node:
-                        same_parent=False
-                        min_level-=1
-            tmp_nodes.append(tmp_node)
-
-        if same_parent is True:
-            break
-        else:
-            nodes=tmp_nodes
-        
-    if min_level == 1:
-        ref_node=nodes[0].root
-    
-    return dict(
-        node=ref_node,
-        max_sibling_level=max_level-ref_node.level,
-    )
-
 def get_node_from_alias(
     node,
     alias,
@@ -375,7 +327,7 @@ def get_node_from_alias(
             tmp_node=None
     elif search_only_root is True:
         if alias in node.root.implicit_aliases:
-            tmp_node=node.root.implicit_aliases[alias][0]
+            tmp_node=node.root.implicit_aliases[alias]
         else:
             tmp_node=None
     else:
@@ -386,41 +338,13 @@ def get_node_from_alias(
         if alias in node.implicit_aliases:
             in_implicit=True
 
-        lst_error=[]
-        nodes_error=[]
-
         if in_explicit is True:
-            if in_implicit is True:
-                lst_error=[
-                    "explicit notation is needed because alias '{}' is present multiple times in argument's explicit aliases and implicit aliases at paths:".format(alias)
-                ]
-                for imp_dfn in node.implicit_aliases[alias]:
-                    lst_error.append(get_explicit_path(node, imp_dfn, alias))
-                    nodes_error.append(imp_dfn)
-                lst_error.append(get_explicit_path(node, node.explicit_aliases[alias], alias))
-                nodes_error.append(node.explicit_aliases[alias])
-            else:
-                tmp_node=node.explicit_aliases[alias]
+            tmp_node=node.explicit_aliases[alias]
         elif in_implicit is True:
-            if len(node.implicit_aliases[alias]) > 1:
-                lst_error=[
-                    "explicit notation is needed because alias '{}' is present multiple times in argument's implicit aliases at paths:".format(alias)
-                ]
-                for imp_dfn in node.implicit_aliases[alias]:
-                    lst_error.append(get_explicit_path(node, imp_dfn, alias))
-                    nodes_error.append(imp_dfn)
-                nodes_error.append(node)
-            else:
-                tmp_node=node.implicit_aliases[alias][0]
+            tmp_node=node.implicit_aliases[alias]
         else:
             tmp_node=None
 
-        if len(lst_error) > 0:
-            msg.error(lst_error, prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"])
-            closest=get_closest_parent(nodes_error)
-            dy_err["print_usage"](closest["node"], closest["max_sibling_level"])
-            sys.exit(1)
-        
     if tmp_node is not None:
         set_node(alias, tmp_node, dy_err, cmd_line_index, branch_num, dy_chk)
         process_values(values, tmp_node, dy_err, cmd_line_index, dy_chk)
