@@ -42,7 +42,7 @@ class NodeDfn():
             self.is_root=True
             self.level=1
             for alias in self.dy["aliases"]:
-                self.implicit_aliases[alias]=[self]
+                self.implicit_aliases[alias]=self
                 set_root_flags(self, alias)
         else:
             self.root=self.parent.root
@@ -61,16 +61,13 @@ class NodeDfn():
 
                 if self.parent.is_root is True:
                     for alias in self.parent.dy["aliases"]:
-                        if alias not in self.parent._pool_aliases:
-                            self.parent._pool_aliases[alias]=[]
-                        self.parent._pool_aliases[alias].append(self.parent)
+                        self.parent._pool_aliases[alias]=self.parent
                         set_implicit_flags(self.parent, alias, self.parent)
                 else:
                     for alias in self.parent.parent._pool_aliases:
-                        self.parent._pool_aliases[alias]=[]
-                        for node in self.parent.parent._pool_aliases[alias]:
-                            self.parent._pool_aliases[alias].append(node)
-                            set_implicit_flags(node, alias, self.parent)
+                        node=self.parent.parent._pool_aliases[alias]
+                        self.parent._pool_aliases[alias]=node
+                        set_implicit_flags(node, alias, self.parent)
 
             set_implicit_aliases_and_flags(self.parent, self)
             self.implicit_aliases=self.parent._pool_aliases
@@ -136,6 +133,50 @@ class NodeDfn():
                     self._dy_flags[flag]=dict(node=dy["node"], alias=dy["alias"])
         return self._dy_flags
 
+def set_implicit_flags(flag_node, alias, node_to_set_flag):
+    if flag_node.dy["aliases_info"][alias]["is_flag"] is True:
+        c=flag_node.dy["aliases_info"][alias]["text"]
+        to_set=None
+        if has_xor_conflict(flag_node, node_to_set_flag) is False:
+            if c in node_to_set_flag._pool_flags:
+                tmp_flag_node=node_to_set_flag._pool_flags[c]["node"]
+                if tmp_flag_node.level > flag_node.level:
+                    to_set=False
+                elif tmp_flag_node.level == flag_node.level:
+                    to_set=has_precedence(alias, flag_node, tmp_flag_node, node_to_set_flag._pool_flags[c]["alias"])
+                else: # tmp_flag_node.level < flag_node.level:
+                    to_set=True
+            else:
+                to_set=True
+        else:
+            to_set=False
+
+        if to_set is True:
+            node_to_set_flag._pool_flags[c]=dict(node=flag_node, alias=alias)
+
+def set_implicit_aliases_and_flags(tree_node, ref_node):
+    if tree_node._pool_aliases is not None:
+        for alias in ref_node.dy["aliases"]:
+            if alias in tree_node._pool_aliases:
+                if tree_node._pool_aliases[alias].level < ref_node.level:
+                    tree_node._pool_aliases[alias]=ref_node
+            else:
+                tree_node._pool_aliases[alias]=ref_node
+            set_implicit_flags(ref_node, alias, tree_node)
+
+        for tmp_node in tree_node.nodes:
+            set_implicit_aliases_and_flags(tmp_node, ref_node)
+
+def has_xor_conflict(first_node, second_node):
+    if first_node != second_node:
+        if first_node.level == second_node.level:
+            if first_node in first_node.parent.dy_xor:
+                for group_num in first_node.parent.dy_xor[first_node]:
+                    xor_group=first_node.parent.dy_xor[first_node][group_num]
+                    if second_node in xor_group:
+                        return True
+    return False
+
 def set_root_flags(flag_node, alias):
     if flag_node.dy["aliases_info"][alias]["is_flag"] is True:
         c=flag_node.dy["aliases_info"][alias]["text"]
@@ -175,47 +216,7 @@ def has_precedence(flag_candidate_alias, flag_candidate_node, existing_flag_node
         else:
             return False
 
-def set_implicit_flags(flag_node, alias, node_to_set_flag):
-    if flag_node.dy["aliases_info"][alias]["is_flag"] is True:
-        c=flag_node.dy["aliases_info"][alias]["text"]
-        to_set=None
-        if has_xor_conflict(flag_node, node_to_set_flag) is False:
-            if c in node_to_set_flag._pool_flags:
-                tmp_flag_node=node_to_set_flag._pool_flags[c]["node"]
-                if tmp_flag_node.level > flag_node.level:
-                    to_set=False
-                elif tmp_flag_node.level == flag_node.level:
-                    to_set=has_precedence(alias, flag_node, tmp_flag_node, node_to_set_flag._pool_flags[c]["alias"])
-                else: # tmp_flag_node.level < flag_node.level:
-                    to_set=True
-            else:
-                to_set=True
-        else:
-            to_set=False
 
-        if to_set is True:
-            node_to_set_flag._pool_flags[c]=dict(node=flag_node, alias=alias)
-
-def set_implicit_aliases_and_flags(tree_node, ref_node):
-    if tree_node._pool_aliases is not None:
-        for alias in ref_node.dy["aliases"]:
-            if alias not in tree_node._pool_aliases:
-                tree_node._pool_aliases[alias]=[]
-            tree_node._pool_aliases[alias].append(ref_node)
-            set_implicit_flags(ref_node, alias, tree_node)
-
-        for tmp_node in tree_node.nodes:
-            set_implicit_aliases_and_flags(tmp_node, ref_node)
-
-def has_xor_conflict(first_node, second_node):
-    if first_node != second_node:
-        if first_node.level == second_node.level:
-            if first_node in first_node.parent.dy_xor:
-                for group_num in first_node.parent.dy_xor[first_node]:
-                    xor_group=first_node.parent.dy_xor[first_node][group_num]
-                    if second_node in xor_group:
-                        return True
-    return False
 
 class CliArg():
     def __init__(self,

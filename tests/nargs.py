@@ -7,7 +7,7 @@ import sys
 from ..dev.nargs import Nargs
 from ..dev.exceptions import DeveloperError
 from .helpers import CatchEx, err
-from .performance import get_dict
+from .performance import get_dict, get_dict_recursion_limit
 
 def test_nargs(
     dy_metadata,
@@ -82,7 +82,7 @@ def test_nargs(
     except:
         pass
 
-    args=get_dict(5, 10, 900)
+    args=get_dict_recursion_limit(900)
     with CatchEx(DeveloperError) as c:
         c.text="Please switch cache_file option to '.json'"
         nargs=Nargs(

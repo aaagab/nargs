@@ -311,9 +311,8 @@ def test_get_args(
         c.text="can't be repeated because its 'repeat' property is set to 'error'"
         args=nargs.get_args("--args --arg-three --arg-three")
 
-    with CatchEx(EndUserError) as c:
-        c.text="'--arg-five' is present multiple times in argument's implicit aliases"
-        args=nargs.get_args("--args --arg-five --n-arg1 --nn-arg1 --arg-five")
+    args=nargs.get_args("--args --arg-five --n-arg1 --nn-arg1 --arg-five")
+    if not (args.arg_five.n_arg1._count == 2): err()
 
     args=nargs.get_args("--args --arg-five --n-arg1 --nn-arg1 - --arg-five")
     if not (args.arg_five._count == 1): err()
@@ -322,12 +321,11 @@ def test_get_args(
 
     args=nargs.get_args("--args --arg-five --n-arg1 --nn-arg1 -- --arg-five")
     if not (args.arg_five._count == 2): err()
-
     if not (args.arg_five.n_arg1._count == 1): err()
 
-    with CatchEx(EndUserError) as c:
-        c.text="'--arg-six' is present multiple times in argument's explicit aliases and implicit"
-        args=nargs.get_args("--args --arg-six --n-arg1 --nn-arg1 --arg-six")
+    args=nargs.get_args("--args --arg-six --n-arg1 --nn-arg1 --arg-six")
+    if not (args.arg_six._count == 1): err()
+    if not (args.arg_six.n_arg1.nn_arg1.nnn_arg1._count == 1): err()
 
     args=nargs.get_args("--args --arg-six --n-arg1 --nn-arg1 - --arg-six")
     if not (args.arg_six._count == 1): err()
