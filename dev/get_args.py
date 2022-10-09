@@ -450,7 +450,6 @@ def process_values(values, tmp_node, dy_err, cmd_line_index, dy_chk):
                             cmd_line_index+=1
                             if cmd_line[cmd_line_index] == " ":
                                 break
-                            
                     add_value(tmp_node.current_arg, value, dy_err, cmd_line_index, dy_chk)
             else:
                 msg.error("for argument '{}' values are not allowed {}.".format(tmp_node.current_arg._alias, values), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"])
@@ -1075,7 +1074,7 @@ def get_boolean(value):
         if value.lower() in ["true", "1"]:
             return True
         elif value.lower() in ["false", "0"]:
-            return True
+            return False
         else:
             return None
     elif isinstance(value, int):
