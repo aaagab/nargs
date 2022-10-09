@@ -295,7 +295,7 @@ class CliArg():
                     alias=arg._default_alias
 
             if alias in implicit_aliases:
-                    path.append("+")
+                path.append("+")
 
             text=alias
 

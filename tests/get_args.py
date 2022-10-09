@@ -15,6 +15,18 @@ def test_get_args(
     dy_metadata,
     filenpa_cache,
 ):
+    args=dict(
+        with_deps=dict(
+            _type="bool",
+            _default=True,
+            _required=True,
+        )
+    )
+    nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True)
+
+    args=nargs.get_args("--args --with-deps=false")
+    if args.with_deps._value is not False: err()
+
     nargs=Nargs(options_file="assets/empty.yaml", metadata=dy_metadata, raise_exc=True)
 
     try:
