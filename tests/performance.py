@@ -86,6 +86,22 @@ def get_dict(nesting_num, child_num, max_nodes=None, pnode=None):
     if node.is_root is True:
         return node.root.dy
 
+def get_dict_recursion_limit(limit, dy=None, index=1):
+    to_return=False
+    if dy is None:
+        dy=dict(arg=dict())
+        to_return=True
+    else:
+        dy["arg"]=dict()
+    
+    if index < limit:
+        index+=1
+        get_dict_recursion_limit(limit, dy["arg"], index)
+
+    if to_return is True:
+        return dy
+
+
 def process(dy_metadata, data, nodes, elapsed, cached, args, cache_file, only_cache=False, add_data=True):
 
     method=None

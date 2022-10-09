@@ -239,3 +239,62 @@ def test_get_node_dfn(
     with CatchEx(DeveloperError) as c:
         c.text="'_is_usage' node can't be present in parent 'args' '_xor' groups"
         nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), cache=False, raise_exc=True)
+
+    args=dict(
+        direction=dict(
+            version=dict(
+                direction=dict(
+                    direction=dict(),
+                ),
+            ),
+            direction=dict(),
+        ),
+        version=dict(),
+    )
+    nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+
+    root=nargs.dfn
+    print(root.name, root)
+    pprint(root.implicit_aliases)
+
+    print()
+    node=root.dy_nodes["direction"]
+    print(node.current_arg._get_path(), node)
+    pprint(node.implicit_aliases)
+    if node != node.implicit_aliases["--direction"]: err()
+    if root.dy_nodes["version"] != node.implicit_aliases["--version"]: err()
+
+    print()
+    node=root.dy_nodes["version"]
+    print(node.current_arg._get_path(), node)
+    pprint(node.implicit_aliases)
+    if node != node.implicit_aliases["--version"]: err()
+    if root.dy_nodes["direction"] != node.implicit_aliases["--direction"]: err()
+
+    print()
+    node=root.dy_nodes["direction"].dy_nodes["version"]
+    print(node.current_arg._get_path(), node)
+    pprint(node.implicit_aliases)
+    if node != node.implicit_aliases["--version"]: err()
+    if root.dy_nodes["direction"].dy_nodes["direction"] != node.implicit_aliases["--direction"]: err()
+
+    print()
+    node=root.dy_nodes["direction"].dy_nodes["direction"]
+    print(node.current_arg._get_path(), node)
+    pprint(node.implicit_aliases)
+    if node != node.implicit_aliases["--direction"]: err()
+    if root.dy_nodes["direction"].dy_nodes["version"] != node.implicit_aliases["--version"]: err()
+
+    print()
+    node=root.dy_nodes["direction"].dy_nodes["version"].dy_nodes["direction"]
+    print(node.current_arg._get_path(), node)
+    pprint(node.implicit_aliases)
+    if node != node.implicit_aliases["--direction"]: err()
+    if root.dy_nodes["direction"].dy_nodes["version"] != node.implicit_aliases["--version"]: err()
+
+    print()
+    node=root.dy_nodes["direction"].dy_nodes["version"].dy_nodes["direction"].dy_nodes["direction"]
+    print(node.current_arg._get_path(), node)
+    pprint(node.implicit_aliases)
+    if node != node.implicit_aliases["--direction"]: err()
+    if root.dy_nodes["direction"].dy_nodes["version"] != node.implicit_aliases["--version"]: err()
