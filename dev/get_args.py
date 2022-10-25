@@ -578,9 +578,11 @@ def get_args(
             else:
                 set_node(alias, node_from_alias, dy_err, alias_cmd_line_index, alias_branch_num, dy_chk)
                 process_values(alias_values, node_from_alias, dy_err, alias_cmd_line_index, dy_chk)
+
+                previous_dfn=node_dfn
                 node_dfn, builtin_dfn, usage_dfn =get_builtin_dfn(node_dfn, node_from_alias, builtin_dfn, usage_dfn)
-                if node_from_alias.dy["is_usage"] is True:
-                    node_from_alias.current_arg._previous_dfn=node_dfn
+                if node_dfn.dy["is_usage"] is True:
+                    node_dfn.current_arg._previous_dfn=previous_dfn
 
                 if after_explicit is True:
                     after_explicit=False
@@ -663,9 +665,10 @@ def get_args(
                             if index == len(tmp_nodes):
                                 process_values(values, tmp_node_dfn, dy_err, tmp_cmd_line_index, dy_chk)
 
+                            previous_dfn=node_dfn
                             node_dfn, builtin_dfn, usage_dfn =get_builtin_dfn(node_dfn, tmp_node_dfn, builtin_dfn, usage_dfn)
-                            if tmp_node_dfn.dy["is_usage"] is True:
-                                tmp_node_dfn.current_arg._previous_dfn=node_dfn
+                            if node_dfn.dy["is_usage"] is True:
+                                node_dfn.current_arg._previous_dfn=previous_dfn
                             index+=1
 
                         if after_explicit is True:
