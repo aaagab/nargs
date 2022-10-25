@@ -29,9 +29,9 @@
 `installer:` gpm<br>
 `licenses:` MIT<br>
 `name:` Nested Arguments<br>
-`timestamp:` 1665348791.6815171<br>
+`timestamp:` 1666714306.3379242<br>
 `uuid4:` 89d8676a-6b02-43fa-8694-e97de5680cd0<br>
-`version:` 2.0.0<br>
+`version:` 3.0.0<br>
 
 ### Nargs Options State
 - pretty_help: `enabled`
@@ -215,6 +215,7 @@
 ### Arguments Syntax Pitfalls
 - If an alias or flags notation is mistyped on the command-line, it may be use as a value if previous argument accept values.
 - If a flags notation turns-out to be the same as a reachable alias, then the alias is going to be selected instead of the flags notation.
+- If multiple same aliases are present and user uses implicit notation on the command-line, the argument selected may be different than what the argument expected.
 - Question mark alias '`?`' from usage may be misinterpreted by Bash as wildcard operator. If that happens end-user may want to use any other aliases provided for usage argument.
 - For values notation on Windows CMD terminal emulator, command-line `prog.py --arg='value value value'` single quotes trigger shlex `ValueError: No closing quotation`. Instead end-user must type `prog.py --arg="value value value"` or `prog.py --arg="value1 value2 'value 3'"`.
 - Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'flags notation' else 'value' else 'unknown input'. If 'flags notation' then flag set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).
