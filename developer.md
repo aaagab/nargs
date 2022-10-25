@@ -46,9 +46,8 @@ There are two documentation files:
 - Built-in command-line Arguments (cmd, help, path_etc, usage, version).
 - Built-in arguments usage and help are color themeable.
 - Multiple arguments aliases prefixes: `"", "+", "-", "--", "/", ":", "_"`.
-- Concatenated flag aliases with at symbol i.e. `@123aAbBcC`. 
+- Concatenated flag aliases i.e. `-123aAbBcC`. 
 - Flags are context-sensitive.
-- Flag set can be concatenated too i.e. `@u@pv`.
 - Built-in usage argument can provide details on available flags for each argument.
 - Command-line arguments form a tree where each node may have multiple branches.
 - Arguments branches may be duplicated with branch index notation i.e. `prog.py --arg+ --nested --arg+ --nested`
@@ -725,7 +724,7 @@ To set a property means that property is present in argument's definition and pr
 
 In arguments' definition, argument's properties start with an underscore and nested arguments start with a letter. The first argument or root argument is set like any other arguments except for its name that is automatically set. Root argument name is `args`. All other arguments are root argument's children. Arguments nesting limit is set according to JSON parser, YAML parser, or memory if arguments are provided with a Python dictionary. Arguments' name must match regex `[a-zA-Z][a-zA-Z0-9_]*`. Most of the time Developer won't be using many argument's properties and he or she will rely on arguments' default properties. For instance developer can write a very small program with command `Nargs(metadata=dict(name="research program", executable="research"), args=dict(analyze=dict()))` and Nargs will generate the following program entry point:    
 ```shell
-research: --args @?huv
+research: --args ?huv
   [--analyze]
   [--cmd <file>]
  *[--help, -h]
@@ -1032,7 +1031,7 @@ Main built-in arguments are available at node level 2. Built-in arguments aliase
 
 `_path_etc_` only exists if developer sets `Nargs()` option `path_etc` value. It provides the program's configuration path.    
 
-`_usage_` built-in argument prints all the arguments in a tree structure with Nargs notation. The nested argument `from_` selects the starting argument and it can be either the current argument or a parent. The printed nested arguments depth can be set with nested argument `depth`. For each printed arguments the following data can be provided: `examples`, `flags`, `hint`, `info`, `path`, and `properties`. For instance end-user can type `prog.py @u@eFhipr`, `prog.py --usage --examples --flags --hint --info --path --properties` or `prog.py --help --usage --depth 1 --from 0 @eFhipr`. Built-in argument `_usage_` is the only built-in argument that can use question mark `?` as an alias. Question mark is useful, but it has limited on some systems. For instance on bash terminals, question mark is a bash wildcard, and it is going to be replaced by the name of a file or a directory if any directory or file has only one char for name in the current directory.  
+`_usage_` built-in argument prints all the arguments in a tree structure with Nargs notation. The nested argument `from_` selects the starting argument and it can be either the current argument or a parent. The printed nested arguments depth can be set with nested argument `depth`. For each printed arguments the following data can be provided: `examples`, `flags`, `hint`, `info`, `path`, and `properties`. For instance end-user can type `prog.py -ueFhipr`, `prog.py --usage --examples --flags --hint --info --path --properties` or `prog.py --help --usage --depth 1 --from 0 -eFhipr`. Built-in argument `_usage_` is the only built-in argument that can use question mark `?` as an alias. Question mark is useful, but it has limited on some systems. For instance on bash terminals, question mark is a bash wildcard, and it is going to be replaced by the name of a file or a directory if any directory or file has only one char for name in the current directory.  
 
 `_version_` returns program version if it has been provided into metadata. If not provided into metadata then Nargs throws an error whenever built-in version argument is used.  
 
@@ -1157,25 +1156,15 @@ main.py --arg:"value"
 main.py --arg:'value'
 main.py --arg:'value1 value2 "this is value3"'
 main.py --arg:"value1 value2 'this is value3'"
-main.py @a=value
-main.py @a="value"
-main.py @a='value'
-main.py @a='value1 value2 "this is value3"'
-main.py @a="value1 value2 'this is value3'"
-main.py @a:value
-main.py @a:"value"
-main.py @a:'value'
-main.py @a:'value1 value2 "this is value3"'
-main.py @a:"value1 value2 'this is value3'"
 ```
 
 ### Concatenated Flag Aliases
 
-Flags aliases are one char aliases with or without prefix that can be used with the at symbol `@` as prefix. i.e. `prog.py @abc` where `a`, `b`, and `c` are different aliases that can come from the same argument or from different arguments.  
-Concatenated flag aliases are also called flag set and are always related to a particular argument. Each argument may have its own flag set.  
+Flags aliases are one char aliases that can be used concatenated. The first flag must use its prefix and the other concatenated flags do not use their prefixes. i.e. `prog.py /abc` where `a`, `b`, and `c` are different aliases that can come from the same argument or from different arguments.  
+Concatenated flag aliases are also called flag set. Each argument may have its own flag set.  
 Flag set are not shown by default on command-line usage. Flag set can be seen if any when using built-in usage argument with command-line `prog.py --usage --flags` or when printing the help with built-in help argument.  
 In arguments' definition a flag set is all the flags available for a particular argument.  
-On the command-line a flag set is all the concatenated flags typed by end-user after an at symbol.   
+On the command-line a flag set is all the concatenated flags typed by end-user after a one char alias that may not have a prefix.   
 Flag's candidates are implicit arguments or explicit arguments of the reference argument. A flag is defined by an alias char without the alias prefix i.e. in alias `/a` only `a` defines the flag.  
 For each argument there is only one argument per char alias that is kept to generate the definition flag set for that argument. The rules to determine which argument is kept when multiple arguments aliases share the same char alias are:
 - If two aliases sharing the same char alias come from the same argument then the kept alias for flag is the alias with alias prefix that comes first in the list `['+', '-', '', '/', ':', '_', '--']`.  
@@ -1187,16 +1176,15 @@ For each argument there is only one argument per char alias that is kept to gene
     - Else if arguments are not on the same node level:
         - Argument with higher node level has precedence over the other argument.   
 
-Flags can be retrieved through built-in usage argument for each argument. Flags can be typed in any order (except if developer has set a particular sorting order in code) and they can be added several times. In fact flags are still related to their argument and when typed the same rule applies as if the entire argument was typed. i.e. `prog.py @chu` may be equal to `prog.py -c -h -u`. So it means that some arguments can still exit when typed, argument's values may be required, or flag argument may throw an error if multiple occurrences are provided. Flags are arguments and they depend on arguments' definition. Developer should set char aliases in a way that is intuitive for end-user to use them as flags.  
-The main purpose of flags is to typed arguments with the shortest syntax. It is really powerful for developers that type the same command hundreds of times.
+Flags can be retrieved through built-in usage argument for each argument. Flags can be typed in any order (except if developer has set a particular sorting order in code) and they can be added several times. In fact flags are still related to their argument and when typed the same rule applies as if the entire argument was typed. i.e. `prog.py -chu` may be equal to `prog.py -c -h -u` or `prog.py -c /h u` depending on the arguments definition. So it means that some arguments can still exit when typed, argument's values may be required, or flag argument may throw an error if multiple occurrences are provided. Flags are arguments and they depend on arguments' definition. Developer should set char aliases in a way that is intuitive for end-user to use them as flags.  
+The main purpose of flags is to typed arguments with the shortest syntax possible. It is really convenient for developers that type the same command hundreds of times.
 Flags are context-sensitive because they are gathered as a set related to the current arg. So it means that flags combinations are not limited because arguments nesting is virtually endless with Nargs.  
 Only the latest flag typed on a set can have values. Not all arguments from the pool of explicit and implicit arguments are available because flags are set according to rules define above.  
 Flags does not allow explicit notation, so it is not possible to navigate explicitly with that notation.  
 Flags does not allow branch index notation except for the latest flag. So it is not possible to navigate between different argument branches of the same argument within flags notation.  
-The argument located before the flag set is the reference argument. Flags are defined according to this argument in the arguments tree. When all the flags have been parsed the current command-line argument is the argument of the latest parsed flag.  
+The current argument is always the latest flag parsed so the flags set available may change when typing more flags on the command-line.  When all the flags have been parsed the current command-line argument is the argument of the latest parsed flag.  
 Flags may be intuitive and easy to remember depending on arguments' definition.  
 Flags can be located on any node level so flags on lower level may be available to all arguments.  
-On the command-line flag sets may be concatenated too. For instance there are two flag sets in command `prog.py @u@pr`. First flag set is `@u` and is related to `prog.py`. Second flag set is `@pr` and is related to first flag set's last flag `u`. The command could be written like this `prog.py @u @pr` or `prog.py -u -p -r` or `prog.py --usage --properties --path`. Multiple at symbols allows to nest flag set. Concatenated flag sets allow end-user to navigate in the argument tree.  
 
 ## How to Implement Nargs Global Arguments
 A global argument is an argument that is available on all node levels of the arguments tree. There is no global arguments in Nargs per say. Built-in arguments are only available on arguments node level 2. However developer can simulate a global argument by using arguments' implicit notation. For instance starting at current argument if another argument alias is located at node level 2 and no other arguments have the same alias in current argument explicit aliases or implicit aliases then developer can provide argument alias located at node level 2 and it is going to be called as if it was a global argument. If an argument is not located at node level 1 or node level 2 it may still be pseudo-global to certain branches of the arguments tree.  

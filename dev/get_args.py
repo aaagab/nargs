@@ -17,7 +17,7 @@ from .help import get_help_usage, get_flags_notation
 from .nargs_syntax import get_nargs_syntax
 from .help import get_md_text
 
-from .regexes import get_regex
+from .regexes import get_regex_cli, get_regex_cli_explicit
 from .style import Style
 
 
@@ -311,16 +311,11 @@ def get_explicit_path(node_dfn,  conflict_node_dfn, alias):
 def get_node_from_alias(
     node,
     alias,
-    branch_num,
-    values,
-    explicit,
+    after_explicit,
     search_only_root,
-    dy_err,
-    cmd_line_index,
-    dy_chk,
 ):
     tmp_node=None
-    if explicit is True:
+    if after_explicit is True:
         if alias in node.explicit_aliases:
             tmp_node=node.explicit_aliases[alias]
         else:
@@ -331,23 +326,12 @@ def get_node_from_alias(
         else:
             tmp_node=None
     else:
-        in_explicit=False
-        in_implicit=False
         if alias in node.explicit_aliases:
-            in_explicit=True
-        if alias in node.implicit_aliases:
-            in_implicit=True
-
-        if in_explicit is True:
             tmp_node=node.explicit_aliases[alias]
-        elif in_implicit is True:
+        elif alias in node.implicit_aliases:
             tmp_node=node.implicit_aliases[alias]
         else:
             tmp_node=None
-
-    if tmp_node is not None:
-        set_node(alias, tmp_node, dy_err, cmd_line_index, branch_num, dy_chk)
-        process_values(values, tmp_node, dy_err, cmd_line_index, dy_chk)
             
     return tmp_node
 
@@ -379,73 +363,6 @@ def process_values(values, tmp_node, dy_err, cmd_line_index, dy_chk):
                 msg.error("for argument '{}' values are not allowed {}.".format(tmp_node.current_arg._alias, values), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"])
                 dy_err["print_usage"](tmp_node)
                 sys.exit(1)
-
-def get_nodes_from_flags(
-    chars,
-    branch_num,
-    branch_num_str,
-    values,
-    values_str,
-    node_dfn,
-    builtin_dfn,
-    dy_err,
-    cmd_line_index,
-    dy_chk,
-    usage_dfn,
-    search_only_root,
-):
-    tmp_cmd_line_index=cmd_line_index
-    if values is not None:
-        tmp_cmd_line_index-=len(values_str)
-
-    if branch_num_str is not None:
-        tmp_cmd_line_index-=len(branch_num_str)
-    tmp_cmd_line_index=tmp_cmd_line_index-len(chars)
-
-    flag_sets=chars.split("@")
-    flags_node=node_dfn
-
-    for i, flag_set in enumerate(flag_sets):
-        dy_flags=None
-        if search_only_root is True:
-            dy_flags=node_dfn.root._implicit_flags
-        else:
-            dy_flags=flags_node.get_dy_flags()
-
-        is_last_set=i+1==len(flag_sets)
-        unknown_chars=set(flag_set)-set(sorted(dy_flags))
-        if len(unknown_chars) > 0:
-            tmp_cmd_line_index+=len(flag_set)
-            msg.error("Unknown char(s) {} in flag set '{}'.".format(sorted(list(unknown_chars)), get_flags_notation(dy_flags)), prefix=get_arg_prefix(dy_err, tmp_cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"])
-            dy_err["print_usage"](flags_node, top_flags=True)
-            sys.exit(1)
-
-        for j, c in enumerate(flag_set):
-            is_last_char=j+1==len(flag_set)
-            tmp_cmd_line_index+=1
-            tmp_branch_num=None
-            if is_last_set is True and is_last_char is True:
-                if branch_num_str is not None:
-                    tmp_cmd_line_index+=len(branch_num_str)
-                    if branch_num is None:
-                        tmp_branch_num=branch_num_str
-                    else:
-                        tmp_branch_num=int(branch_num)
-                
-            tmp_node_dfn=dy_flags[c]["node"]
-            alias=tmp_node_dfn.get_dy_flags()[c]["alias"]
-            set_node(alias, tmp_node_dfn, dy_err, tmp_cmd_line_index, tmp_branch_num, dy_chk)
-
-            if is_last_set and is_last_char is True:
-                process_values(values, tmp_node_dfn, dy_err, tmp_cmd_line_index, dy_chk)
-
-            node_dfn, builtin_dfn, usage_dfn =get_builtin_dfn(node_dfn, tmp_node_dfn, builtin_dfn, usage_dfn)
-
-        search_only_root=False
-        flags_node=node_dfn
-        tmp_cmd_line_index+=1
-
-    return node_dfn, builtin_dfn, usage_dfn
 
 def reset_branch(arg, parent_arg, branches, dy_chk=None, to_renew=False, is_renew=True):
     new_arg=None
@@ -598,7 +515,7 @@ def get_args(
             else:
                 search_only_root=True
         elif after_explicit is False:
-            reg_explicit=re.match(get_regex("cli_explicit")["rule"], elem)
+            reg_explicit=re.match(get_regex_cli_explicit(), elem)
             if reg_explicit:
                 if is_last_elem is True:
                     msg.error("command must finish with an argument or a value not an explicit notation '{}'.".format(elem), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=pretty_msg, exc=exc)
@@ -629,11 +546,11 @@ def get_args(
                     after_explicit=True
                 continue
 
-        reg_alias=re.match(get_regex("cli_alias")["rule"], elem)
+        reg_alias=re.match(get_regex_cli("alias", node_dfn), elem)
+        search_flags=False
         if reg_alias:
             alias=reg_alias.group("alias")
             alias_branch_num=reg_alias.group("branch_num")
-            flags_str=reg_alias.group("flags_str")
             values_str=reg_alias.group("values_str")
             if reg_alias.group("branch_num_str") is not None:
                 if reg_alias.group("branch_num") is None:
@@ -647,100 +564,129 @@ def get_args(
             if tmp_values is not None:
                 alias_cmd_line_index=cmd_line_index-len(values_str)
             
-            alias_values=None
-            if flags_str is None:
-                alias_values=tmp_values
-            else:
-                alias_cmd_line_index-=len(flags_str)
+            alias_values=tmp_values
 
             node_from_alias=get_node_from_alias(
                 node_dfn,
                 alias,
-                alias_branch_num,
-                alias_values,
                 after_explicit,
                 search_only_root,
-                dy_err,
-                alias_cmd_line_index,
-                dy_chk,
             )
 
             if node_from_alias is None:
-                if after_explicit is True or search_only_root is True or (reg_alias.group("prefix") is not None and len(reg_alias.group("prefix")) > 0):
-                    msg.error("unknown argument '{}'.".format(alias), prefix=get_arg_prefix(dy_err, alias_cmd_line_index), pretty=pretty_msg, exc=exc)
-                    print_usage(node_dfn)
-                    sys.exit(1)
-                else:
-                    if node_dfn.dy["values_authorized"] is True:
-                        add_value(node_dfn.current_arg, elem, dy_err, cmd_line_index, dy_chk)
-                    else:
-                        msg.error("unknown input '{}'.".format(alias), prefix=get_arg_prefix(dy_err, alias_cmd_line_index), pretty=pretty_msg, exc=exc)
-                        print_usage(node_dfn)
-                        sys.exit(1)
+                search_flags=True
             else:
+                set_node(alias, node_from_alias, dy_err, alias_cmd_line_index, alias_branch_num, dy_chk)
+                process_values(alias_values, node_from_alias, dy_err, alias_cmd_line_index, dy_chk)
                 node_dfn, builtin_dfn, usage_dfn =get_builtin_dfn(node_dfn, node_from_alias, builtin_dfn, usage_dfn)
+                if node_from_alias.dy["is_usage"] is True:
+                    node_from_alias.current_arg._previous_dfn=node_dfn
 
-                if flags_str is not None:
-                    flags_branch_num=reg_alias.group("branch_num2")
-                    flags_branch_num_str=reg_alias.group("branch_num_str2")
-                    chars=reg_alias.group("chars")
-                    flags_values=tmp_values
+                if after_explicit is True:
+                    after_explicit=False
+                elif search_only_root is True:
+                    search_only_root=False
 
-                    node_dfn, builtin_dfn, usage_dfn = get_nodes_from_flags(
-                        chars,
-                        flags_branch_num,
-                        flags_branch_num_str,
-                        flags_values,
-                        values_str,
-                        node_dfn,
-                        builtin_dfn,
-                        dy_err,
-                        cmd_line_index,
-                        dy_chk,
-                        usage_dfn,
-                        search_only_root=False,
-                    )
         else:
-            reg_flags=re.match(get_regex("cli_flags")["rule"], elem)
+            search_flags=True
+
+        search_values=False
+        if search_flags is True:
+            reg_flags=re.match(get_regex_cli("flags", node_dfn), elem)
             if reg_flags:
                 branch_num=reg_flags.group("branch_num")
                 branch_num_str=reg_flags.group("branch_num_str")
+                alias=reg_flags.group("alias")
                 chars=reg_flags.group("chars")
                 values=reg_flags.group("values")
                 values_str=reg_flags.group("values_str")
 
-                node_dfn, builtin_dfn, usage_dfn = get_nodes_from_flags(
-                    chars,
-                    branch_num,
-                    branch_num_str,
-                    values,
-                    values_str,
+                tmp_cmd_line_index=cmd_line_index
+                if values is not None:
+                    tmp_cmd_line_index-=len(values_str)
+
+                if branch_num_str is not None:
+                    tmp_cmd_line_index-=len(branch_num_str)
+                tmp_cmd_line_index=tmp_cmd_line_index-len(chars)
+
+                node_from_alias=get_node_from_alias(
                     node_dfn,
-                    builtin_dfn,
-                    dy_err,
-                    cmd_line_index,
-                    dy_chk,
-                    usage_dfn,
+                    alias,
+                    after_explicit,
                     search_only_root,
                 )
 
-            else:
-                if after_explicit is True or search_only_root is True:
-                    msg.error("unknown argument '{}'".format(elem), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=pretty_msg, exc=exc)
-                    print_usage(node_dfn)
-                    sys.exit(1)
+                if node_from_alias is None:
+                    search_values=True
                 else:
-                    if node_dfn.dy["values_authorized"] is True:
-                        add_value(node_dfn.current_arg, elem, dy_err, cmd_line_index, dy_chk)
-                    else:
-                        msg.error("unknown input '{}'.".format(elem), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=pretty_msg, exc=exc)
-                        print_usage(node_dfn)
-                        sys.exit(1)
+                    tmp_nodes=[]
+                    tmp_nodes.append(dict(
+                        alias=alias,
+                        cmd_line_index=tmp_cmd_line_index,
+                        node=node_from_alias,
+                    ))
 
-        if after_explicit is True:
-            after_explicit=False
-        elif search_only_root is True:
-            search_only_root=False
+                    dy_flags=node_from_alias.get_dy_flags()
+
+                    for c in chars:
+                        if c in dy_flags:
+                            tmp_cmd_line_index+=1
+                            tmp_node=dy_flags[c]["node"]
+                            tmp_alias=dy_flags[c]["alias"]
+                            tmp_nodes.append(dict(
+                                alias=tmp_alias,
+                                cmd_line_index=tmp_cmd_line_index,
+                                node=tmp_node, 
+                            ))
+                            dy_flags=tmp_node.get_dy_flags()
+                        else:
+                            search_values=True
+                            break
+
+                    if search_values is False:
+                        index=1
+                        for dy_tmp_node in tmp_nodes:
+                            tmp_node_dfn=dy_tmp_node["node"]
+                            tmp_alias=dy_tmp_node["alias"]
+                            tmp_cmd_line_index=dy_tmp_node["cmd_line_index"]
+                            tmp_branch_num=None
+                            if index == len(tmp_nodes):
+                                if branch_num_str is not None:
+                                    tmp_cmd_line_index+=len(branch_num_str)
+                                    if branch_num is None:
+                                        tmp_branch_num=branch_num_str
+                                    else:
+                                        tmp_branch_num=int(branch_num)
+                            
+                            set_node(tmp_alias, tmp_node_dfn, dy_err, tmp_cmd_line_index, tmp_branch_num, dy_chk)
+
+                            if index == len(tmp_nodes):
+                                process_values(values, tmp_node_dfn, dy_err, tmp_cmd_line_index, dy_chk)
+
+                            node_dfn, builtin_dfn, usage_dfn =get_builtin_dfn(node_dfn, tmp_node_dfn, builtin_dfn, usage_dfn)
+                            if tmp_node_dfn.dy["is_usage"] is True:
+                                tmp_node_dfn.current_arg._previous_dfn=node_dfn
+                            index+=1
+
+                        if after_explicit is True:
+                            after_explicit=False
+                        elif search_only_root is True:
+                            search_only_root=False
+            else:
+                search_values=True
+
+        if after_explicit is True or search_only_root is True:
+            msg.error("unknown argument '{}'.".format(elem), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=pretty_msg, exc=exc)
+            print_usage(node_dfn)
+            sys.exit(1)
+        
+        if search_values is True:
+            if node_dfn.dy["values_authorized"] is True:
+                add_value(node_dfn.current_arg, elem, dy_err, cmd_line_index, dy_chk)
+            else:
+                msg.error("argument '{}' does not accept value(s) '{}'.".format(node_dfn.current_arg._alias, elem), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=pretty_msg, exc=exc)
+                print_usage(node_dfn)
+                sys.exit(1)
 
     last_check(dy_chk, dy_err, usage_dfn)
 
@@ -943,7 +889,7 @@ def print_examples(node_dfn):
 def get_builtin_dfn(previous_node_dfn, node_dfn, builtin_dfn, usage_dfn):
     if node_dfn.dy["is_usage"] is True:
         usage_dfn=node_dfn
-        usage_dfn.current_arg._previous_dfn=previous_node_dfn
+        # usage_dfn.current_arg._previous_dfn=previous_node_dfn
         if node_dfn.dy["is_builtin"] is True:
             builtin_dfn=node_dfn
     elif node_dfn.level == 2 and node_dfn.dy["is_builtin"] is True:

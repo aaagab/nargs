@@ -13,7 +13,7 @@ import sys
 
 from .get_types import get_type_str
 from .nargs_syntax import get_nargs_syntax, get_joined_list
-from .regexes import get_regex, get_regex_hints
+from .regexes import get_regex_dfn, get_regex_hints
 from .style import Style
 
 def get_values_notation(style, _in, in_labels, _type, default, label, values_min, values_max, values_required, values_authorized):
@@ -152,7 +152,7 @@ def get_help_usage(
                     if root_flags_notation is None:
                         root_flags_notation=""
                     else:
-                        root_flags_notation=" {},".format(style.get_text("@{}".format(root_flags_notation), "flags"))
+                        root_flags_notation=" {},".format(style.get_text("{}".format(root_flags_notation), "flags"))
 
 
                 executable=style.escape(".", dy_metadata["executable"])
@@ -210,7 +210,7 @@ def get_help_usage(
                 flags_notation=get_flags_notation(node_dfn.get_dy_flags())
                 if flags_notation is not None:
                     str_alias_value+=" {}".format(
-                        style.get_text("@{}".format(flags_notation), "flags"),
+                        style.get_text("{}".format(flags_notation), "flags"),
                     )
 
 
@@ -625,7 +625,7 @@ def get_aliases_sort(node):
         dy_aliases=dict()
         default_tmp_alias=None
         for alias in node.dy["aliases"]:
-                tmp_alias=re.sub(get_regex("alias_sort_regstr")["rule"], "", alias)
+                tmp_alias=re.sub(get_regex_dfn("alias_sort_regstr")["rule"], "", alias)
                 if alias == node.dy["default_alias"]:
                     default_tmp_alias=tmp_alias
 
