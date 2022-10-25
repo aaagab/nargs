@@ -6,7 +6,7 @@ import os
 import sys
 import re
 
-from .regexes import get_regex, get_regex_hints
+from .regexes import get_regex_dfn, get_regex_hints
 
 from ..gpkgs import message as msg
 
@@ -369,13 +369,13 @@ def get_theme(default_theme, user_theme, dy_err):
                             prop_value=user_theme[elem][prop]
                             if type(prop_value) in get_prop_type(prop):
                                 if isinstance(prop_value, str):
-                                    reg_rgb=re.match(get_regex("def_theme_rgb")["rule"], prop_value)
+                                    reg_rgb=re.match(get_regex_dfn("def_theme_rgb")["rule"], prop_value)
                                     if reg_rgb:
                                         for value in prop_value.split(";"):
                                             if int(value) > 255:
                                                 msg.error("Theme element '{}' property '{}' all integer values from {} must be less or equal than 255.".format(elem, prop, prop_value), prefix=dy_err["prefix"], pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
                                     else:
-                                        reg_hexa=re.match(get_regex("def_theme_hexa")["rule"], prop_value)
+                                        reg_hexa=re.match(get_regex_dfn("def_theme_hexa")["rule"], prop_value)
                                         if reg_hexa:
                                             tmp_colors=[]
                                             for color in reg_hexa.groups():

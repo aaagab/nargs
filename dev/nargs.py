@@ -21,7 +21,7 @@ from .set_options import get_cached_options, set_options, get_default_builtins, 
 from .get_node_dfn import get_node_dfn
 from .help import get_help_usage
 
-from .regexes import get_regex
+from .regexes import get_regex_dfn
 from .style import get_default_props, Style
 
 from ..gpkgs import message as msg
@@ -286,7 +286,7 @@ class Nargs():
                 if prop in styles[elem]:
                     if prop in ["background", "foreground"]:
                         value=styles[elem][prop]
-                        reg_hexa=re.match(get_regex("def_theme_hexa")["rule"], value)
+                        reg_hexa=re.match(get_regex_dfn("def_theme_hexa")["rule"], value)
                         if reg_hexa:
                             tmp_colors=[]
                             for color in reg_hexa.groups():
