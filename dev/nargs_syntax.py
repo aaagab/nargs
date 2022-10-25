@@ -763,6 +763,7 @@ def get_nargs_syntax(style, user_options, print_options=True):
     for tmp_text in [
         "If an alias or flags notation is mistyped on the command-line, it may be use as a value if previous argument accept values.",
         "If a flags notation turns-out to be the same as a reachable alias, then the alias is going to be selected instead of the flags notation.",
+        "If multiple same aliases are present and user uses implicit notation on the command-line, the argument selected may be different than what the argument expected.", 
         "Question mark alias '{}' from usage may be misinterpreted by Bash as wildcard operator. If that happens end-user may want to use any other aliases provided for usage argument.".format(
             style.get_text("?", "emphasize"),
         ),
