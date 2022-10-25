@@ -29,9 +29,9 @@
 `installer:` gpm<br>
 `licenses:` MIT<br>
 `name:` Nested Arguments<br>
-`timestamp:` 1637700704.137397<br>
+`timestamp:` 1665348791.6815171<br>
 `uuid4:` 89d8676a-6b02-43fa-8694-e97de5680cd0<br>
-`version:` 1.0.5<br>
+`version:` 2.0.0<br>
 
 ### Nargs Options State
 - pretty_help: `enabled`
@@ -60,15 +60,13 @@
 - A flag is an argument with at least a one char alias that is selected according to rules defined in Nargs developer's documentation at section 'Concatenated Flag Aliases'.
 - In order to see available flag sets end-user can provide command-line '`prog.py --usage --flags`'
 - A flag set is a group of flags related to a particular argument. Each argument may have a different flag set. Some arguments may not have a flag set depending on arguments definition.
-- A flag set starts with 'at symbol' and contains at least one char. i.e. '`@chuv`' where '`c`' is 'cmd', '`h`' is 'help', '`u`' is 'usage' and '`v`' is 'version'.
+- A flag set starts with a one char alias and its prefix if any and it contains at least another char. i.e. '`-chuv`' where '`c`' is 'cmd', '`h`' is 'help', '`u`' is 'usage' and '`v`' is 'version'.
 - Root argument aliases may start with a flag set. In that case this flag set is the one available on first command-line argument or when explicit notation reaches level 0.
 - A flag may be repeated in a flag set depending on argument's definition. Flags order may not matter.
 - Only the latest flag of a flag set may accept a value and may have branch index notation.
-- A flag set may be concatenated to a command-line argument. i.e.: '`prog.py --usage @hip`'.
-- 'at symbol' may be repeated to nest multiple flag sets. i.e.: '`prog.py` `@u@hip`' is the same as '`prog.py --usage --hint --info --path`'.
-- When nesting multiple flag sets by using multiple 'at symbol' then the nested flag set is always related to the latest flag used. i.e.: for '`prog.py` `@u@hip`' then flag set '`@hip`' is related to flag '`u`'.
-- A flag does not accept explicit notation. A flag set does accept explicit notation.
-- End-user can rely on usage argument to get flag information i.e.: '`prog.py` `@u?`', or '`prog.py` `@u@h?`', or '`prog.py` `@u@hiu`'.
+- 'at symbol' may be repeated to nest multiple flag sets. i.e.: '`prog.py` `-uhip`' is the same as '`prog.py --usage --hint --info --path`'.
+- A flag does not accept explicit notation. Explicit notation can only be applied to first flag of the set. Then all other flags are selected are part of the flags set of the previous flag.
+- End-user can rely on usage argument to get flag information i.e.: '`prog.py` `-u?`', or '`prog.py` `-uh?`', or '`prog.py` `-uhiu`'.
 
 ### Argument Aliases States
 - Required: `--mount, -m`
@@ -112,7 +110,8 @@
 - Implicit navigation searches aliases in children' arguments, parents' arguments and parents' children.
 - Command-line symbols `-`, `=`, and `+` help to explicitly navigate arguments' tree.
 - Explicit navigation with command-line symbols `-`, `=`, and `+` may be omitted most of the time.
-- Explicit navigation is required for an alias when selected alias is also present either in children's arguments, parents' arguments, or parents' children arguments.
+- Explicit navigation is needed for an alias when selected alias is also present either in children's arguments, parents' arguments, or parents' children arguments and is not available implicit navigation.
+- For similar aliases implicit notation will search first in the children and if not found it will stop at the younger ancestor child alias that matches.
 - Explicit navigation can reach ancestors with `-`, siblings with `=`, and children with `+`.
 - Command-line `-` symbol may be concatenated `---` or used with a multiplier `-3`.
 - Explicit navigation allows faster arguments parsing.
@@ -155,7 +154,7 @@
 - Argument with '`repeat`' property set to either '`append`', or '`replace`' allows to have multiple occurrences of an argument per branch.
 - Argument's multiple occurrences examples: '`prog --arg --arg`' or '`prog --arg+1 --arg+1`'.
 - Explicit notation and branch index notation allows to select accurately an argument's branch in the arguments tree.
-- Last flag on a flag set can also accepts branch index notation i.e. `@chu+2`
+- Last flag on a flag set can also accepts branch index notation i.e. `-chu+2`
 
 ### Argument Values
 - required: *`<str>`*
@@ -192,7 +191,7 @@
 - i.e. argument`:value1`
 - Values notation is useful to prevent values to be mistaken for aliases.
 - Values notation allows faster command-line parsing.
-- Last flag on a flag set can also accepts values i.e. `@chu:value`
+- Last flag on a flag set can also accepts values i.e. `-chu:value`
 
 ### Argument Number of Values
 - required 1 value: *`<str>`* 
@@ -214,11 +213,9 @@
 - --mount, -m *`<str:{option1,option2,option3}> 2 (=option1, option2)`*
 
 ### Arguments Syntax Pitfalls
-- For value '`-4`' in command '`--arg -4`', '`-4`' is parsed as an explicit notation. In order to set '`-4`' as a value use '`--arg=-4`'.
-- For alias '`-4`' in command '`--arg -4`', '`-4`' is parsed as an explicit notation. In order to set '`-4`' as an alias use explicit notation before argument '`--arg = -4`'
-- For value '`@value`' in command '`--arg @value`', '`@value`' is parsed as a flag set. In order to set '`@value`' as a value use '`--arg=@value`'.
-- For value '`-value`' in command '`--arg -value`', '`-value`' is parsed as an alias. In order to set '`-value`' as a value use '`--arg=-value`'.
+- If an alias or flags notation is mistyped on the command-line, it may be use as a value if previous argument accept values.
+- If a flags notation turns-out to be the same as a reachable alias, then the alias is going to be selected instead of the flags notation.
 - Question mark alias '`?`' from usage may be misinterpreted by Bash as wildcard operator. If that happens end-user may want to use any other aliases provided for usage argument.
 - For values notation on Windows CMD terminal emulator, command-line `prog.py --arg='value value value'` single quotes trigger shlex `ValueError: No closing quotation`. Instead end-user must type `prog.py --arg="value value value"` or `prog.py --arg="value1 value2 'value 3'"`.
-- Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'unknown argument' else 'value' else 'unknown input'. If 'flags notation' then flag set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).
+- Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'flags notation' else 'value' else 'unknown input'. If 'flags notation' then flag set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).
 

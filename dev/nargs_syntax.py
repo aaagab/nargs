@@ -178,8 +178,8 @@ def get_nargs_syntax(style, user_options, print_options=True):
             style.get_text("prog.py --usage --flags", "emphasize"),
         ),
         "A flag set is a group of flags related to a particular argument. Each argument may have a different flag set. Some arguments may not have a flag set depending on arguments definition.",
-        "A flag set starts with 'at symbol' and contains at least one char. i.e. '{}' where '{}' is 'cmd', '{}' is 'help', '{}' is 'usage' and '{}' is 'version'.".format(
-            style.get_text("@chuv", "flags"),
+        "A flag set starts with a one char alias and its prefix if any and it contains at least another char. i.e. '{}' where '{}' is 'cmd', '{}' is 'help', '{}' is 'usage' and '{}' is 'version'.".format(
+            style.get_text("-chuv", "flags"),
             style.get_text("c", "flags"),
             style.get_text("h", "flags"),
             style.get_text("u", "flags"),
@@ -189,28 +189,19 @@ def get_nargs_syntax(style, user_options, print_options=True):
         "Root argument aliases may start with a flag set. In that case this flag set is the one available on first command-line argument or when explicit notation reaches level 0.",
         "A flag may be repeated in a flag set depending on argument's definition. Flags order may not matter.",
         "Only the latest flag of a flag set may accept a value and may have branch index notation.",
-        "A flag set may be concatenated to a command-line argument. i.e.: '{}'.".format(
-            style.get_text("prog.py --usage @hip", "emphasize"),
-        ),
         "'at symbol' may be repeated to nest multiple flag sets. i.e.: '{} {}' is the same as '{}'.".format(
             style.get_text("prog.py", "emphasize"),
-            style.get_text("@u@hip", "flags"),
+            style.get_text("-uhip", "flags"),
             style.get_text("prog.py --usage --hint --info --path", "emphasize"),
         ),
-        "When nesting multiple flag sets by using multiple 'at symbol' then the nested flag set is always related to the latest flag used. i.e.: for '{} {}' then flag set '{}' is related to flag '{}'.".format(
-            style.get_text("prog.py", "emphasize"),
-            style.get_text("@u@hip", "flags"),
-            style.get_text("@hip", "flags"),
-            style.get_text("u", "flags"),
-        ), 
-        "A flag does not accept explicit notation. A flag set does accept explicit notation.",
+        "A flag does not accept explicit notation. Explicit notation can only be applied to first flag of the set. Then all other flags are selected are part of the flags set of the previous flag.",
         "End-user can rely on usage argument to get flag information i.e.: '{} {}', or '{} {}', or '{} {}'.".format(
             style.get_text("prog.py", "emphasize"),
-            style.get_text("@u?", "flags"),
+            style.get_text("-u?", "flags"),
             style.get_text("prog.py", "emphasize"),
-            style.get_text("@u@h?", "flags"),
+            style.get_text("-uh?", "flags"),
             style.get_text("prog.py", "emphasize"),
-            style.get_text("@u@hiu", "flags"),
+            style.get_text("-uhiu", "flags"),
         ),
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
@@ -336,7 +327,8 @@ def get_nargs_syntax(style, user_options, print_options=True):
             equal,
             style.get_text(plus, "emphasize"), 
         ),
-        "Explicit navigation is required for an alias when selected alias is also present either in children's arguments, parents' arguments, or parents' children arguments.",
+        "Explicit navigation is needed for an alias when selected alias is also present either in children's arguments, parents' arguments, or parents' children arguments and is not available implicit navigation.",
+        "For similar aliases implicit notation will search first in the children and if not found it will stop at the younger ancestor child alias that matches.",
         "Explicit navigation can reach ancestors with {}, siblings with {}, and children with {}.".format(
             style.get_text(minus, "emphasize"),
             equal,
@@ -516,7 +508,7 @@ def get_nargs_syntax(style, user_options, print_options=True):
         ),
         "Explicit notation and branch index notation allows to select accurately an argument's branch in the arguments tree.",
         "Last flag on a flag set can also accepts branch index notation i.e. {}".format(
-            style.get_text("@chu+2", "emphasize"),
+            style.get_text("-chu+2", "emphasize"),
         )
     ]:
         text.append("{}{}".format(
@@ -661,7 +653,7 @@ def get_nargs_syntax(style, user_options, print_options=True):
         "Values notation is useful to prevent values to be mistaken for aliases.",
         "Values notation allows faster command-line parsing.",
         "Last flag on a flag set can also accepts values i.e. {}".format(
-            style.get_text("@chu:value", "emphasize"),
+            style.get_text("-chu:value", "emphasize"),
         )
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
@@ -769,34 +761,8 @@ def get_nargs_syntax(style, user_options, print_options=True):
     text.append("\n{}".format(style.get_text("Arguments Syntax Pitfalls", "syntax_headers")))
     open_ul_html(style, text)
     for tmp_text in [
-        "For value '{}' in command '{}', '{}' is parsed as an explicit notation. In order to set '{}' as a value use '{}'.".format(
-            style.get_text("-4", "emphasize"),
-            style.get_text("--arg -4", "emphasize"),
-            style.get_text("-4", "emphasize"),
-            style.get_text("-4", "emphasize"),
-            style.get_text("--arg=-4", "emphasize"),
-        ),
-        "For alias '{}' in command '{}', '{}' is parsed as an explicit notation. In order to set '{}' as an alias use explicit notation before argument '{}'".format(
-            style.get_text("-4", "emphasize"),
-            style.get_text("--arg -4", "emphasize"),
-            style.get_text("-4", "emphasize"),
-            style.get_text("-4", "emphasize"),
-            style.get_text("--arg = -4", "emphasize"),
-        ),
-        "For value '{}' in command '{}', '{}' is parsed as a flag set. In order to set '{}' as a value use '{}'.".format(
-            style.get_text("@value", "emphasize"),
-            style.get_text("--arg @value", "emphasize"),
-            style.get_text("@value", "emphasize"),
-            style.get_text("@value", "emphasize"),
-            style.get_text("--arg=@value", "emphasize"),
-        ),
-        "For value '{}' in command '{}', '{}' is parsed as an alias. In order to set '{}' as a value use '{}'.".format(
-            style.get_text("-value", "emphasize"),
-            style.get_text("--arg -value", "emphasize"),
-            style.get_text("-value", "emphasize"),
-            style.get_text("-value", "emphasize"),
-            style.get_text("--arg=-value", "emphasize"),
-        ),
+        "If an alias or flags notation is mistyped on the command-line, it may be use as a value if previous argument accept values.",
+        "If a flags notation turns-out to be the same as a reachable alias, then the alias is going to be selected instead of the flags notation.",
         "Question mark alias '{}' from usage may be misinterpreted by Bash as wildcard operator. If that happens end-user may want to use any other aliases provided for usage argument.".format(
             style.get_text("?", "emphasize"),
         ),
@@ -806,7 +772,7 @@ def get_nargs_syntax(style, user_options, print_options=True):
             style.get_text("prog.py --arg=\"value value value\"", "emphasize"),
             style.get_text("prog.py --arg=\"value1 value2 'value 3'\"", "emphasize"),
         ),
-        "Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'unknown argument' else 'value' else 'unknown input'. If 'flags notation' then flag set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).",
+        "Note: Basic overview of Nargs arguments parsing sequence: 'explicit notation' else 'alias notation' else 'flags notation' else 'value' else 'unknown input'. If 'alias notation' then 'known alias' else 'flags notation' else 'value' else 'unknown input'. If 'flags notation' then flag set chars are tested as arguments (see Nargs /dev/get_args.py for detailed implementation).",
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
         append_li_html(style, text)

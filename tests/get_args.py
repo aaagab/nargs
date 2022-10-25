@@ -104,6 +104,43 @@ def test_get_args(
     args=nargs.get_args("--args --arg-three+  --arg-three+ --arg-three+ --arg-three+1=marc --arg-three+2=tom --arg-three+3=john --arg-three+2=harry")
     if args.arg_three._branches[1]._value != "harry": err()
 
+    args=dict(
+        _aliases="--args,-a,a",
+        _repeat="append",
+        direction=dict(
+            _aliases="--direction,-d",
+            _repeat="append",
+            directory=dict(
+                _aliases="--directory,y",
+                _values=1
+            ),
+            reason=dict(
+                _aliases="--reason,/r",
+            ),
+        ),
+        version=dict(),
+
+    )
+    nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict(usage=None))
+    args=nargs.get_args("--args -adra")
+
+    if not (args._count == 3): err()
+    if not (args.direction._here is True): err()
+    if not (args.direction.directory._here is False): err()
+    if not (args.direction.reason._here is True): err()
+
+    args=nargs.get_args("--args --direction /rd")
+    if not (args.direction._here is True): err()
+    if not (args.direction.reason._here is True): err()
+    if not (args.direction._count == 2): err()
+
+    with CatchEx(EndUserError) as c:
+        c.text="for argument '/r' values are not allowed"
+        nargs.get_args("--args -adr='value'")
+
+    args=nargs.get_args("--args -ady='value'")
+    if not (args.direction.directory._value == "value"): err()
+
     nargs=Nargs(
         options_file="assets/settings-2.yaml",
         cache_file=filenpa_cache,
@@ -112,13 +149,21 @@ def test_get_args(
     )
 
     args=nargs.get_args("--args+=barry  --args+ --args+ --args+1=marc --args+2=tom --args+3=john --args+2=harry")
-    if args._branches[1]._value != "harry": err()
+    if "harry" not in args._branches[1]._values : err()
 
-    args=nargs.get_args("@a=tom")
+    args=nargs.get_args("-a=tom")
     if args._value != "tom": err()
 
-    args=nargs.get_args("@a@b")
+    args=nargs.get_args("-ab")
+    if args._here is False: err()
     if args.arg_one._here is False: err()
+
+    with CatchEx(EndUserError) as c:
+        c.text="unknown argument '-b'"
+        args=nargs.get_args("-a = -b")
+
+    args=nargs.get_args("-a = -a")
+    if args._count != 2: err()
 
     print(
         args.arg_one._here,
@@ -160,11 +205,11 @@ def test_get_args(
         nargs.get_args("--args + --arg-unknown")
     
     with CatchEx(EndUserError) as c:
-        c.text="unknown argument '--arg-unknown'"
+        c.text="argument '--arg-one' does not accept value(s) '--arg-unknown'"
         nargs.get_args("--args --arg-one --arg-unknown")
 
     with CatchEx(EndUserError) as c:
-        c.text="unknown argument '--arg-unknown'"
+        c.text="argument '--arg-two' value '--arg-unknown' type error"
         nargs.get_args("--args --arg-two --arg-unknown")
 
     with CatchEx(EndUserError) as c:
@@ -172,7 +217,7 @@ def test_get_args(
         nargs.get_args("--args + <tag>")
 
     with CatchEx(EndUserError) as c:
-        c.text="unknown input '<tag>'"
+        c.text="argument '--arg-one' does not accept value(s) '<tag>'"
         nargs.get_args("--args --arg-one <tag>")
 
     with CatchEx(EndUserError) as c:
@@ -189,7 +234,7 @@ def test_get_args(
 
     with CatchEx(EndUserError) as c:
         c.text="depth LEVEL '-2' must be greater or equal than '-1'"
-        nargs.get_args("--args @u@d=-2")
+        nargs.get_args("--args -ud=-2")
 
     version=dy_metadata["version"]
     del dy_metadata["version"]
@@ -202,7 +247,7 @@ def test_get_args(
 
     with CatchEx(EndUserError) as c:
         c.text="version not provided"
-        nargs.get_args("--args@v")
+        nargs.get_args("--args -v")
 
     nargs=Nargs(
         options_file="assets/settings-3.yaml",
@@ -347,8 +392,8 @@ def test_get_args(
         args=nargs.get_args("--args --arg-one=value")
 
     with CatchEx(EndUserError) as c:
-        c.text="Unknown char(s) ['p'] in flag set"
-        args=nargs.get_args("--args@ap")
+        c.text="argument '--args' does not accept value(s) '-ap'"
+        args=nargs.get_args("--args -ap")
 
     with CatchEx(EndUserError) as c:
         c.text="'--arg-seven' at least one child argument is needed"

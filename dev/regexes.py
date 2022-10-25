@@ -10,25 +10,28 @@ def get_alias_prefixes():
 def get_flags_precedence():
     return ['+', '-', '', '/', ':', '_', '--']
 
-def get_regex(reg_name):
-    values=r"(?P<values_str>(?:\=|:)(?P<values>.*))?"
-    prefixes=r"(?P<prefix>\+|--|-|/|:|_)?"
-    branch_num=r"(?P<branch_num_str>\+(?P<branch_num>[1-9][0-9]*)?)?"
-    branch_num2=r"(?P<branch_num_str2>\+(?P<branch_num2>[1-9][0-9]*)?)?"
+def get_reg_prefixes():
+    return r"(?P<prefix>\+|--|-|/|:|_)?"
 
-    flags=r"@(?P<chars>[a-zA-Z0-9\?][a-zA-Z0-9@\?]*(?<!@))"
+def get_regex_cli(reg_name, arg_dfn):
+    # branch_num2=r"(?P<branch_num_str2>\+(?P<branch_num2>[1-9][0-9]*)?)?"
+    # flags=r"@(?P<chars>[a-zA-Z0-9\?][a-zA-Z0-9@\?]*(?<!@))"
+    # flags=r"{}(?P<chars>[a-zA-Z0-9\?][a-zA-Z0-9@\?]*(?<!@))"
+    values=r"(?P<values_str>(?:\=|:)(?P<values>.*))?"
+    branch_num=r"(?P<branch_num_str>\+(?P<branch_num>[1-9][0-9]*)?)?"
+
+    if reg_name == "alias":
+        return r"^(?P<alias>{}[a-zA-Z0-9\?][a-zA-Z0-9\-_]*?){}{}$".format(get_reg_prefixes(), branch_num, values)
+    elif reg_name == "flags":
+        return r"^(?P<alias>{}[a-zA-Z0-9\?])(?P<chars>[a-zA-Z0-9\?]*){}{}$".format(get_reg_prefixes(), branch_num, values)
+
+def get_regex_cli_explicit():
+    return r"^(?:(?P<plus>\+)|(?P<equal>=)|(?P<minus_concat>\-+)|(?:\-(?P<minus_index>[1-9][0-9]*)))$"
+
+def get_regex_dfn(reg_name):
     dy=dict(
         alias_sort_regstr=dict(
             rule=r"^(\+|--|-|/|:|_)",
-        ),
-        cli_alias=dict(
-            rule=r"^(?P<alias>{}[a-zA-Z0-9\?][a-zA-Z0-9\-_]*?){}(?P<flags_str>{}{})?{}$".format(prefixes, branch_num, flags, branch_num2, values),
-        ),
-        cli_flags=dict(
-            rule=r"^{}{}{}$".format(flags, branch_num, values),
-        ),
-        cli_explicit=dict(
-            rule=r"^(?:(?P<plus>\+)|(?P<equal>=)|(?P<minus_concat>\-+)|(?:\-(?P<minus_index>[1-9][0-9]*)))$",
         ),
         def_arg_name=dict(
             name="definition argument name",
@@ -40,7 +43,7 @@ def get_regex(reg_name):
         ),
         def_alias=dict(
             name="definition alias",
-            rule=r"^({})([a-zA-Z0-9\?][a-zA-Z0-9\-_]*)$".format(prefixes),
+            rule=r"^({})([a-zA-Z0-9\?][a-zA-Z0-9\-_]*)$".format(get_reg_prefixes()),
             hints=[
                 "First optional prefix can be any prefix from {}".format(get_alias_prefixes()),
                 "Required next char must be either a lowercase letter, an uppercase letter, an integer.",
@@ -79,7 +82,7 @@ def get_regex(reg_name):
     return dy[reg_name]
 
 def get_regex_hints(reg_name):
-    dy_regex=get_regex(reg_name)
+    dy_regex=get_regex_dfn(reg_name)
     tmp_text=[]
     tmp_text.append("Regex name '{}' with rule '{}':".format(dy_regex["name"], dy_regex["rule"]))
     for hint in dy_regex["hints"]:
