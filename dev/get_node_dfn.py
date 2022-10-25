@@ -7,7 +7,7 @@ import sys
 
 from .aliases import check_aliases_conflict
 from .nodes import NodeDfn
-from .regexes import get_regex, get_regex_hints
+from .regexes import get_regex_dfn, get_regex_hints
 from .set_dfn import get_auto_alias
 from .set_dfn import get_filtered_dy
 from .get_properties import get_arg_properties
@@ -26,7 +26,7 @@ def get_location(pnode_dfn, arg_name):
 def verify_name(name, verified_names, dy_err):
     if isinstance(name, str):
         if name not in verified_names:
-            if re.match(get_regex("def_arg_name")["rule"], name):
+            if re.match(get_regex_dfn("def_arg_name")["rule"], name):
                 verified_names.append(name)
             else:
                 lst_errors=[

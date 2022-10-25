@@ -958,13 +958,13 @@ def test_implementation(
     args=nargs.get_args("args arg1")
     if args.arg1._here is False: err()
     with CatchEx(EndUserError) as c:
-        c.text="unknown input 'arg2'"
+        c.text="argument 'args' does not accept value(s) 'arg2'"
         nargs.get_args("args arg2")
 
     args=nargs.get_args("args arg3")
     if args.arg3._here is False: err()
     with CatchEx(EndUserError) as c:
-        c.text="unknown input 'narg'"
+        c.text="argument 'arg3' does not accept value(s) 'narg'"
         nargs.get_args("args arg3 narg")
 
     args="""
@@ -1321,7 +1321,7 @@ def test_implementation(
     except:
         pass
 
-    args=nargs.get_args("args @a")
+    args=nargs.get_args("args a")
     if args.arg2._here is False: err()
 
     args=nargs.get_args("args arg1 narg1 nnarg narg2 nnarg")
@@ -1725,7 +1725,7 @@ def test_implementation(
     args=nargs.get_args("root + ancestor + gd-parent + parent + self -4 root")
     if args._here is False: err()
 
-    args=nargs.get_args("root + ancestor + gd-parent + parent + self -4 @r")
+    args=nargs.get_args("root + ancestor + gd-parent + parent + self -4 r")
     if args._here is False: err()
     if args.ancestor._here is True: err()
 
@@ -1811,81 +1811,81 @@ def test_implementation(
     if len(args.arg._values) != 3: err() 
     if "this is value3" not in args.arg._values: err()
 
-    args=nargs.get_args("args @a=value")
+    args=nargs.get_args("args  -a=value")
     if args.arg._value != "value": err()
-    args=nargs.get_args("args @a=\"value\"")
+    args=nargs.get_args("args  -a=\"value\"")
     if args.arg._value != "value": err()
-    args=nargs.get_args("args @a='value'")
+    args=nargs.get_args("args  -a='value'")
     if args.arg._value != "value": err()
-    args=nargs.get_args("args @a='value1 value2 \"this is value3\"'")
+    args=nargs.get_args("args  -a='value1 value2 \"this is value3\"'")
     if len(args.arg._values) != 3: err() 
     if "this is value3" not in args.arg._values: err()
-    args=nargs.get_args("args @a=\"value1 value2 'this is value3'\"")
-    if len(args.arg._values) != 3: err() 
-    if "this is value3" not in args.arg._values: err()
-
-    args=nargs.get_args("args @a:value")
-    if args.arg._value != "value": err()
-    args=nargs.get_args("args @a:\"value\"")
-    if args.arg._value != "value": err()
-    args=nargs.get_args("args @a:'value'")
-    if args.arg._value != "value": err()
-    args=nargs.get_args("args @a:'value1 value2 \"this is value3\"'")
-    if len(args.arg._values) != 3: err() 
-    if "this is value3" not in args.arg._values: err()
-    args=nargs.get_args("args @a:\"value1 value2 'this is value3'\"")
+    args=nargs.get_args("args  -a=\"value1 value2 'this is value3'\"")
     if len(args.arg._values) != 3: err() 
     if "this is value3" not in args.arg._values: err()
 
-    args=nargs.get_args("args@a=value")
+    args=nargs.get_args("args  -a:value")
     if args.arg._value != "value": err()
-    args=nargs.get_args("args@a=\"value\"")
+    args=nargs.get_args("args  -a:\"value\"")
     if args.arg._value != "value": err()
-    args=nargs.get_args("args@a='value'")
+    args=nargs.get_args("args  -a:'value'")
     if args.arg._value != "value": err()
-    args=nargs.get_args("args@a='value1 value2 \"this is value3\"'")
+    args=nargs.get_args("args  -a:'value1 value2 \"this is value3\"'")
     if len(args.arg._values) != 3: err() 
     if "this is value3" not in args.arg._values: err()
-    args=nargs.get_args("args@a=\"value1 value2 'this is value3'\"")
-    if len(args.arg._values) != 3: err() 
-    if "this is value3" not in args.arg._values: err()
-
-    args=nargs.get_args("args@a:value")
-    if args.arg._value != "value": err()
-    args=nargs.get_args("args@a:\"value\"")
-    if args.arg._value != "value": err()
-    args=nargs.get_args("args@a:'value'")
-    if args.arg._value != "value": err()
-    args=nargs.get_args("args@a:'value1 value2 \"this is value3\"'")
-    if len(args.arg._values) != 3: err() 
-    if "this is value3" not in args.arg._values: err()
-    args=nargs.get_args("args@a:\"value1 value2 'this is value3'\"")
+    args=nargs.get_args("args  -a:\"value1 value2 'this is value3'\"")
     if len(args.arg._values) != 3: err() 
     if "this is value3" not in args.arg._values: err()
 
-    args=nargs.get_args("@r@a=value")
+    args=nargs.get_args("args -a=value")
     if args.arg._value != "value": err()
-    args=nargs.get_args("@r@a=\"value\"")
+    args=nargs.get_args("args -a=\"value\"")
     if args.arg._value != "value": err()
-    args=nargs.get_args("@r@a='value'")
+    args=nargs.get_args("args -a='value'")
     if args.arg._value != "value": err()
-    args=nargs.get_args("@r@a='value1 value2 \"this is value3\"'")
+    args=nargs.get_args("args -a='value1 value2 \"this is value3\"'")
     if len(args.arg._values) != 3: err() 
     if "this is value3" not in args.arg._values: err()
-    args=nargs.get_args("@r@a=\"value1 value2 'this is value3'\"")
+    args=nargs.get_args("args -a=\"value1 value2 'this is value3'\"")
     if len(args.arg._values) != 3: err() 
     if "this is value3" not in args.arg._values: err()
 
-    args=nargs.get_args("@r@a:value")
+    args=nargs.get_args("args -a:value")
     if args.arg._value != "value": err()
-    args=nargs.get_args("@r@a:\"value\"")
+    args=nargs.get_args("args -a:\"value\"")
     if args.arg._value != "value": err()
-    args=nargs.get_args("@r@a:'value'")
+    args=nargs.get_args("args -a:'value'")
     if args.arg._value != "value": err()
-    args=nargs.get_args("@r@a:'value1 value2 \"this is value3\"'")
+    args=nargs.get_args("args -a:'value1 value2 \"this is value3\"'")
     if len(args.arg._values) != 3: err() 
     if "this is value3" not in args.arg._values: err()
-    args=nargs.get_args("@r@a:\"value1 value2 'this is value3'\"")
+    args=nargs.get_args("args -a:\"value1 value2 'this is value3'\"")
+    if len(args.arg._values) != 3: err() 
+    if "this is value3" not in args.arg._values: err()
+
+    args=nargs.get_args("ra=value")
+    if args.arg._value != "value": err()
+    args=nargs.get_args("ra=\"value\"")
+    if args.arg._value != "value": err()
+    args=nargs.get_args("ra='value'")
+    if args.arg._value != "value": err()
+    args=nargs.get_args("ra='value1 value2 \"this is value3\"'")
+    if len(args.arg._values) != 3: err() 
+    if "this is value3" not in args.arg._values: err()
+    args=nargs.get_args("ra=\"value1 value2 'this is value3'\"")
+    if len(args.arg._values) != 3: err() 
+    if "this is value3" not in args.arg._values: err()
+
+    args=nargs.get_args("ra:value")
+    if args.arg._value != "value": err()
+    args=nargs.get_args("ra:\"value\"")
+    if args.arg._value != "value": err()
+    args=nargs.get_args("ra:'value'")
+    if args.arg._value != "value": err()
+    args=nargs.get_args("ra:'value1 value2 \"this is value3\"'")
+    if len(args.arg._values) != 3: err() 
+    if "this is value3" not in args.arg._values: err()
+    args=nargs.get_args("ra:\"value1 value2 'this is value3'\"")
     if len(args.arg._values) != 3: err() 
     if "this is value3" not in args.arg._values: err()
 
@@ -1900,7 +1900,7 @@ def test_implementation(
             _show: false
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True, cache=False)
-    args=nargs.get_args("args@r")
+    args=nargs.get_args("args -r")
     if args._count != 2: err()
     if args.arg._here is True: err()
 
@@ -1914,7 +1914,7 @@ def test_implementation(
             _repeat: append
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True, cache=False)
-    args=nargs.get_args("args @r")
+    args=nargs.get_args("args r")
     if args._count != 1: err()
     if args.arg._count != 1: err()
     if args.arg._here is False: err()
@@ -1927,7 +1927,7 @@ def test_implementation(
         _repeat: append
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True, cache=False)
-    args=nargs.get_args("args @r")
+    args=nargs.get_args("args -r")
     if args._count != 2: err()
     if args._dfn.get_dy_flags()["r"]["alias"] != "-r": err()
 
@@ -1940,7 +1940,7 @@ def test_implementation(
             _aliases: "arg2,-r"
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True, cache=False)
-    args=nargs.get_args("args @r")
+    args=nargs.get_args("args -r")
     if args.arg1._here is True: err()
     if args.arg2._here is False: err()
     if args._dfn.get_dy_flags()["r"]["alias"] != "-r": err()
@@ -1956,7 +1956,7 @@ def test_implementation(
             _show: false
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True, cache=False)
-    args=nargs.get_args("args @r")
+    args=nargs.get_args("args /r")
     if args.arg2._here is True: err()
     if args.arg1._here is False: err()
     if args._dfn.get_dy_flags()["r"]["alias"] != "/r": err()
@@ -1982,59 +1982,59 @@ def test_implementation(
                     _values: '*'
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True, cache=False)
-    args=nargs.get_args("args arg narg nnarg@orran")
+    args=nargs.get_args("args arg narg nnarg orran")
     if args._count != 3: err()
     if args.arg._count != 2: err()
     if args.arg.narg._count != 2: err()
     if args.arg.narg.nnarg._count != 2: err()
 
-    args=nargs.get_args("args@r@a@n@o")
+    args=nargs.get_args("args rano")
     if args._count != 2: err()
     if args.arg._count != 1: err()
     if args.arg.narg._count != 1: err()
     if args.arg.narg.nnarg._count != 1: err()
 
-    args=nargs.get_args("args arg narg nnarg @r@a@n@o")
+    args=nargs.get_args("args arg narg nnarg rano")
     if args._count != 2: err()
     if args.arg._count != 2: err()
     if args.arg.narg._count != 2: err()
     if args.arg.narg.nnarg._count != 2: err()
 
     # values notation
-    args=nargs.get_args("args@r=val1")
+    args=nargs.get_args("args r=val1")
     if args._value != "val1": err()
-    args=nargs.get_args("args@r='val1 val2'")
+    args=nargs.get_args("args r='val1 val2'")
     if args._values[0] != "val1": err()
     if args._values[1] != "val2": err()
-    args=nargs.get_args("args@r='val1 val2 \"val 3\"'")
+    args=nargs.get_args("args r='val1 val2 \"val 3\"'")
     if args._values[0] != "val1": err()
     if args._values[1] != "val2": err()
     if args._values[2] != "val 3": err()
 
-    args=nargs.get_args("args arg narg nnarg @r@a@n@o=val1")
+    args=nargs.get_args("args arg narg nnarg rano=val1")
     if args.arg.narg.nnarg._value != "val1": err()
-    args=nargs.get_args("args arg narg nnarg @r@a@n@o='val1 val2'")
+    args=nargs.get_args("args arg narg nnarg rano='val1 val2'")
     if args.arg.narg.nnarg._values[0] != "val1": err()
     if args.arg.narg.nnarg._values[1] != "val2": err()
-    args=nargs.get_args("args arg narg nnarg @r@a@n@o='val1 val2 \"val 3\"'")
+    args=nargs.get_args("args arg narg nnarg rano='val1 val2 \"val 3\"'")
     if args.arg.narg.nnarg._values[0] != "val1": err()
     if args.arg.narg.nnarg._values[1] != "val2": err()
     if args.arg.narg.nnarg._values[2] != "val 3": err()
 
     # branch index notation
-    args=nargs.get_args("args @r+")
+    args=nargs.get_args("args r+")
     if len(args._branches) != 2: err()
-    args=nargs.get_args("args @r+2")
+    args=nargs.get_args("args r+2")
     if len(args._branches) != 2: err()
-    args=nargs.get_args("args @r+2:val1")
+    args=nargs.get_args("args r+2:val1")
     if len(args._branches) != 2: err()
     if args._value is not None: err()
     if args._branches[1]._value != "val1": err()
 
-    args=nargs.get_args("args arg narg nnarg @r@a@n@o+")
+    args=nargs.get_args("args arg narg nnarg rano+")
     if len(args.arg.narg.nnarg._branches) != 2: err()
 
-    args=nargs.get_args("args arg narg nnarg @r@a@n@o+2")
+    args=nargs.get_args("args arg narg nnarg rano+2")
     if len(args.arg.narg.nnarg._branches) != 2: err()
     if args.arg.narg.nnarg._branches[0]._count != 1: err()
     if args.arg.narg.nnarg._branches[1]._count != 1: err()
@@ -2068,22 +2068,17 @@ def test_implementation(
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True, cache=False)
 
-    with CatchEx(EndUserError) as c:
-        c.text="['a'] in flag set 'r'"
-        args=nargs.get_args("@ra")
-
-    args=nargs.get_args("@r@a")
+    args=nargs.get_args("/ra")
     if args.arg._here is False: err()
     
-    args=nargs.get_args("@r = @r")
+    args=nargs.get_args("/r = /r")
     if args._count != 2: err()
 
-    with CatchEx(EndUserError) as c:
-        c.text="['a'] in flag set 'r'"
-        args=nargs.get_args("args arg - @ra")
+    args=nargs.get_args("args arg - /ra")
+    if args._count !=2: err()
 
 
-    args=nargs.get_args("args arg - @r@ra")
+    args=nargs.get_args("args arg - /rra")
     if args._count != 3: err()
     if args.arg._count != 2: err()
 
@@ -2113,20 +2108,17 @@ def test_implementation(
     args=nargs.get_args("args arg = -4")
     if args.other._here is False: err()
 
-    with CatchEx(EndUserError) as c:
-        c.text="Unknown char(s)"
-        args=nargs.get_args("args arg @value")
+    args=nargs.get_args("args arg /value")
+    if args.arg._value != "/value": err()
 
     args=nargs.get_args("args arg=@value")
     if args.arg._value != "@value": err()
 
-    with CatchEx(EndUserError) as c:
-        c.text="unknown argument '-value'"
-        args=nargs.get_args("args arg -value")
+    args=nargs.get_args("args arg -value")
+    if args.arg._value != "-value": err()
 
     args=nargs.get_args("args arg=-value")
     if args.arg._value != "-value": err()
-
 
     args="""
         arg:

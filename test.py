@@ -47,6 +47,7 @@ if __name__ == "__main__":
     filenpa_cache_pickle=os.path.join(direpa_tmp, "nargs-cache.pickle")
 
     with Chk() as chk:
+        chk.exc(pkg.single_test, dy_metadata, filenpa_cache_json)
         chk.exc(pkg.test_aliases, dy_metadata)
         chk.exc(pkg.test_get_json, dy_metadata)
         chk.exc(pkg.test_get_args, dy_metadata, filenpa_cache_json)
@@ -57,7 +58,6 @@ if __name__ == "__main__":
         chk.exc(pkg.test_set_options, dy_metadata)
         chk.exc(pkg.test_style, dy_metadata)
         chk.exc(pkg.test_implementation, dy_metadata, filenpa_cache_json, filenpa_cache_pickle, manual)
-        chk.exc(pkg.single_test, dy_metadata)
 
         chk.exc(pkg.test_performance, dy_metadata, direpa_tmp, filenpa_cache_json)
 

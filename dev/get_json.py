@@ -10,8 +10,6 @@ import traceback
 
 from ..gpkgs import message as msg
 
-from .regexes import get_regex
-
 has_yaml_module=True
 try:
     import yaml

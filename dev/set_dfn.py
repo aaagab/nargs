@@ -5,7 +5,7 @@ import os
 import re
 import sys
 
-from .regexes import get_regex, get_regex_hints
+from .regexes import get_regex_dfn, get_regex_hints
 from ..gpkgs import message as msg
 
 def get_prop_prefix(dy_err, prop):
@@ -322,7 +322,7 @@ def get_aliases(arg_name, dy_props, dy_err, dy_attr_aliases, is_usage):
                 default_alias=tmp_aliases[0]
                 tmp_aliases=sorted(list(set(tmp_aliases)))
                 for alias in tmp_aliases:
-                    reg=re.match(get_regex("def_alias")["rule"], alias)
+                    reg=re.match(get_regex_dfn("def_alias")["rule"], alias)
                     if reg is None:
                         msg.error([
                             "alias '{}' syntax error.".format(alias),
@@ -477,7 +477,7 @@ def get_values(dy_props, dy_err):
         _values=dy_props["_values"]
         del dy_props["_values"]
         if isinstance(_values, str):
-            reg=re.match(get_regex("def_values")["rule"], _values)
+            reg=re.match(get_regex_dfn("def_values")["rule"], _values)
             if reg:
                 dy_values["authorized"]=True
                 if reg.group("star") is not None:
