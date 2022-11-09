@@ -88,6 +88,19 @@ def test_get_node_dfn(
             raise_exc=True,
         )
 
+    tmp_args=dict(
+        _xor="arg_one,arg_two",
+        arg_one=dict(
+            _preset=True,
+        ),
+        arg_two=dict(
+            _preset=True,
+        ),
+    )
+    with CatchEx(DeveloperError) as c:
+        c.text="have both '_preset=True' and are part of the same xor group"
+        Nargs(args=tmp_args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+
     with CatchEx(DeveloperError) as c:
         c.text="for argument 'args': at key '_xor' child argument name 'arg_three' not found"
         Nargs(

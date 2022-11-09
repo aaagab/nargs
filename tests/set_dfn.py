@@ -461,6 +461,104 @@ def test_set_dfn(
     with CatchEx(DeveloperError)as c:
         c.text="'_required': argument name 'narg' can't be both required and part of parent xor group at 'args > arg'"
         nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(arg_def), builtins=dict(usage=None), cache=False, raise_exc=True)
+
+    args=dict(
+        arg_one=dict(
+            _preset=True,
+            arg_two=dict(
+                _required=True,
+                _values=1,
+            ),
+        ),
+    )
+    with CatchEx(DeveloperError) as c:
+        c.text="then parent 'arg_one' property '_preset' must be set to 'False'"
+        nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+
+    args=dict(
+        arg_one=dict(
+            _preset="text",
+        ),
+    )
+    with CatchEx(DeveloperError) as c:
+        c.text="'_preset': value type <class 'str'> must be of type <class 'bool'>"
+        nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+
+    args=dict(
+        arg_one=dict(
+            _preset=True,
+            _values=1,
+        ),
+    )
+    with CatchEx(DeveloperError) as c:
+        c.text="when value is 'True' and argument's values are required then default values must be set with property '_default'"
+        nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+
+    args=dict(
+        arg_one=dict(
+            _default=1,
+            _preset=True,
+            _values=1,
+        ),
+    )
+    nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+    if nargs.dfn.dy_nodes["arg_one"].dy["default"][0] != "1": err()
+
+    args=dict(
+        arg_one=dict(
+            _allow_parent_fork=False,
+            _preset=True,
+        ),
+    )
+    with CatchEx(DeveloperError) as c:
+        c.text="when value is 'True' then property '_allow_parent_fork' must be set to 'True'"
+        nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+
+    args=dict(
+        arg_one=dict(
+            _preset=True,
+        ),
+        arg_two=dict(
+            _allow_siblings=False,
+            _preset=True,
+        )
+    )
+    with CatchEx(DeveloperError) as c:
+        c.text="sibling node 'arg_one' has property '_preset=True' then property '_allow_siblings' must be set to 'True'"
+        nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+
+    args=dict(
+        arg_one=dict(
+            _allow_siblings=False,
+            _preset=True,
+        ),
+        arg_two=dict(
+            _preset=True,
+        )
+    )
+    with CatchEx(DeveloperError) as c:
+        c.text="'_preset': value can't be set to 'True' when another sibling node 'arg_one' has property '_preset=True' with '_allow_siblings=False'"
+        nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+
+    args=dict(
+        arg_one=dict(
+            _need_child=True,
+            _preset=True,
+        ),
+    )
+    with CatchEx(DeveloperError) as c:
+        c.text="when value is 'True' then property '_need_child' must be set to 'False'"
+        nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+
+    args=dict(
+        arg_one=dict(
+            _required=True,
+            _preset=True,
+        ),
+    )
+    with CatchEx(DeveloperError) as c:
+        c.text="when value is 'True' then property '_required' must be set to 'False'"
+        nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict())
     
     arg_def="""
         _fork: 1

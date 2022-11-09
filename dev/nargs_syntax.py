@@ -444,6 +444,9 @@ def get_nargs_syntax(style, user_options, print_options=True):
         "'{}' property is a bool that describes if at least one argument's child must be provided when argument is present.".format(
             style.get_text("need_child", "emphasize"),
         ),
+        "'{}' property is a bool that defines if an argument is a preset argument. A preset argument is added implicitly if only its parent is present with no children.".format(
+            style.get_text("preset", "emphasize"),
+        ),
         "'{}' property is a string set with one option from '{}'. Property defines multiple argument's occurrences behavior.".format(
             style.get_text("repeat", "emphasize"),
             style.get_text("append, error, replace", "emphasize"),

@@ -415,8 +415,214 @@ def test_get_args(
         c.text="'--args --arg-nine': required argument '--n-arg' is missing"
         args=nargs.get_args("--args --arg-nine")
 
+    tmp_dy_args=dict(
+        arg_one=dict(
+            _preset=True,
+            arg_two=dict(
+                _required=True,
+                arg_three=dict(
+                    _required=True,
+                    arg_four=dict(
+                        _preset=True,
+                    )
+                ),
+            )
+        ),
+    )
+    tmp_nargs=Nargs(args=tmp_dy_args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+    tmp_args=tmp_nargs.get_args("--args")
+    if tmp_args.arg_one._here is False: err()
+    if tmp_args.arg_one.arg_two._here is False: err()
+    if tmp_args.arg_one.arg_two.arg_three._here is False: err()
+    if tmp_args.arg_one.arg_two.arg_three.arg_four._here is False: err()
+
+    tmp_dy_args=dict(
+        arg_one=dict(
+            _preset=True,
+            arg_two=dict(
+                _default="apple",
+                _required=True,
+                _values=1,
+                arg_three=dict(
+                    _required=True,
+                    arg_four=dict(
+                        _default="orange",
+                        _preset=True,
+                        _values=1,
+                    )
+                ),
+            )
+        ),
+    )
+    tmp_nargs=Nargs(args=tmp_dy_args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+    tmp_args=tmp_nargs.get_args("--args")
+    if tmp_args.arg_one._here is False: err()
+    if tmp_args.arg_one.arg_two._here is False: err()
+    if tmp_args.arg_one.arg_two._value != "apple": err()
+    if tmp_args.arg_one.arg_two.arg_three._here is False: err()
+    if tmp_args.arg_one.arg_two.arg_three.arg_four._here is False: err()
+    if tmp_args.arg_one.arg_two.arg_three.arg_four._value != "orange": err()
+
+    tmp_dy_args=dict(
+        arg_one=dict(
+            _default=1,
+            _preset=True,
+            _values=1,
+        ),
+    )
+    tmp_nargs=Nargs(args=tmp_dy_args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+    tmp_args=tmp_nargs.get_args("--args")
+    if tmp_args.arg_one._here is False: err()
+    if tmp_args.arg_one._value != "1" : err()
+
+    tmp_dy_args=dict(
+        arg_one=dict(
+            _preset=True,
+            arg_two=dict(
+                _preset=True,
+                arg_three=dict(
+                    _preset=True,
+                    arg_four=dict(
+                        _default=1,
+                        _preset=True,
+                        _type="int"
+                    )
+                )
+            )
+        ),
+    )
+    tmp_nargs=Nargs(args=tmp_dy_args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+    tmp_args=tmp_nargs.get_args("--args")
+    if tmp_args.arg_one._here is False: err()
+    if tmp_args.arg_one.arg_two._here is False: err()
+    if tmp_args.arg_one.arg_two.arg_three._here is False: err()
+    if tmp_args.arg_one.arg_two.arg_three.arg_four._here is False: err()
+    if tmp_args.arg_one.arg_two.arg_three.arg_four._value != 1: err()
+
+    tmp_dy_args=dict(
+        arg_one=dict(
+            _preset=True,
+            arg_two=dict(
+                _preset=True,
+                arg_three=dict(
+                    _preset=False,
+                    arg_four=dict(
+                        _preset=True
+                    )
+                )
+            )
+        ),
+    )
+    tmp_nargs=Nargs(args=tmp_dy_args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+    tmp_args=tmp_nargs.get_args("--args")
+    if tmp_args.arg_one._here is False: err()
+    if tmp_args.arg_one.arg_two._here is False: err()
+    if tmp_args.arg_one.arg_two.arg_three._here is True: err()
+    if tmp_args.arg_one.arg_two.arg_three.arg_four._here is True: err()
+
+    tmp_dy_args=dict(
+        arg_one=dict(
+            _required=True,
+            arg_two=dict(
+                _preset=True,
+                arg_three=dict(
+                    _preset=False,
+                    arg_four=dict(
+                        _preset=True
+                    )
+                )
+            )
+        ),
+    )
+    tmp_nargs=Nargs(args=tmp_dy_args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+    tmp_args=tmp_nargs.get_args("--args")
+    if tmp_args.arg_one._here is False: err()
+    if tmp_args.arg_one.arg_two._here is False: err()
+    if tmp_args.arg_one.arg_two.arg_three._here is True: err()
+    if tmp_args.arg_one.arg_two.arg_three.arg_four._here is True: err()
+
+    tmp_dy_args=dict(
+        arg_one=dict(
+            _allow_siblings=False,
+            _preset=True,
+        ),
+        arg_two=dict(),
+
+    )
+    tmp_nargs=Nargs(args=tmp_dy_args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+    tmp_args=tmp_nargs.get_args("--args")
+    if tmp_args.arg_one._here is False: err()
+
+    tmp_args=tmp_nargs.get_args("--args --arg-two")
+    if tmp_args.arg_one._here is True: err()
+    print(tmp_args.arg_one._here)
+
+    tmp_dy_args=dict(
+        arg_one=dict(
+            _allow_siblings=False,
+            _preset=True,
+        ),
+        arg_two=dict(),
+    )
+    tmp_nargs=Nargs(args=tmp_dy_args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+    tmp_args=tmp_nargs.get_args("--args")
+    if tmp_args.arg_one._here is False: err()
+
+    tmp_args=tmp_nargs.get_args("--args --arg-two")
+    if tmp_args.arg_one._here is True: err()
+    if tmp_args.arg_two._here is False: err()
+
+    with CatchEx(EndUserError) as c:
+        c.text="argument '--arg-two' can't be added because it already has a sibling argument with property 'allow_siblings' set to 'False'"
+        tmp_nargs.get_args("--args --arg-one --arg-two")
+
     args=nargs.get_args("--args --arg-nine --n-arg value")
     if not (len(args.arg_nine.n_arg._values) == 1): err()
+
+
+    tmp_dy_args=dict(
+        arg_one=dict(
+            _preset=True,
+        ),
+        arg_two=dict(),
+        arg_three=dict(),
+    )
+    tmp_nargs=Nargs(args=tmp_dy_args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+    tmp_args=tmp_nargs.get_args("--args")
+    if tmp_args.arg_one._here is False: err()
+    if tmp_args.arg_two._here is True: err()
+    if tmp_args.arg_three._here is True: err()
+
+    tmp_args=tmp_nargs.get_args("--args --arg-three")
+    if tmp_args.arg_one._here is True: err()
+    if tmp_args.arg_two._here is True: err()
+    if tmp_args.arg_three._here is False: err()
+
+    tmp_dy_args=dict(
+        arg_one=dict(
+            _preset=True,
+            arg_two=dict(
+                _preset=True,
+                arg_three=dict(
+                    _preset=True,
+                )
+            )
+        ),
+        arg_two=dict(
+            arg_one=dict(
+                _preset=True,
+            )
+        ),
+        arg_three=dict(),
+    )
+    tmp_nargs=Nargs(args=tmp_dy_args, metadata=dy_metadata, raise_exc=True, builtins=dict())
+    tmp_args=tmp_nargs.get_args("--args")
+    if tmp_args.arg_one._here is False: err()
+    if tmp_args.arg_one.arg_two._here is False: err()
+    if tmp_args.arg_one.arg_two.arg_three._here is False: err()
+    if tmp_args.arg_two._here is True: err()
+    if tmp_args.arg_two.arg_one._here is True: err()
+    if tmp_args.arg_three._here is True: err()
 
     args="""
         arg:

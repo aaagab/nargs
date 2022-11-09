@@ -242,6 +242,7 @@ class CliArg():
             values=[],
         )
         self._here=False
+        self._has_explicit_nodes=False
         self._implicit=False
         self._name=node_dfn.name
         self._dfn=node_dfn
