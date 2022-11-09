@@ -59,6 +59,9 @@ def get_filtered_dy(
     tmp_dy_props["required"]=get_required(dy_props, tmp_dy_props, dy_err, pnode_dfn, arg_name)
     tmp_dy_props["required_children"]=[]
 
+    tmp_dy_props["preset"]=get_preset(dy_props, tmp_dy_props, dy_err, pnode_dfn, arg_name)
+    tmp_dy_props["preset_children"]=[]
+
     return tmp_dy_props
 
 def get_casted_value(value, tmp_dy_props, dy_err, prop_prefix):
@@ -579,7 +582,7 @@ def get_show(dy_props, dy_err, pnode_dfn):
         else:
             return True
 
-def is_node_implicit(node_dy, is_required):
+def is_node_required_implicit(node_dy, is_required):
     if is_required is True:
         if node_dy["values_authorized"] is True:
             if node_dy["values_required"] is True:
@@ -620,20 +623,18 @@ def get_required(dy_props, tmp_dy_props, dy_err, pnode_dfn, arg_name):
             is_required=False
 
     if is_required is True and is_root is False:
-        if pnode_dfn is not None:
-            if pnode_dfn.is_root is False:
-                is_parent_implicit=is_node_implicit(pnode_dfn.dy, pnode_dfn.dy["required"])
-                is_implicit=is_node_implicit(tmp_dy_props, is_required)
-                if is_parent_implicit is True:
-                    if is_implicit is False:
-                        msg.error([
-                            "A required argument can be implicitly added on the command-line when:",
-                            "- Parent argument is on the command-line.",
-                            "- Argument has required values and argument has default values' or 'argument values are not required' or 'argument does not accept values'.",
-                            "In definition when an argument can be implicitly added on the command-line then its required children argument must also have the properties to be implicitly added on the command-line.",
-                            "For current argument '{}', its parent '{}' can be implicitly added but current argument can't be implicitly added.".format(arg_name, pnode_dfn.name),
-                            "Either set parent argument's definition with required values and no default values or set current argument properties so it may be implicitly added on the command-line.",
-                        ], prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+        is_parent_implicit=is_node_required_implicit(pnode_dfn.dy, pnode_dfn.dy["required"])
+        is_implicit=is_node_required_implicit(tmp_dy_props, is_required)
+        if is_parent_implicit is True:
+            if is_implicit is False:
+                msg.error([
+                    "A required argument can be implicitly added on the command-line when:",
+                    "- Parent argument is on the command-line.",
+                    "- Argument has required values and argument has default values' or 'argument values are not required' or 'argument does not accept values'.",
+                    "In definition when an argument can be implicitly added on the command-line then its required children argument must also have the properties to be implicitly added on the command-line.",
+                    "For current argument '{}', its parent '{}' can be implicitly added but current argument can't be implicitly added.".format(arg_name, pnode_dfn.name),
+                    "Either set parent argument's definition with required values and no default values or set current argument properties so it may be implicitly added on the command-line.",
+                ], prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
 
         if tmp_dy_props["allow_parent_fork"] is False:
             msg.error("when value is '{}' then property '_allow_parent_fork' must be set to '{}'.".format(True, True), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
@@ -642,10 +643,76 @@ def get_required(dy_props, tmp_dy_props, dy_err, pnode_dfn, arg_name):
         if tmp_dy_props["need_child"] is True:
             msg.error("when value is '{}' then property '_need_child' must be set to '{}'.".format(True, False), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
 
+        if pnode_dfn.dy["preset"] is True:
+            if is_implicit is False:
+                msg.error("when value is '{}', values are required, and '_default={}' then parent '{}' property '_preset' must be set to '{}'.".format(True, None,pnode_dfn.name, False), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+            
         if arg_name in pnode_dfn.dy["xor"]:
             msg.error("argument name '{}' can't be both required and part of parent xor group at '{}'.".format(arg_name,  pnode_dfn.location), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
 
     return is_required
+
+def get_preset(dy_props, tmp_dy_props, dy_err, pnode_dfn, arg_name):
+    prop_prefix=get_prop_prefix(dy_err, "_preset")
+    is_root=(pnode_dfn is None)
+
+    is_preset=None
+    if "_preset" in dy_props:
+        _preset=dy_props["_preset"]
+        del dy_props["_preset"]
+
+        if is_root:
+            is_preset=False
+        elif _preset is None:
+            is_preset=False
+        elif isinstance(_preset, bool):
+            is_preset=_preset
+        else:
+            msg.error("value type {} must be of type {}.".format(type(_preset), bool), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+    else:
+        if is_root:
+            is_preset=False
+        else:
+            is_preset=False
+
+    if is_preset is True:
+        if is_root is False:
+            if tmp_dy_props["values_authorized"] is True:
+                if tmp_dy_props["values_required"] is True:
+                    if tmp_dy_props["default"] is None:
+                        msg.error("when value is '{}' and argument's values are required then default values must be set with property '_default'.".format(True), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+
+            if tmp_dy_props["allow_parent_fork"] is False:
+                msg.error("when value is '{}' then property '_allow_parent_fork' must be set to '{}'.".format(True, True), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+            if tmp_dy_props["need_child"] is True:
+                msg.error("when value is '{}' then property '_need_child' must be set to '{}'.".format(True, False), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+            if tmp_dy_props["allow_siblings"] is True:
+                for cname in pnode_dfn.dy_nodes:
+                    cnode=pnode_dfn.dy_nodes[cname]
+                    if cnode.dy["preset"] is True and cnode.dy["allow_siblings"] is False:
+                        msg.error("value can't be set to '{}' when another sibling node '{}' has property '_preset={}' with '_allow_siblings={}'.".format(
+                            True,
+                            cname,
+                            True, 
+                            False,
+                        ), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+            else:
+                for cname in pnode_dfn.dy_nodes:
+                    cnode=pnode_dfn.dy_nodes[cname]
+                    if cnode.dy["preset"] is True:
+                        msg.error("when value is '{}' and another sibling node '{}' has property '_preset={}' then property '_allow_siblings' must be set to '{}'.".format(
+                            True,
+                            cname,
+                            True, 
+                            True,
+                        ), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+       
+                    
+
+        if tmp_dy_props["required"] is True:
+            msg.error("when value is '{}' then property '_required' must be set to '{}'.".format(True, False), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+
+    return is_preset
 
 def get_fork(dy_props, dy_err):
     prop_prefix=get_prop_prefix(dy_err, "_fork")

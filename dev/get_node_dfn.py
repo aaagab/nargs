@@ -136,6 +136,8 @@ def get_node_dfn(
             if node_dfn.is_root is False:
                 if node_dfn.dy["required"] is True:
                     node_dfn.parent.dy["required_children"].append(node_dfn.name)
+                if node_dfn.dy["preset"] is True:
+                    node_dfn.parent.dy["preset_children"].append(node_dfn.name)
                 if node_dfn.name in node_dfn.parent.dy["xor"]:
                     group_nums=sorted([int(num) for num in node_dfn.parent.dy["xor"][node_dfn.name]])
                     node_dfn.dy["xor_groups"]=group_nums
@@ -176,10 +178,26 @@ def final_check(dy_chk, dy_err, app_name):
     builtin=None
     for node, chks in dy_chk.items():
         if "chk_xor" in chks:
-            child_names=sorted([cnode.name for cnode in node.nodes])
+            tmp_xor_groups=[]
+            dy_xor_groups=dict()
             for name in sorted(node.dy["xor"]):
-                if name not in child_names:
+                if name in node.dy_nodes:
+                    cnode=node.dy_nodes[name]
+                    if cnode.dy["preset"] is True:
+                        for group_num in cnode.dy["xor_groups"]:
+                            if group_num not in tmp_xor_groups:
+                                tmp_xor_groups.append(group_num)
+                                dy_xor_groups[group_num]=name
+                            else:
+                                msg.error("at key '_xor' there is a xor conflict because child arguments '{}' and '{}' have both '_preset={}' and are part of the same xor group.".format(
+                                    name, 
+                                    dy_xor_groups[group_num],
+                                    True,
+                                ), prefix=get_dfn_prefix(app_name, node.location), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+                else:
                     msg.error("at key '_xor' child argument name '{}' not found.".format(name), prefix=get_dfn_prefix(app_name, node.location), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+
+
 
         if "chk_need_child" in chks:
             if len(node.nodes) == 0:

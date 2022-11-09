@@ -55,9 +55,11 @@ def activate_arg(arg, alias, dy_err, cmd_line_index, dy_chk, is_implicit=False):
         if len(node_dfn.dy["required_children"]) > 0:
             add_chk_property(dy_chk, arg, "chk_required_children")
 
+        if len(node_dfn.dy["preset_children"]) > 0:
+            add_chk_property(dy_chk, arg, "chk_preset_children")
+
         if arg._dfn.dy["need_child"] is True:
             add_chk_property(dy_chk, arg, "chk_need_child")
-
 
         if node_dfn.dy["values_min"] is not None:
             add_chk_property(dy_chk, arg, "chk_values_min")
@@ -67,6 +69,7 @@ def activate_arg(arg, alias, dy_err, cmd_line_index, dy_chk, is_implicit=False):
             arg._cmd_line=dy_err["cmd_line"]
     else:
         if is_implicit is False:
+            arg._parent._has_explicit_nodes=True
             if node_dfn in node_dfn.parent.dy_xor:
                 for group_num in sorted(node_dfn.parent.dy_xor[node_dfn]):
                     for tmp_node_dfn in node_dfn.parent.dy_xor[node_dfn][group_num]:
@@ -875,6 +878,14 @@ def last_check(
             if "chk_required_children" in props:
                 process_required(arg, dy_err)
 
+            if "chk_preset_children" in props:
+                # if arg.parent is None:
+                process_preset(arg, dy_err)
+                # else:
+
+                # if arg._parent is not None:
+                    # if arg._parent._has_explicit_nodes is False:
+
             if "chk_need_child" in props:
                 if len(arg._args) == 0:
                     prefix=get_arg_prefix(dy_err, arg._cmd_line_index)
@@ -924,7 +935,7 @@ def get_substitute_var(reg):
     else:
         return get_prompted_value(dy["input"], dy["label"])
 
-def process_required(parent_arg, dy_err, from_implicit=False):
+def process_required(parent_arg, dy_err, skip_preset=False, from_implicit=False):
     for child_name in parent_arg._dfn.dy["required_children"]:
         required_arg=parent_arg._[child_name]
         if required_arg._here is False:
@@ -940,7 +951,21 @@ def process_required(parent_arg, dy_err, from_implicit=False):
 
             activate_arg(required_arg, required_arg._dfn.dy["default_alias"], dy_err, cmd_line_index, dy_chk=None, is_implicit=True)
             values_final_check(required_arg, dy_err)
-            process_required(required_arg, dy_err, from_implicit=True)
+            process_required(required_arg, dy_err, skip_preset=False, from_implicit=True)
+    
+    if skip_preset is False:
+        process_preset(parent_arg, dy_err, from_implicit=from_implicit)
+    # for child_name in parent_arg._dfn.dy["preset_children"]:
+
+def process_preset(parent_arg, dy_err, from_implicit=False):
+    for child_name in parent_arg._dfn.dy["preset_children"]:
+        preset_arg=parent_arg._[child_name]
+        if preset_arg._here is False and parent_arg._has_explicit_nodes is False:
+            cmd_line_index=parent_arg._cmd_line_index
+            activate_arg(preset_arg, preset_arg._dfn.dy["default_alias"], dy_err, cmd_line_index, dy_chk=None, is_implicit=True)
+            values_final_check(preset_arg, dy_err)
+            process_preset(preset_arg, dy_err)
+    process_required(parent_arg, dy_err, skip_preset=True, from_implicit=from_implicit)
 
 def get_boolean(value):
     if isinstance(value, str):
