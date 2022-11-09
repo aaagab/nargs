@@ -89,7 +89,8 @@ There are two documentation files:
   - Standard types: `bool, float, int, str`.
   - File types: `dir, file, path, vpath`.
   - JSON/YAML types: `.json, json`
-- Logical rules may be set to arguments by using arguments' definition properties `_allow_parent_fork`, `_allow_siblings`, `_need_child`, `_repeat`, `_required`, `_xor`.
+- Logical rules may be set to arguments by using arguments' definition properties `_allow_parent_fork`, `_allow_siblings`, `_need_child`, `_preset`, `_repeat`, `_required`, `_xor`.
+- Implicitly added arguments are generated when using properties `_preset` and `_required`. It means entire default argument branches with default values are added to the end-user selection when omitted or required.   
 
 ## Why Nargs?
 - Nargs prevents end-users from guessing program arguments' combinations. A descriptive error is triggered for each wrong argument or each wrong argument's values.
@@ -381,7 +382,7 @@ class NodeDfn():
         return self._dy_flags
 ```
 ##### NodeDfn Class Members Explained:
-- `self.current_arg`: This member returns the default CliArg object for the definition node. Nargs always creates at least one CliArg object for each definition node. It allows developer to check any command-line argument i.e. `nargs.dfn.current_arg._here is False` (check for CliArg root argument) or `nargs.dfn.current_arg.dy_nodes['child_arg']._here is False` (check for child argument with name `child_arg`).  
+- `self.current_arg`: This member returns the default CliArg object for the definition node. Nargs always creates at least one CliArg object for each definition node. It allows developer to check any command-line argument i.e. `nargs.dfn.current_arg._here is False` (check for CliArg root argument) or `nargs.dfn.current_arg._['child_arg']._here is False` (check for child argument with name `child_arg`).  
 - `self.dy`: This member returns a dictionary with all the arguments property. All the properties are generated from the arguments' definition tree provided by developer (see [Arguments Definition](#arguments-definition) and [Properties Summary at column NodeDfn().dy keys](#properties-summary)).
 - `self.dy_nodes`: This member returns a dictionary with child argument names as keys and child argument NodeDfn object instance as value.
 - `self.dy_xor`: This member returns a dictionary with child NodeDfn object instances as keys and for values xor group numbers with the other child xor nodes i.e.:
@@ -598,11 +599,12 @@ args._["child_arg"][3] # for third branch
 - `self._cmd_line_index`: It provides the command-line index of the argument location on the command-line for latest argument's occurrence. To print command-line for an argument developer can do `print(arg._root._branches[0]._cmd_line[arg._cmd_line_index])`. Implicit argument's command-line index is always the last explicit argument command-line index (see [Nargs get_args /`_implicit`](#nargs-getargs)). The command-line index number represents the last index of the argument alias plus one. It allows to print the alias related argument command-line with `print(arg._root._branches[0]._cmd_line[:arg._cmd_line_index])`.  
 - `self._count`: It returns the number of argument's occurrences on the command-line per argument's branches. It is related to argument's property `_repeat` (see [Properties Explained /`_repeat`](#properties-explained)).  
 - `self._default_alias`: Default alias is automatically generated, and it is used either with `_get_path()` function or when adding implicitly a required argument. Default alias is the first alias provided by developer in arguments' definition with property `_aliases`.
+- `self._dfn`: This is the related definition node for the current command-line argument node. This node gives access to the arguments' definition tree. `NodeDfn` class is available at `src/dev/nodes.py`. Most of Nargs internals rely on that definition tree. Developers maybe want to use the NodeDfn class attribute `dy` to access all the CliArg properties i.e.: `pprint(args._dfn.dy)`. Other class members may be useful if developer wants to generate its own help and usage. In order to overload the built-in help and usage, developer must set Nargs option `raise_exc` to `True` and he or she must disable at least help and usage built-in arguments with Nargs option `builtins`. Then developers is going to create the needed arguments in a definition file. Then developer is going to be able to filter Nargs exceptions `EndUserError` and `DeveloperError`. Most of developers will probably want to rely on built-in help and usage and thus they may want to ignore `self._dfn`. For developers who want to overload help and usage, they may read the `src/dev/help.py` sources as a reference. Creating help and usage, consists in recursively looping through the definition tree and to display information mainly with `node_dfn.dy` (see also [Properties Explained /`_is_usage`](#properties-explained) to set the usage node for custom usage or [Developer custom Help and Usage](#developer-custom-help-and-usage) for an example).  
 - `self._dy_indexes`: It provides a dictionary with one key `aliases` and another key `values`. `self._dy_indexes["aliases"]` is a dictionary that have for keys command-line indexes as int and for values arguments aliases. This dictionary allows to know the command-line index and alias used for each occurrence of an argument. `self._dy_indexes["values"]` is a command-line indexes list for each argument values. The main purpose of `self._dy_indexes` is for developers to be able to throw errors with the exact location on the command-line of an argument alias(es) or one of its values. Implicit argument provides the argument's default alias, and command-line index is always the last explicit argument command-line index. Implicit argument default values are added implicitly but no indexes are added to `self._dy_indexes["values"]` (see [Nargs get_args /`_implicit`](#nargs-getargs)).  
 - `self._here`: It defines if an argument is present on the command-line (a.k.a. activated argument). Nargs generates the whole CliArg arguments tree at once. It means that all command-line arguments are always available to developer for in code logic. However having an argument available does not mean it is present on the command-line. That is why property `_here` is needed to allow determining if an argument is present on the command-line. i.e.: `if root_arg.arg_one._here is True:`  
+- `self._has_explicit_nodes`: It is set to True when argument has children that have been added explicitly. It is mainly used internally in `get_args.py` for `_preset` property.   
 - `self._implicit`: It is set to True if argument has been added implicitly (see [Properties Explained /`_required`](#properties-explained)). It is set to False if argument has been provided on the command-line.  
 - `self._name`: It is the name of the argument as set in the arguments' definition.
-- `self._dfn`: This is the related definition node for the current command-line argument node. This node gives access to the arguments' definition tree. `NodeDfn` class is available at `src/dev/nodes.py`. Most of Nargs internals rely on that definition tree. Developers maybe want to use the NodeDfn class attribute `dy` to access all the CliArg properties i.e.: `pprint(args._dfn.dy)`. Other class members may be useful if developer wants to generate its own help and usage. In order to overload the built-in help and usage, developer must set Nargs option `raise_exc` to `True` and he or she must disable at least help and usage built-in arguments with Nargs option `builtins`. Then developers is going to create the needed arguments in a definition file. Then developer is going to be able to filter Nargs exceptions `EndUserError` and `DeveloperError`. Most of developers will probably want to rely on built-in help and usage and thus they may want to ignore `self._dfn`. For developers who want to overload help and usage, they may read the `src/dev/help.py` sources as a reference. Creating help and usage, consists in recursively looping through the definition tree and to display information mainly with `node_dfn.dy` (see also [Properties Explained /`_is_usage`](#properties-explained) to set the usage node for custom usage or [Developer custom Help and Usage](#developer-custom-help-and-usage) for an example).  
 - `self._previous_dfn`: This attribute is set to None for all arguments except if argument has property `_is_usage` set to True. When argument has property `_is_usage` set to True and argument is provided on the command-line then its attribute `_previous_dfn` holds previous command-line argument `NodeDfn` object. This is useful when developers create his or her own custom usage so that previous node before usage argument on the command-line can be identified easily.  
 - `self._is_root`: It tells if current argument is at the root of the arguments tree.  
 - `self._parent`: It provides the argument CliArg parent object's address of an argument. It is mainly used for Nargs internal purpose when parsing the command-line.  
@@ -749,6 +751,7 @@ Property | Default Value | Allowed Types | Information | NodeDfn().dy keys
 `_is_usage` | false | null, or bool | Define if argument is usage argument (only one per definition) | is_usage
 `_label` | null | null, or string | Argument's values label for usage | label
 `_need_child` | false | null, or bool | Set if argument needs at least one child on the command-line | need_child
+`_preset` | false | null, or bool | Set if argument must be added implicitly when parent argument is present and child arguments are not present | preset, preset_children
 `_repeat` | "replace" | null, or string | Define argument's multiple occurrences behavior | repeat
 `_required` | false | null, or bool | Set if argument is required when parent argument is present | required, required_children
 `_show` | true | null, or bool | Show/Hide argument in usage and help | show
@@ -860,6 +863,25 @@ To create a branch means to duplicate an argument with all its child arguments. 
 
 `_repeat` creates the `NodeDfn().dy` dictionary key: `repeat`.  
 
+**_preset**: Property defines if argument is added implicitly when end-user adds argument's parent to command-line without argument's parent children. If end-user types an argument that has a child argument with property `_preset` set to True and end-user does not type the child argument then the preset argument is added implicitly with its default alias either:
+    -  if argument has no values
+    -  if argument has default value(s). In that case default value(s) is/are set.
+
+Multiple sibling arguments can have their property `_preset` set to true. Preset arguments are added implicitly and recursively if their children have their property `_preset=True`. 
+
+`_preset` property is always set to False for root argument because root argument is always required. `_preset` property is set to False by default for all the other arguments.
+
+Arguments with property `_preset=True` follow certain rules to prevent runtime error due to arguments' definition:
+- if `_preset=True` and argument's has required values but property `_default` is not set then Nargs throws an error. Reason: if a preset argument had a required values but no default values then it would throw an error when implicitly added. Implicitly added arguments can't throw error because end-user didn't add them explicitly so he or she wouldn't understand the issue.  
+- if `_preset=True` and argument's property `_allow_parent_fork=False` then Nargs throws an error. Reason: if a preset argument is implicitly added and it doesn't allow parent fork, then a parent argument with `_fork=True` will never be able to fork.  
+- if `_preset=True`, argument's property `_allow_siblings=False` and at least one sibling has property `_preset=True` then Nargs throws an error. Reason: if a preset argument argument does not allow siblings then a conflict would appear if another sibling was also a preset and argument and both preset arguments would be added implicitly.  
+- if `_preset=True` and argument's property `_need_child=True` then Nargs throws an error. Reason: preset arguments may be added implicitly but if `_need_child=True` then implicitly added arguments may trigger an error. Implicitly added argument should never triggers an error and end-user should only have to solve errors that he or she triggers.  
+- if two sibling arguments have `_preset=True` and they are both in the same `_xor` group then Nargs throws an error. Reason: preset siblings may be added implicitly at the same time so they can't exclude each other.  
+
+`_preset` creates the `NodeDfn().dy` dictionary keys:  
+- `preset`: It returns if an argument is a preset argument or not.  
+- `preset_children`: Each time an argument is a preset argument, then argument's name is added to its parent list `preset_children`.  
+
 **_required**: Property defines if argument is required when end-user adds argument's parent to command-line. If end-user types an argument that has a child argument with property `_required` set to True and end-user does not type the child argument then there are two scenarios:
     - If omitted a required argument is added implicitly with its default alias either:
       -  if argument has no values
@@ -875,6 +897,7 @@ Arguments with property `_required=True` follow certain rules to prevent runtime
 - if `_required=True` and argument's property `_allow_parent_fork=False` then Nargs throws an error. Reason: if an argument is required and don't allow parent fork, then a parent argument with `_fork=True` will never be able to fork.  
 - if `_required=True` and argument's property `_allow_siblings=False` then Nargs throws an error. Reason: if an argument is required and it does not allow siblings, then siblings can never be added.  
 - if `_required=True` and argument's property `_need_child=True` then Nargs throws an error (This rule does not apply to root argument.). Reason: Some required argument may be added implicitly but if `_need_child=True` then implicitly added arguments may trigger an error. Implicitly added argument should never triggers an error and end-user should only have to solve errors that he or she triggers.  
+- if `_required=True`, values are required, no default values are provided and parent argument property `_preset` is set to True and  then Nargs throws an error. Reason: A preset argument always has default values if values are required. A required argument may not have default values when values are required. It may create an issue of implicitly added argument asking for required values. That is why a required argument must always have no values or default values when child of a preset argument.  
 
 `_required` creates the `NodeDfn().dy` dictionary keys: 
 - `required`: It returns if an argument is required or not.  
@@ -1253,13 +1276,14 @@ prog.py --home-server
 
 ## Arguments combination logical rules
 
-Logical rules for arguments' combinations are enforced first because of the arguments tree structure. Tree structure allows different arguments to share same aliases and still they can't overlap each other. There are also the branch index notation that allows any argument to be forked. So each branch 
-Then there are multiple arguments' definition properties that enforce basic logical rules: 
+Logical rules for arguments' combinations are enforced first because of the arguments tree structure. Tree structure allows different arguments to share same aliases without conflicts. There are also the branch index notation that allows any argument to be forked.   
+Then there are multiple arguments' definition properties that enforce basic logical rules:  
 - `_allow_parent_fork` prevents or authorize the parent argument to branch when argument is present on the command-line.  
 - `_allow_siblings` prevents or authorize argument's siblings when argument is present on the command-line.  
 - `_fork` with branch index notation allows any argument to be duplicated. It creates a whole branch with the duplicated argument because all of the nested children are also recreated.   
 - `_need_child` forces end-user to add at least one child argument when argument is present on the command-line.  
 - `_repeat` defines the behavior of multiple argument's occurrences on the command-line.  
+- `_preset` defines argument that are added implicitly when parent argument has been provided on the command-line but no children have been provided. It is very similar to `_required` property. One difference is that if any argument sibling is explicitly added on the command-line then other siblings with `preset=True` won't be added implicitly. Another difference with `_required` property is that `_preset` arguments can't have required values and no default values, thus unlike `_required` arguments, `_preset` arguments never trigger a prompt for missing argument values.  
 - `_required` main purpose is to allow having arguments added implicitly depending on their values. An argument that has its property `_required` set to false does not necessarily means that the argument is optional. Nargs only defines a tiny subset of most used logical arguments' combinations. Developer is the one who codes the program arguments logical rules in code section. When a `_required=False` argument is still mandatory in code's logic then developer may add that information in the `_info` property of the argument to let end-user knows about it.  
 - `_xor` main purpose is to be able to simply let the end-user knows that only one argument or another can be present at the same time.
 

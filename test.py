@@ -58,7 +58,6 @@ if __name__ == "__main__":
         chk.exc(pkg.test_set_options, dy_metadata)
         chk.exc(pkg.test_style, dy_metadata)
         chk.exc(pkg.test_implementation, dy_metadata, filenpa_cache_json, filenpa_cache_pickle, manual)
-
         chk.exc(pkg.test_performance, dy_metadata, direpa_tmp, filenpa_cache_json)
 
     direpa_tests=os.path.join(os.path.dirname(os.path.realpath(__file__)), "tests")

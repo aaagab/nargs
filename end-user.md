@@ -1,4 +1,4 @@
-# NARGS END-USER DOCUMENTATION
+# Samples
 
 ## Table of Contents
 - [NARGS ARGUMENTS SYNTAX](#nargs-arguments-syntax)
@@ -29,9 +29,9 @@
 `installer:` gpm<br>
 `licenses:` MIT<br>
 `name:` Nested Arguments<br>
-`timestamp:` 1666714306.3379242<br>
+`timestamp:` 1666715540.8497381<br>
 `uuid4:` 89d8676a-6b02-43fa-8694-e97de5680cd0<br>
-`version:` 3.0.0<br>
+`version:` 3.0.2<br>
 
 ### Nargs Options State
 - pretty_help: `enabled`
@@ -136,6 +136,7 @@
 - '`allow_siblings`' property is a bool that describes if argument's siblings may be present when argument is present.
 - '`fork`' property is a bool that describes if argument's fork are allowed. To fork means to divide into two or more branches.
 - '`need_child`' property is a bool that describes if at least one argument's child must be provided when argument is present.
+- '`preset`' property is a bool that defines if an argument is a preset argument. A preset argument is added implicitly if only its parent is present with no children.
 - '`repeat`' property is a string set with one option from '`append, error, replace`'. Property defines multiple argument's occurrences behavior.
 - '`repeat=append`' means multiple argument's occurrences are allowed and for each occurrence the same argument is kept but argument's '`_count`' internal property is incremented and new argument's values are appended to argument's values list.
 - '`repeat=error`' means only one argument's occurrence is allowed otherwise Nargs throws an error.
