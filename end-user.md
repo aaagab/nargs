@@ -1,4 +1,4 @@
-# Samples
+# NARGS END-USER DOCUMENTATION
 
 ## Table of Contents
 - [NARGS ARGUMENTS SYNTAX](#nargs-arguments-syntax)
@@ -11,7 +11,6 @@
     - [Arguments Tree Vocabulary](#arguments-tree-vocabulary)
     - [Arguments Navigation](#arguments-navigation)
     - [Arguments' Logical Properties](#arguments-logical-properties)
-    - [Arguments Branch Index Notation](#arguments-branch-index-notation)
     - [Argument Values](#argument-values)
     - [Argument Special Values Types](#argument-special-values-types)
     - [Aliases Equal/Colon Values Notation](#aliases-equalcolon-values-notation)
@@ -29,9 +28,9 @@
 `installer:` gpm<br>
 `licenses:` MIT<br>
 `name:` Nested Arguments<br>
-`timestamp:` 1666715540.8497381<br>
+`timestamp:` 1668022515.0723553<br>
 `uuid4:` 89d8676a-6b02-43fa-8694-e97de5680cd0<br>
-`version:` 3.0.2<br>
+`version:` 3.1.0<br>
 
 ### Nargs Options State
 - pretty_help: `enabled`
@@ -93,12 +92,12 @@
 - Arguments may be duplicated in multiple branches.
 - Each argument's branch has its own subset of child arguments.
 - Arguments may have multiple occurrences per branch.
-- Arguments branches and occurrences described for command-line '--parent --self+1 --self --self+2 --self --self+ --self --sibling':<br>&nbsp;&nbsp;&nbsp;&nbsp;--parent<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`--self+1 (branch 1 occurrence 1) --self (branch 1 occurrence 2)`<br>
+- Arguments branches and occurrences described for command-line '--parent --self --child --self --child --self --child --sibling':<br>&nbsp;&nbsp;&nbsp;&nbsp;--parent<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`--self (branch 1)`<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--child (relates only to branch 1)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`--self+2 (branch 2 occurrence 1) --self (branch 2 occurrence 2)`<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`--self (branch 2)`<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--child (relates only to branch 2)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`--self+ (branch 3 occurrence 1) --self (branch 3 occurrence 2)`<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`--self (branch 3)`<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--child (relates only to branch 3)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--sibling<br>
 
@@ -134,28 +133,15 @@
 - An argument logical properties can be shown with usage argument. i.e.: '`prog.py --arg --usage --properties`'
 - '`allow_parent_fork`' property is a bool that describes if argument's parent may have fork(s) when argument is present.
 - '`allow_siblings`' property is a bool that describes if argument's siblings may be present when argument is present.
-- '`fork`' property is a bool that describes if argument's fork are allowed. To fork means to divide into two or more branches.
 - '`need_child`' property is a bool that describes if at least one argument's child must be provided when argument is present.
 - '`preset`' property is a bool that defines if an argument is a preset argument. A preset argument is added implicitly if only its parent is present with no children.
-- '`repeat`' property is a string set with one option from '`append, error, replace`'. Property defines multiple argument's occurrences behavior.
+- '`repeat`' property is a string set with one option from '`append, error, fork, replace`'. Property defines multiple argument's occurrences behavior.
 - '`repeat=append`' means multiple argument's occurrences are allowed and for each occurrence the same argument is kept but argument's '`_count`' internal property is incremented and new argument's values are appended to argument's values list.
 - '`repeat=error`' means only one argument's occurrence is allowed otherwise Nargs throws an error.
+- '`repeat=fork`' means that argument's forks are allowed. To fork means to divide into two or more branches.
 - '`repeat=replace`' means multiple argument's occurrences are allowed and for each occurrence a new argument is created, and the previous argument is replaced, and all the previous argument's children are removed. Argument's '`_count`' internal property is not incremented and new argument's values start a new argument's values list.
 - '`required`' property is a bool that describes if argument's must be present when argument's parent is present. '`required`' property has also been described in 'Argument Aliases States'.
 - '`xor_groups`' property is a list of integers where each integer represents a group. Argument's siblings arguments with the same '`xor`' group can't be present at the same time on the command-line with any other argument from that group. It is the definition of '`xor`' which means '`exclusive or`'. Siblings arguments have the same parent argument. Group scope is at the node level on argument's branch, it means that the same group name is not related if it is located on argument's parents or argument's children or if on same argument but on a different branch.
-
-### Arguments Branch Index Notation
-- Argument's branch index notation allows selecting a specific argument's branch.
-- Branch index notation consists in adding to argument's alias a plus symbol and an index number starting at one.
-- Branch index notation's index is the argument branch number.
-- If only plus symbol is provided it means create a branch i.e.: '`prog --arg-one+`'
-- Argument with '`fork`' property set to '`True`' allows to have an index greater than 1.
-- Branch index notation examples: '`prog --help+1 --export+1`' or '`prog --arg+1 --arg+2`' or '`prog --arg+1 = --arg+2`' or '`prog --arg+ --arg+ --arg+`'.
-- Argument's branches number and argument's occurrences number per branch are not the same.
-- Argument with '`repeat`' property set to either '`append`', or '`replace`' allows to have multiple occurrences of an argument per branch.
-- Argument's multiple occurrences examples: '`prog --arg --arg`' or '`prog --arg+1 --arg+1`'.
-- Explicit notation and branch index notation allows to select accurately an argument's branch in the arguments tree.
-- Last flag on a flag set can also accepts branch index notation i.e. `-chu+2`
 
 ### Argument Values
 - required: *`<str>`*

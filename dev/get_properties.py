@@ -100,15 +100,7 @@ def get_arg_properties():
             for_help=False,
             has_default=True,
             map="ex",
-        ), 
-        fork=dict(
-            default=False,
-            for_cache=True,
-            for_definition=True,
-            for_help=True,
-            has_default=True,
-            map="f",
-        ), 
+        ),
         hint=dict(
             default=None,
             for_cache=True,
