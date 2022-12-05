@@ -279,7 +279,7 @@ def get_nargs_syntax(style, user_options, print_options=True):
         "Each argument's branch has its own subset of child arguments.",
         "Arguments may have multiple occurrences per branch.",
         "Arguments branches and occurrences described for command-line '{}':{}".format(
-            style.get_text("--parent --self+1 --self --self+2 --self --self+ --self --sibling", "aliases"),
+            style.get_text("--parent --self --child --self --child --self --child --sibling", "aliases"),
             style.start_newline(),
         ),
     ]:
@@ -291,11 +291,11 @@ def get_nargs_syntax(style, user_options, print_options=True):
 
     for tmp_str in [
         "{}{}".format(style.get_space(space_width*2), style.get_text("--parent", "aliases")),
-        "{}{}".format(style.get_space(space_width*4), style.get_text("--self+1 (branch 1 occurrence 1) --self (branch 1 occurrence 2)", "emphasize")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--self (branch 1)", "emphasize")),
         "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 1)", "aliases")),
-        "{}{}".format(style.get_space(space_width*4), style.get_text("--self+2 (branch 2 occurrence 1) --self (branch 2 occurrence 2)", "emphasize")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--self (branch 2)", "emphasize")),
         "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 2)", "aliases")),
-        "{}{}".format(style.get_space(space_width*4), style.get_text("--self+ (branch 3 occurrence 1) --self (branch 3 occurrence 2)", "emphasize")),
+        "{}{}".format(style.get_space(space_width*4), style.get_text("--self (branch 3)", "emphasize")),
         "{}{}".format(style.get_space(space_width*6), style.get_text("--child (relates only to branch 3)", "aliases")),
         "{}{}".format(style.get_space(space_width*4), style.get_text("--sibling", "aliases")),
     ]:
@@ -438,9 +438,6 @@ def get_nargs_syntax(style, user_options, print_options=True):
         "'{}' property is a bool that describes if argument's siblings may be present when argument is present.".format(
             style.get_text("allow_siblings", "emphasize"),
         ),
-        "'{}' property is a bool that describes if argument's fork are allowed. To fork means to divide into two or more branches.".format(
-            style.get_text("fork", "emphasize"),
-        ),
         "'{}' property is a bool that describes if at least one argument's child must be provided when argument is present.".format(
             style.get_text("need_child", "emphasize"),
         ),
@@ -449,7 +446,7 @@ def get_nargs_syntax(style, user_options, print_options=True):
         ),
         "'{}' property is a string set with one option from '{}'. Property defines multiple argument's occurrences behavior.".format(
             style.get_text("repeat", "emphasize"),
-            style.get_text("append, error, replace", "emphasize"),
+            style.get_text("append, error, fork, replace", "emphasize"),
         ),
         "'{}' means multiple argument's occurrences are allowed and for each occurrence the same argument is kept but argument's '{}' internal property is incremented and new argument's values are appended to argument's values list.".format(
             style.get_text("repeat=append", "emphasize"),
@@ -457,6 +454,9 @@ def get_nargs_syntax(style, user_options, print_options=True):
         ),
         "'{}' means only one argument's occurrence is allowed otherwise Nargs throws an error.".format(
             style.get_text("repeat=error", "emphasize"),
+        ),
+        "'{}' means that argument's forks are allowed. To fork means to divide into two or more branches.".format(
+            style.get_text("repeat=fork", "emphasize"),
         ),
         "'{}' means multiple argument's occurrences are allowed and for each occurrence a new argument is created, and the previous argument is replaced, and all the previous argument's children are removed. Argument's '{}' internal property is not incremented and new argument's values start a new argument's values list.".format(
             style.get_text("repeat=replace", "emphasize"),
@@ -474,50 +474,6 @@ def get_nargs_syntax(style, user_options, print_options=True):
         ),
     ]:
         text.append("{}{}".format(style.get_list_bullet(), tmp_text))
-        append_li_html(style, text)
-    close_ul_html(style, text)
-
-    text.append("\n{}".format(style.get_text("Arguments Branch Index Notation", "syntax_headers")))
-    open_ul_html(style, text)
-    for tmp_str in [
-        "Argument's branch index notation allows selecting a specific argument's branch.",
-        "Branch index notation consists in adding to argument's alias a plus symbol and an index number starting at one.",
-        "Branch index notation's index is the argument branch number.",
-        "If only plus symbol is provided it means create a branch i.e.: '{}'".format(
-            style.get_text("prog --arg-one+", "emphasize"),
-        ),
-        "Argument with '{}' property set to '{}' allows to have an index greater than 1.".format(
-            style.get_text("fork", "emphasize"),
-            style.get_text("True", "emphasize"),
-        ),
-        "Branch index notation examples: '{}' or '{}' or '{}' or '{}'.".format(
-            style.get_text("prog --help+1 --export+1", "emphasize"),
-
-            style.get_text("prog --arg+1 --arg+2", "emphasize"),
-
-            style.get_text("prog --arg+1 = --arg+2", "emphasize"),
-
-            style.get_text("prog --arg+ --arg+ --arg+", "emphasize"),
-        ),
-        "Argument's branches number and argument's occurrences number per branch are not the same.",
-        "Argument with '{}' property set to either '{}', or '{}' allows to have multiple occurrences of an argument per branch.".format(
-            style.get_text("repeat", "emphasize"),
-            style.get_text("append", "emphasize"),
-            style.get_text("replace", "emphasize"),
-        ),
-        "Argument's multiple occurrences examples: '{}' or '{}'.".format(
-            style.get_text("prog --arg --arg", "emphasize"),
-            style.get_text("prog --arg+1 --arg+1", "emphasize"),
-        ),
-        "Explicit notation and branch index notation allows to select accurately an argument's branch in the arguments tree.",
-        "Last flag on a flag set can also accepts branch index notation i.e. {}".format(
-            style.get_text("-chu+2", "emphasize"),
-        )
-    ]:
-        text.append("{}{}".format(
-            style.get_list_bullet(),
-            tmp_str,
-        ))
         append_li_html(style, text)
     close_ul_html(style, text)
 

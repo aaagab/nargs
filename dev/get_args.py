@@ -207,72 +207,52 @@ def add_chk_property(dy_chk, arg, prop):
     else:
         dy_chk[arg]=[prop]
 
-def set_node(alias, node, dy_err, cmd_line_index, branch_num, dy_chk):
+def set_node(alias, node, dy_err, cmd_line_index, dy_chk):
     enabled_branches=[branch for branch in node.current_arg._branches if branch._here is True]
     has_one_enabled_branch=(len(enabled_branches) > 0)
-    increment=(branch_num == "+")
-    if branch_num is None:
-        if has_one_enabled_branch is True:
-            branch_num=len(node.current_arg._branches)
-        else:
-            branch_num=1
-    elif branch_num == "+":
-        if has_one_enabled_branch is True:
-            branch_num=len(node.current_arg._branches)+1
-        else:
-            branch_num=1
-    else:
-        pass
 
-    if branch_num > len(enabled_branches)+1:
-        msg.error("argument branch '{}' number '+{}' is too big. Biggest branch number available is '+{}'.".format(alias, branch_num, len(enabled_branches)+1), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"])
-        sys.exit(1)
+    branch_num=None
+    if has_one_enabled_branch is True:
+        branch_num=len(node.current_arg._branches)
+    else:
+        branch_num=1
 
     is_new_enabled_branch=(branch_num == len(enabled_branches)+1)
 
-    if is_new_enabled_branch is True:
+    if node.dy["repeat"] == "fork":
         if has_one_enabled_branch is True:
-            if node.dy["fork"] is True:
-                for branch in node.current_arg._branches:
-                    for arg in branch._args:
-                        if arg._dfn.dy["allow_parent_fork"] is False:
-                            msg.error("argument '{}' can't be forked because its child argument '{}' property 'allow_parent_fork' is set to '{}'.".format(alias, arg._dfn.current_arg._alias, False), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
-                
-                parent_arg=None
-                if node.current_arg._is_root is False:
-                    parent_arg=node.current_arg._parent
-                create_branch(node, node.current_arg._branches, parent_arg)
-            else:
-                if increment is True:
-                    msg.error("A new branch can't be created for argument '{}' using notation '+' because one branch already exists and argument 'fork' property is set to '{}'.".format(alias, node.dy["fork"]), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"])
-                else:
-                    msg.error("argument '{}' wrong branch number '+{}'. Only '+1' is authorized when 'fork' property is set to '{}'.".format(alias, branch_num, node.dy["fork"]), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"])
-                dy_err["print_usage"](node)
-                sys.exit(1)
+            for branch in node.current_arg._branches:
+                for arg in branch._args:
+                    if arg._dfn.dy["allow_parent_fork"] is False:
+                        msg.error("argument '{}' can't be forked because its child argument '{}' property 'allow_parent_fork' is set to '{}'.".format(alias, arg._dfn.current_arg._alias, False), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+            
+            parent_arg=None
+            if node.current_arg._is_root is False:
+                parent_arg=node.current_arg._parent
+            create_branch(node, node.current_arg._branches, parent_arg)
 
         activate_arg(node.current_arg, alias, dy_err, cmd_line_index, dy_chk)
-    else: # branch_num < len(node.current_arg._branches)+1 (only for existing branches)
-        if node.dy["repeat"] == "error":
-            msg.error("argument '{}' can't be repeated because its 'repeat' property is set to '{}'.".format(alias, node.dy["repeat"]), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"])
-            dy_err["print_usage"](node)
-            sys.exit(1)
-        else:
-            current_branch_num=node.current_arg._branches.index(node.current_arg)+1
-            if current_branch_num != branch_num:
-                node.current_arg=node.current_arg._branches[branch_num-1]
-            if node.dy["repeat"] == "append":
-                if node.is_root is False:
-                    node.current_arg._parent._args.remove(node.current_arg)
-                set_arg(node.current_arg, alias, cmd_line_index, is_implicit=False)
-            elif node.dy["repeat"] == "replace":
-                reset_branch(
-                    node.current_arg,
-                    parent_arg=node.current_arg._parent,
-                    branches=node.current_arg._branches,
-                    dy_chk=dy_chk,
-                    to_renew=True,
-                )
-                activate_arg(node.current_arg, alias, dy_err, cmd_line_index, dy_chk)
+    elif is_new_enabled_branch is True:
+        activate_arg(node.current_arg, alias, dy_err, cmd_line_index, dy_chk)
+    elif node.dy["repeat"] == "error":
+        msg.error("argument '{}' can't be repeated because its 'repeat' property is set to '{}'.".format(alias, node.dy["repeat"]), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"])
+        dy_err["print_usage"](node)
+        sys.exit(1)
+    elif node.dy["repeat"] == "append":
+            if node.is_root is False:
+                node.current_arg._parent._args.remove(node.current_arg)
+            set_arg(node.current_arg, alias, cmd_line_index, is_implicit=False)
+    elif node.dy["repeat"] == "replace":
+        reset_branch(
+            node.current_arg,
+            parent_arg=node.current_arg._parent,
+            branches=node.current_arg._branches,
+            dy_chk=dy_chk,
+            to_renew=True,
+        )
+        activate_arg(node.current_arg, alias, dy_err, cmd_line_index, dy_chk)
+    else:
+        raise NotImplementedError
 
 def create_branch(node, branches, parent_arg, branch_index=None):
     new_arg=CliArg(
@@ -552,15 +532,9 @@ def get_args(
         reg_alias=re.match(get_regex_cli("alias", node_dfn), elem)
         search_flags=False
         if reg_alias:
-            alias=reg_alias.group("alias")
-            alias_branch_num=reg_alias.group("branch_num")
-            values_str=reg_alias.group("values_str")
-            if reg_alias.group("branch_num_str") is not None:
-                if reg_alias.group("branch_num") is None:
-                    alias_branch_num=reg_alias.group("branch_num_str")
-                else:
-                    alias_branch_num=int(alias_branch_num)
 
+            alias=reg_alias.group("alias")
+            values_str=reg_alias.group("values_str")
             tmp_values=reg_alias.group("values")
             alias_cmd_line_index=cmd_line_index
 
@@ -579,7 +553,7 @@ def get_args(
             if node_from_alias is None:
                 search_flags=True
             else:
-                set_node(alias, node_from_alias, dy_err, alias_cmd_line_index, alias_branch_num, dy_chk)
+                set_node(alias, node_from_alias, dy_err, alias_cmd_line_index, dy_chk)
                 process_values(alias_values, node_from_alias, dy_err, alias_cmd_line_index, dy_chk)
 
                 previous_dfn=node_dfn
@@ -599,8 +573,6 @@ def get_args(
         if search_flags is True:
             reg_flags=re.match(get_regex_cli("flags", node_dfn), elem)
             if reg_flags:
-                branch_num=reg_flags.group("branch_num")
-                branch_num_str=reg_flags.group("branch_num_str")
                 alias=reg_flags.group("alias")
                 chars=reg_flags.group("chars")
                 values=reg_flags.group("values")
@@ -610,8 +582,6 @@ def get_args(
                 if values is not None:
                     tmp_cmd_line_index-=len(values_str)
 
-                if branch_num_str is not None:
-                    tmp_cmd_line_index-=len(branch_num_str)
                 tmp_cmd_line_index=tmp_cmd_line_index-len(chars)
 
                 node_from_alias=get_node_from_alias(
@@ -654,16 +624,7 @@ def get_args(
                             tmp_node_dfn=dy_tmp_node["node"]
                             tmp_alias=dy_tmp_node["alias"]
                             tmp_cmd_line_index=dy_tmp_node["cmd_line_index"]
-                            tmp_branch_num=None
-                            if index == len(tmp_nodes):
-                                if branch_num_str is not None:
-                                    tmp_cmd_line_index+=len(branch_num_str)
-                                    if branch_num is None:
-                                        tmp_branch_num=branch_num_str
-                                    else:
-                                        tmp_branch_num=int(branch_num)
-                            
-                            set_node(tmp_alias, tmp_node_dfn, dy_err, tmp_cmd_line_index, tmp_branch_num, dy_chk)
+                            set_node(tmp_alias, tmp_node_dfn, dy_err, tmp_cmd_line_index, dy_chk)
 
                             if index == len(tmp_nodes):
                                 process_values(values, tmp_node_dfn, dy_err, tmp_cmd_line_index, dy_chk)
@@ -879,12 +840,7 @@ def last_check(
                 process_required(arg, dy_err)
 
             if "chk_preset_children" in props:
-                # if arg.parent is None:
                 process_preset(arg, dy_err)
-                # else:
-
-                # if arg._parent is not None:
-                    # if arg._parent._has_explicit_nodes is False:
 
             if "chk_need_child" in props:
                 if len(arg._args) == 0:
@@ -903,7 +859,6 @@ def print_examples(node_dfn):
 def get_builtin_dfn(previous_node_dfn, node_dfn, builtin_dfn, usage_dfn):
     if node_dfn.dy["is_usage"] is True:
         usage_dfn=node_dfn
-        # usage_dfn.current_arg._previous_dfn=previous_node_dfn
         if node_dfn.dy["is_builtin"] is True:
             builtin_dfn=node_dfn
     elif node_dfn.level == 2 and node_dfn.dy["is_builtin"] is True:
@@ -955,7 +910,6 @@ def process_required(parent_arg, dy_err, skip_preset=False, from_implicit=False)
     
     if skip_preset is False:
         process_preset(parent_arg, dy_err, from_implicit=from_implicit)
-    # for child_name in parent_arg._dfn.dy["preset_children"]:
 
 def process_preset(parent_arg, dy_err, from_implicit=False):
     for child_name in parent_arg._dfn.dy["preset_children"]:

@@ -20,7 +20,7 @@ args:
   arg_three:
     _repeat: error
   arg_four:
-    _fork: true
+    _repeat: fork
     nested_arg1:
       _allow_parent_fork: false
     nested_arg2:
