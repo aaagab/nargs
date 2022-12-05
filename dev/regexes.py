@@ -14,16 +14,12 @@ def get_reg_prefixes():
     return r"(?P<prefix>\+|--|-|/|:|_)?"
 
 def get_regex_cli(reg_name, arg_dfn):
-    # branch_num2=r"(?P<branch_num_str2>\+(?P<branch_num2>[1-9][0-9]*)?)?"
-    # flags=r"@(?P<chars>[a-zA-Z0-9\?][a-zA-Z0-9@\?]*(?<!@))"
-    # flags=r"{}(?P<chars>[a-zA-Z0-9\?][a-zA-Z0-9@\?]*(?<!@))"
     values=r"(?P<values_str>(?:\=|:)(?P<values>.*))?"
-    branch_num=r"(?P<branch_num_str>\+(?P<branch_num>[1-9][0-9]*)?)?"
 
     if reg_name == "alias":
-        return r"^(?P<alias>{}[a-zA-Z0-9\?][a-zA-Z0-9\-_]*?){}{}$".format(get_reg_prefixes(), branch_num, values)
+        return r"^(?P<alias>{}[a-zA-Z0-9\?][a-zA-Z0-9\-_]*?){}$".format(get_reg_prefixes(), values)
     elif reg_name == "flags":
-        return r"^(?P<alias>{}[a-zA-Z0-9\?])(?P<chars>[a-zA-Z0-9\?]*){}{}$".format(get_reg_prefixes(), branch_num, values)
+        return r"^(?P<alias>{}[a-zA-Z0-9\?])(?P<chars>[a-zA-Z0-9\?]*){}$".format(get_reg_prefixes(), values)
 
 def get_regex_cli_explicit():
     return r"^(?:(?P<plus>\+)|(?P<equal>=)|(?P<minus_concat>\-+)|(?:\-(?P<minus_index>[1-9][0-9]*)))$"

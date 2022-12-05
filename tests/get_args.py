@@ -65,7 +65,7 @@ def test_get_args(
     pprint(vars(args.arg_one))
     print(args.arg_one._get_cmd_line())
     args=nargs.get_args("--args --arg-one")
-    args=nargs.get_args("--args --arg-one --args+ --arg-one")
+    args=nargs.get_args("--args --arg-one --args --arg-one")
 
     for branch in args._branches:
         if branch.arg_one._here is False: err()
@@ -73,7 +73,7 @@ def test_get_args(
         pprint(vars(branch.arg_one))
         if branch.arg_one.narg_one._here is True: err()
 
-    args=nargs.get_args("--args --arg-one --args+ --arg-one --arg-one+")
+    args=nargs.get_args("--args --arg-one --args --arg-one --arg-one")
     if args.arg_one._count != 1: err()
 
     args=nargs.get_args("--args --arg-two")
@@ -81,13 +81,13 @@ def test_get_args(
 
     if args._branches[0].arg_two._count != 1: err()
 
-    args=nargs.get_args("--args --arg-two --args+ --arg-two --arg-two")
+    args=nargs.get_args("--args --arg-two --args --arg-two --arg-two")
     if args._branches[1].arg_two._here is False: err()
 
     if args._branches[1].arg_two._count != 2: err()
 
 
-    args=nargs.get_args("--args --arg-two --args+ --arg-two --args+ --arg-two")
+    args=nargs.get_args("--args --arg-two --args --arg-two --args --arg-two")
     args=nargs.get_args("--args --arg-two --arg-two --arg-two")
     if args.arg_two._count != 3: err()
 
@@ -96,13 +96,13 @@ def test_get_args(
     except:
         pass
 
-    args=nargs.get_args("--args --arg-two+  --arg-two+ --arg-two+ --arg-two+1=marc --arg-two+2=tom --arg-two+3=john")
-    if args.arg_two._branches[0]._value != "marc": err()
-    if args.arg_two._branches[1]._value != "tom": err()
-    if args.arg_two._branches[2]._value != "john": err()
+    args=nargs.get_args("--args --arg-one=marc --arg-one=tom --arg-one=john")
+    if args.arg_one._branches[0]._value != "marc": err()
+    if args.arg_one._branches[1]._value != "tom": err()
+    if args.arg_one._branches[2]._value != "john": err()
 
-    args=nargs.get_args("--args --arg-three+  --arg-three+ --arg-three+ --arg-three+1=marc --arg-three+2=tom --arg-three+3=john --arg-three+2=harry")
-    if args.arg_three._branches[1]._value != "harry": err()
+    args=nargs.get_args("--args --arg-three=marc --arg-three=tom --arg-three=john --arg-three=harry")
+    if args.arg_three._branches[0]._value != "harry": err()
 
     args=dict(
         _aliases="--args,-a,a",
@@ -148,8 +148,8 @@ def test_get_args(
         raise_exc=True,
     )
 
-    args=nargs.get_args("--args+=barry  --args+ --args+ --args+1=marc --args+2=tom --args+3=john --args+2=harry")
-    if "harry" not in args._branches[1]._values : err()
+    args=nargs.get_args("--args=barry  --args --args --args=marc --args=tom --args=john --args=harry")
+    if "harry" not in args._branches[6]._values : err()
 
     args=nargs.get_args("-a=tom")
     if args._value != "tom": err()
@@ -163,7 +163,8 @@ def test_get_args(
         args=nargs.get_args("-a = -b")
 
     args=nargs.get_args("-a = -a")
-    if args._count != 2: err()
+    if len(args._branches) != 2: err()
+    if args._count != 1: err()
 
     print(
         args.arg_one._here,
@@ -277,16 +278,16 @@ def test_get_args(
 
     with CatchEx(EndUserError) as c:
         c.text="'allow_parent_fork' is set to 'False' but parent argument has more than one branch"
-        args=nargs.get_args("--args --arg-four --arg-four+ --nested-arg1")
+        args=nargs.get_args("--args --arg-four --arg-four --nested-arg1")
 
     with CatchEx(EndUserError) as c:
         c.text="'--arg-four' can't be forked"
-        args=nargs.get_args("--args --arg-four --nested-arg1 --arg-four+")
+        args=nargs.get_args("--args --arg-four --nested-arg1 --arg-four")
 
-    args=nargs.get_args("--args --arg-four --nested-arg2 --arg-four+")
+    args=nargs.get_args("--args --arg-four --nested-arg2 --arg-four")
     if not (args.arg_four.nested_arg2._here is True): err()
     if not (args.arg_four._branches[1].nested_arg2._here is False): err()
-    args=nargs.get_args("--args --arg-four --arg-four+ --nested-arg2 --arg-four+")
+    args=nargs.get_args("--args --arg-four --arg-four --nested-arg2 --arg-four")
     
     args=nargs.get_args("--args --arg-two --nested-arg2")
     args=nargs.get_args("--args --arg-two --nested-arg1")
@@ -333,24 +334,8 @@ def test_get_args(
         args=nargs.get_args("--args --arg-two --nested-arg5 53")
 
     with CatchEx(EndUserError) as c:
-        c.text="Biggest branch number available is '+1'"
-        args=nargs.get_args("--args --arg-two+2")
-
-    with CatchEx(EndUserError) as c:
-        c.text="Biggest branch number available is '+3'"
-        args=nargs.get_args("--args --arg-four --arg-four+ --arg-four+4")
-
-    with CatchEx(EndUserError) as c:
         c.text="can't be forked because its child argument '--nested-arg1'"
-        args=nargs.get_args("--args --arg-four --nested-arg1 --arg-four+")
-
-    with CatchEx(EndUserError) as c:
-        c.text="A new branch can't be created for argument '--arg-one'"
-        args=nargs.get_args("--args --arg-one+ --arg-one+")
-
-    with CatchEx(EndUserError) as c:
-        c.text="wrong branch number '+2'. Only '+1' is authorized"
-        args=nargs.get_args("--args --arg-one+ --arg-one+2")
+        args=nargs.get_args("--args --arg-four --nested-arg1 --arg-four")
 
     with CatchEx(EndUserError) as c:
         c.text="can't be repeated because its 'repeat' property is set to 'error'"

@@ -307,7 +307,7 @@ class CliArg():
                 if arg._here is True:
                     arg_index=arg._branches.index(arg)+1
 
-                if arg._parent is None and arg_index == 1:
+                if arg_index == 1:
                     pass
                 else:
                     text+="+{}".format(arg_index)
