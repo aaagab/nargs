@@ -40,7 +40,6 @@ if __name__ == "__main__":
         def __exit__(self, type, value, traceback):
             pass
 
-
     direpa_tmp=os.path.join(tempfile.gettempdir(), "nargs")
     os.makedirs(direpa_tmp, exist_ok=True)
     filenpa_cache_json=os.path.join(direpa_tmp, "nargs-cache.json")
@@ -49,13 +48,13 @@ if __name__ == "__main__":
     with Chk() as chk:
         chk.exc(pkg.single_test, dy_metadata, filenpa_cache_json)
         chk.exc(pkg.test_aliases, dy_metadata)
+        chk.exc(pkg.test_set_options, dy_metadata)
         chk.exc(pkg.test_get_json, dy_metadata)
-        chk.exc(pkg.test_get_args, dy_metadata, filenpa_cache_json)
+        chk.exc(pkg.test_set_dfn, dy_metadata)
         chk.exc(pkg.test_get_node_dfn, dy_metadata)
         chk.exc(pkg.test_get_path, dy_metadata)
+        chk.exc(pkg.test_get_args, dy_metadata, filenpa_cache_json)
         chk.exc(pkg.test_nargs, dy_metadata, filenpa_cache_json, filenpa_cache_pickle)
-        chk.exc(pkg.test_set_dfn, dy_metadata)
-        chk.exc(pkg.test_set_options, dy_metadata)
         chk.exc(pkg.test_style, dy_metadata)
         chk.exc(pkg.test_implementation, dy_metadata, filenpa_cache_json, filenpa_cache_pickle, manual)
         chk.exc(pkg.test_performance, dy_metadata, direpa_tmp, filenpa_cache_json)

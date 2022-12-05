@@ -37,7 +37,6 @@ def get_filtered_dy(
     tmp_dy_props["info"]=get_info(dy_props, dy_err)
     tmp_dy_props["type"]=get_type(dy_props, dy_err)
     tmp_dy_props["label"]=get_label(dy_props, dy_err)
-    tmp_dy_props["fork"]=get_fork(dy_props, dy_err)
     tmp_dy_props["repeat"]=get_repeat(dy_props, dy_err)
     tmp_dy_props["xor"]=get_xor(dy_props, tmp_dy_props, dy_err)
     tmp_dy_props["xor_groups"]=None
@@ -714,20 +713,6 @@ def get_preset(dy_props, tmp_dy_props, dy_err, pnode_dfn, arg_name):
 
     return is_preset
 
-def get_fork(dy_props, dy_err):
-    prop_prefix=get_prop_prefix(dy_err, "_fork")
-    if "_fork" in dy_props:
-        _fork=dy_props["_fork"]
-        del dy_props["_fork"]
-        if _fork is None:
-            return True
-        elif isinstance(_fork, bool):
-            return _fork
-        else:
-            msg.error("value type {} must be of type {}.".format(type(_fork), bool), prefix=prop_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
-    else:
-        return False
-
 def get_repeat(dy_props, dy_err):
     prop_prefix=get_prop_prefix(dy_err, "_repeat")
     if "_repeat" in dy_props:
@@ -737,7 +722,7 @@ def get_repeat(dy_props, dy_err):
         if _repeat is None:
             return "replace"
 
-        authorized_repeats=["append", "error", "replace"]
+        authorized_repeats=["append", "error", "fork", "replace"]
         if _repeat in authorized_repeats:
             return _repeat
         else:

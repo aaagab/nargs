@@ -1,8 +1,7 @@
 args:
   _aliases: "--args,-a"
-  _fork: true
   _need_child: false
-  _repeat: "append"
+  _repeat: "fork"
   _values: "*"
   arg_one:
     _aliases: "--arg-one,-b"

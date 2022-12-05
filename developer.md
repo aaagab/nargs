@@ -50,7 +50,7 @@ There are two documentation files:
 - Flags are context-sensitive.
 - Built-in usage argument can provide details on available flags for each argument.
 - Command-line arguments form a tree where each node may have multiple branches.
-- Arguments branches may be duplicated with branch index notation i.e. `prog.py --arg+ --nested --arg+ --nested`
+- Arguments branches may be duplicated by repeating the argument if its property `_repeat="fork"` i.e. `prog.py --arg --nested --arg --nested`
 - Arguments aliases are automatically set if not defined according to default prefix and default alias style.
 - There are several notations for argument's values. Values can be set either with spaces, or with equal/comma notation. i.e.:
   - `main.py value1 value2`
@@ -76,6 +76,7 @@ There are two documentation files:
 - Multiple same argument occurrences may be defined:
   - `_repeat="append"` appends values to the same argument when repeated.
   - `_repeat="error"` triggers an error when argument is repeated.
+  - `_repeat="fork"` creates a new argument's branch.
   - `_repeat="replace"` resets and replace previous argument's branch and values if any.
 - In code Nargs returns a CliArg class object that has for members argument properties and nested arguments objects. Arguments can then be accessed:
   - Dynamically with their name in a dictionary
@@ -109,13 +110,13 @@ nano nargs.yaml
 ```yaml
 args:
   arg_one:
-    nested_arg_one:
+    nested:
       _values: "*"
-      nested_nested_arg_one:
+      nested_nested:
   arg_two:
-    _fork: true
+    _repeat: fork
     _values: "*"
-    nested_arg_two:
+    nested:
       _values: "*"
 ```
 
@@ -127,15 +128,15 @@ nano nargs.json
 {
   "args":{
     "arg_one":{
-      "nested_arg_one":{
+      "nested":{
         "_values": "*",
-        "nested_nested_arg_one":{}
+        "nested_nested":{}
       }
     },
     "arg_two":{
-      "_fork": true,
+      "_repeat": "fork",
       "_values": "*",
-      "nested_arg_two":{
+      "nested":{
         "_values": "*"
       }
     }
@@ -148,22 +149,22 @@ nano nargs.json
 
 args=dict(
   arg_one=dict(
-    nested_arg_one=dict(
+    nested=dict(
       _values="*",
-      nested_nested_arg_one=dict()
+      nested_nested=dict()
     )
   ),
   arg_two=dict(
-    _fork=True,
+    _repeat="fork",
     _values="*",
-    nested_arg_two=dict(
+    nested=dict(
       _values="*",
     )
   )
 )
 ```
 
-In arguments' definition, argument's properties start with underscore and argument's children start with either an uppercase letter or a lowercase letter.  
+In arguments' definition, argument's properties start with underscore and argument's children start with either a letter.  
 
 **Context in code arguments. Developer creates program's logic according to arguments properties and values**:  
 ```bash
@@ -191,20 +192,20 @@ args=Nargs(args=args, metadata=dy).get_args()
 ## Then developer creates program's logic with either:
 ### Nargs object class attributes
 if args.arg_one._here:
-    if args.arg_one.nested_arg_one._here:
+    if args.arg_one.nested._here:
         # print argument first value
-        print(args.arg_one.nested_arg_one._value)
+        print(args.arg_one.nested._value)
         # print all argument values
-        print(args.arg_one.nested_arg_one._values)
+        print(args.arg_one.nested._values)
         sys.exit(0)
 
 ### Nargs object class attributes and dictionary
 if args._["arg_one"]._here:
-    if args._["arg_one"]._["nested_arg_one"]._here:
-        print(args._["arg_one"]._["nested_arg_one"]._value)
+    if args._["arg_one"]._["nested"]._here:
+        print(args._["arg_one"]._["nested"]._value)
         sys.exit(0)
 
-### Nargs arguments can be looped, property _fork allows multiple arguments branches.
+### Nargs arguments can be looped, property _repeat="fork" allows multiple arguments branches.
 for arg in args.arg_two._branches:
     if arg._here is True:
         print(arg._value)
@@ -221,14 +222,14 @@ for arg in args._["arg_two"]._branches:
 **Context: command-line. End-user provides argument.**:
 ```bash
 # arguments implicit notation
-program.py --arg-one --nested-arg-one
-program.py --arg-two --nested-arg-two value1 value2 "value 3" --arg-one
-program.py --arg-two="value1 value2 \"value 3\"" --nested-arg-two
+program.py --arg-one --nested
+program.py --arg-two --nested value1 value2 "value 3" --arg-one
+program.py --arg-two="value1 value2 \"value 3\"" --nested
 
 # arguments explicit notation
-program.py + --arg-one + --nested-arg-one
-program.py + --arg-two + --nested-arg-two value1 value2 "value 3" - --arg-one
-program.py + --arg-two="value1 value2 \"value 3\"" + --nested-arg-two
+program.py + --arg-one + --nested
+program.py + --arg-two + --nested value1 value2 "value 3" - --arg-one
+program.py + --arg-two="value1 value2 \"value 3\"" + --nested
 
 # built-in arguments (alias prefix is developer defined)
 program.py --help
@@ -241,13 +242,13 @@ program.py --help --metadata --uuid4
 - **Generic Package Manager (GPM)**: References to the Generic Package Manager can be found throughout this documentation. The Generic Package Manager is an ongoing project that is not available publicly yet. For instance `gpm.json` file refers to main configuration file from package managed by the Generic Package Manager. The import statement `from ..gpks.nargs import Nargs` is also related to GPM. Nargs is a standalone module and does not need the Generic Package Manager, however Nargs Module is needed in order to continue the Generic Package Manager development.  
 - **developer**: Developer user who creates a program that uses Nargs as a module.  
 - **end-user**: User who interacts on the command-line with a program using Nargs module.
-- **fork**: To fork means to divide into two or more branches. `_fork` is an argument definition property that authorizes or denies the argument to have more than one branch.    
+- **fork**: To fork means to divide into two or more branches. `_repeat="fork"` is an argument definition property that authorizes the argument to have more than one branch.    
 - **maintainer**: User in charge of developing and maintaining Nargs software.
 - **Host Program**: Program created by developer that imports Nargs as a module.  
-- **arguments**: In code arguments are objects from Nargs CliArg class. In definition arguments are tree nodes with properties and child arguments. On the command-line arguments are selected by typing their aliases.  
-- **arguments node level**: Arguments are defined with a tree structure where executable (i.e.: `main.py`) is generally the root argument. Nested arguments can be defined at will from the root argument. Each argument is on a node level. Root argument is node level 1, then its children are on node level 2, and node level continues incrementing if more children of children are added.  
-- **arguments aliases**: End-user calls arguments on the command-line with arguments' aliases. For a given argument `arg_one` aliases may be `--arg-one, -a, argone, arg-one`. Arguments' aliases are only unique at their node level.  
-- **arguments names**: An argument name is a string chosen by developer to identify an argument at the argument's node level in the arguments' definition tree. An argument's name is unique at its node level between siblings' arguments names. Argument's name is later used in code by developer to set program's logic.  
+- **arguments**: In code context `arguments` are objects from Nargs CliArg class. In definition context `arguments` are tree nodes with properties and child arguments. On the command-line context `arguments` are selected by typing their aliases.  
+- **arguments node level**: Arguments are defined with a tree structure where executable (i.e.: `main.py`) is the root argument. Nested arguments can be defined at will from the root argument. Each argument is on a node level. Root argument is node level 1, then its children are on node level 2, and node level continues incrementing if more children of children are added.  
+- **arguments aliases**: End-user calls arguments on the command-line with arguments' aliases. For a given argument `arg_one` aliases may be `--arg-one, -a, argone, arg-one`. Argument's aliases are only unique among siblings arguments aliases.  
+- **arguments names**: An argument name is a string chosen by developer to identify an argument at the argument's node level in the arguments' definition tree. An argument's name is unique among siblings arguments names. Argument's name is later used in code by developer to set program's logic.  
 - **arguments branches**: An argument's branch consists of both the argument and all its children. A new argument's branch consists of both a new instance of the argument and new instances of its children. Argument's branches are independent. It means that when an argument's branch is modified, it does not modify any other branches of the same argument.  
 - **command-line**: It is the end-user's terminal command-line from `sys.argv`, developer providing a command-line string with Nargs get_args `cmd` option, or end-user providing a command-line with Nargs built-in `cmd` argument value.  
 - **Nargs Arguments' contexts**:
@@ -301,7 +302,7 @@ class Nargs():
 
 - **args**: This option provides arguments' definition to Nargs. `args` accepts a dict (see also [Arguments Definition](#arguments-definition)).
 - **auto_alias_prefix**: If developer does not set an alias for an argument in the definition, then the alias is auto-generated. Developer can choose what is the default prefix from this list `["", "+", "-", "--", "/", ":", "_"]` with option `auto_alias_prefix` i.e. `my-alias, +my-alias, -my-alias, --my-alias, /my-alias, :my-alias, _my-alias`.  
-- **auto_alias_style**: If the alias is auto-generated from the argument name then several styles are possible for instance for an argument name `my_alias` the following auto-alias style can be provided with option `auto_alias_style`:
+- **auto_alias_style**: If the alias is auto-generated from the argument name then several styles are possible. For instance for an argument named `my_alias` the following auto-alias style can be provided with option `auto_alias_style`:
     - **camelcase**: i.e. myAlias
     - **camelcase-hyphen**: i.e. my-Alias
     - **lowercase**: i.e. myalias
@@ -311,7 +312,7 @@ class Nargs():
     - **uppercase**: i.e. MYALIAS
     - **uppercase-hyphen**: i.e. MY-ALIAS
 - **builtins**: This option allows to select which [built-in arguments](#built-in-arguments) are going to be added to developer program. Developer can add any built-in arguments from list`["cmd", "help", "usage", "version"]`. If `builtins` is None or an empty list built-in arguments are omitted. If only some built-in arguments are selected then only these selected built-in arguments are added to developer's program.  
-- **cache_file**: This option provides a file path to cache Nargs options. Default value is `nargs-dump.json`.  Cache file path can be relative or absolute. Relative path is relative to `Nargs()` class caller file path. Developer can choose either `.json` or `.pickle` extension to cache Nargs options once they have been parsed. There are 3 main elements that are checked to recreate the cache file: options provided with Nargs(), gpm.json file for metadata, and an options file. If any of these three elements are modified then the cache file is recreated. If cache file already exists, and none of the three elements have been modified then Nargs options are extracted from the cache file instead of being parsed with Nargs module. Caching improves speed when parsing because it allows having all the options and arguments' definition grammar checked only once. JSON format is the safest (1.5 to 2 times faster) and PICKLE format is the fastest because unlike JSON cache, arguments' definition objects are already stored in the PICKLE cache. However PICKLE files may be compromised, and arguments' definition tree size is limited to approximately 850 nodes before throwing a `Recursion Error`.  
+- **cache_file**: This option provides a file path to cache Nargs options. Default value is `nargs-dump.json`.  Cache file path can be relative or absolute. Relative path is relative to `Nargs()` class caller file path. Developer can choose either `.json` or `.pickle` extension to cache Nargs options once they have been parsed. There are 3 main elements that are checked to recreate the cache file: options provided with Nargs(), gpm.json file for metadata, and an options file. If any of these three elements are modified then the cache file is recreated. If cache file already exists, and none of the three elements have been modified then Nargs options are extracted from the cache file instead of being parsed with Nargs module. Caching improves speed when parsing because it allows having all the options and arguments' definition grammar checked only once. JSON format is the safest (1.5 to 2 times faster) and PICKLE format is the fastest because unlike JSON cache, arguments' definition objects are already stored in the PICKLE cache. However PICKLE files may be compromised, and arguments' definition tree size may be limited to a certain number (approximately 850 nodes when testing) before throwing a `Recursion Error`.  
 - **metadata**: This option accepts a dictionary that helps populating built-in arguments, usage, help, and version. Developer can get common metadata fields with Nargs function `Nargs.get_metadata_template()`. Any metadata field that is null or empty is discarded. Provided fields are trimmed. Program fields `name` and `executable` are mandatory, and they need to be provided in metadata parameter i.e. `Nargs(metadata=dict(name="My Program", executable="prog"))`. Nargs class member metadata is set and available to developer with `Nargs().metadata`  (see also [built-in arguments](#built-in-arguments))   
 - **only_cache**: This option allows to load the cache_file definition without checking changes on the developer provided definition. Parsing speed should be the fastest when only_cache is set to True. If the cached definition returns null Nargs throws an error and prevents the cache_file to be regenerated. If that error happens developer can regenerate the cache by either manually deleting the cache file or by setting only_cache to False.  
 - **options_file**: This option allows to provide all the Nargs options from a file. It is the preferred method to provide `args` option. options_file must be a `.json/.yaml` file path (relative or absolute). Relative path is relative to `Nargs()` class caller file path (see also [Arguments Definition](#arguments-definition)). When Nargs is executed, options are first read from `Nargs()` options and then if options file is provided then options file options overload previously defined similar options. `options_file` can be omitted. In order to use `.yaml` options file, developer and end-user needs to `pip install pyyaml`. PyYAML import statement is only triggered if a YAML file is provided. In other words users only using JSON definition file do not need to install PyYAML. Only safe_load is used to parse a YAML options file. YAML file parsing is much slower (at least 4 times) using PyYAML 5.4.1 safe_load, than parsing JSON file, according to a performance's tests. However Nargs options are cached so a slower parsing time for options YAML file only appears once before it is cached. YAML is the preferred format to write options file because of its shorter syntax and commenting capabilities. Options can be provided in four ways:  
@@ -329,7 +330,7 @@ For options_file, and users file, if they provide both `.json` and `.yaml` files
 - **raise_exc**: If set to True Nargs raise Exception for each known errors. If set to False Nargs print an error message for each known errors and exit. `raise_exc=True` may be useful when testing Nargs software or if developer creates custom help and usage commands. There are two custom exceptions returned by Nargs:
     - `EndUserError`: Only happens when a command-line is provided to `get_args` either through `sys.argv` or `get_args cmd option`. These errors are not Nargs errors, but they are command syntax errors provided on the command-line by end-user.
     - `DeveloperError`: Only happens when developer either provides syntax errors on Nargs options or syntax errors on arguments tree definition.  
-    - All other exceptions are not expected and may be due to Nargs bugs, cache tampering, or modifications of the Nargs NodeDfn objects when using multiple get_args call. Nargs have multiple tests that covers all the expected errors and most the implementation. Tests are only available with the Nargs sources. Tests are not included for production releases. Tests files are listed in `src/__init__.py`.  
+    - All other exceptions are not expected and may be due to Nargs bugs, cache tampering, or modifications of the Nargs NodeDfn objects when using multiple get_args call. Nargs have multiple tests that covers all the expected errors and most of the implementation. Tests are only available with the Nargs sources. Tests are not included for production releases. Tests files are listed in `src/__init__.py`.  
 
 - **substitute**: This option sets Nargs `substitute` mode to True or False. If `substitute=True` command-line strings that match regex `(?:__(?P<input>input|hidden)__|__((?P<input_label>input|hidden)(?::))?(?P<label>[a-zA-Z][a-zA-Z0-9]*)__)` may be substituted either by developer input or environment variables values. Regex rules are:
     - strings start with double underscore
@@ -517,7 +518,7 @@ class CliArg():
 - `self._alias`: It is set with end-user argument's alias as provided on the command-line for latest argument's occurrence.
 - `self._aliases`: All arguments' aliases set in argument's definition.  
 - `self._args`: It is a list that contains all child arguments that have been provided on the command-line in the order they have been provided. It may be useful to developer for in code context when end-user provided arguments' sorting order matters. When multiple occurrences per branch of an arg is allowed with argument's definition properties `_repeat="append"` or `_repeat="replace"` then for each new occurrence argument object is removed from `self._args` and appended again in `self._args` from parent argument. For `_repeat="append"` then the same object is appended and for `_repeat="replace"` then a new argument object is appended.  
-- `self._branches`: This property returns a list that contains all branches of a command-line argument. At least one arguments branch starting at root argument is generated when `Nargs()` is executed, and that tree is regenerated each time `get_args()` is called more than once. It means that all arguments are already available in code for developers even if they are not present on the command-line. For instance argument's attribute `_branches` returns at least itself (CliArg object address) even if it is not on the command-line. When an argument is added on the command-line and it is the first time it is added then the argument is `activated`. Activated means that some arguments attributes are set. For instance `self._here` is set to `True`, and its parent if any has its attribute `_args` appended with the added argument object (see `set_arg()` in `src/dev/get_args.py`). If argument definition properties `_fork=True` and `_repeat="append"` then when argument is added on the command-line for the first time the argument branch already exists, so it does not need to be created.  For each argument new branch, a new argument is created and all its children too. Then again the argument is activated, and the argument object is appended to its property `_branches`. `_branches` property is a list that is shared between all the branches of the same argument. It is important to note that related branches of an argument share the same parent. For instance if argument's parent has also its `_fork` property that is set to True then the same child arguments from definition args tree may have a different parent in the command-line args tree and thus the same arguments from definition may have branches that are not related to each other because they don't share the same parent. That is why in order to loop through all the arguments added to the command-line arguments tree it is important to loop through arguments starting from the root argument branches and then for each branch going down to each children branches.  
+- `self._branches`: This property returns a list that contains all branches of a command-line argument. At least one arguments branch starting at root argument is generated when `Nargs()` is executed, and that tree is regenerated each time `get_args()` is called more than once. It means that all arguments are already available in code for developers even if they are not present on the command-line. For instance argument's attribute `_branches` returns at least itself (CliArg object address) even if it is not on the command-line. When an argument is added on the command-line and it is the first time it is added then the argument is `activated`. Activated means that some arguments attributes are set. For instance `self._here` is set to `True`, and its parent if any has its attribute `_args` appended with the added argument object (see `set_arg()` in `src/dev/get_args.py`). When argument is added on the command-line for the first time the argument branch already exists, so it does not need to be created. In that scenario the argument is only activated. For each argument with definition properties `_repeat="fork"` or `_repeat="append"` a new branch is created, a new argument is created and all its children too. Then again the argument is activated, and the argument object is appended to its property `_branches`. `_branches` property is a list that is shared between all the branches of the same argument. It is important to note that related branches of an argument share the same parent. For instance if argument's parent has also its `_repeat` property that is set to `fork` then the same child arguments from definition args tree may have a different parent in the command-line args tree and thus the same arguments from definition may have branches that are not related to each other because they don't share the same parent. That is why in order to loop through all the arguments added to the command-line arguments tree it is important to loop through arguments starting from the root argument branches and then for each branch going down to each children branches.  
 ```python
 # branches examples
 root_arg=pkg.Nargs(options_file="../definition.yaml")
@@ -585,19 +586,19 @@ root_arg (branch 2)
   child_arg (branch 2)
   child_arg (branch 3)
 # on the command-line the below structure could be written this way
-prog.py --child-arg+1 --child_arg+2 --child_arg+3 --args+2 --child-arg+1 --child_arg+2 --child_arg+3
+prog.py --child-arg --child_arg --child_arg --args --child-arg --child_arg --child_arg
 # note (according to previous command-line):
 ## in code
 args.child_arg # always returns args.child_arg._branches[0]
 args._["child_arg"] # always returns args.child_arg._branches[0]
 ### other branches can be accessed with notations:
-args.child_arg[1] # for second branch
-args._["child_arg"][3] # for third branch
+args.child_arg._branches[1] # for second branch
+args._["child_arg"]._branches[2] # for third branch
 
 ```
 - `self._cmd_line`: Only root argument on branch 1 (a.k.a. `root_arg._branches[0]`) has this attribute and it contains the command-line provided to Nargs. To retrieve command-line developer can do `print(arg._root._branches[0]._cmd_line)`.
 - `self._cmd_line_index`: It provides the command-line index of the argument location on the command-line for latest argument's occurrence. To print command-line for an argument developer can do `print(arg._root._branches[0]._cmd_line[arg._cmd_line_index])`. Implicit argument's command-line index is always the last explicit argument command-line index (see [Nargs get_args /`_implicit`](#nargs-getargs)). The command-line index number represents the last index of the argument alias plus one. It allows to print the alias related argument command-line with `print(arg._root._branches[0]._cmd_line[:arg._cmd_line_index])`.  
-- `self._count`: It returns the number of argument's occurrences on the command-line per argument's branches. It is related to argument's property `_repeat` (see [Properties Explained /`_repeat`](#properties-explained)).  
+- `self._count`: It returns the number of argument's occurrences on the command-line per argument's branches. It is related to argument's property `_repeat="append"` (see [Properties Explained /`_repeat`](#properties-explained)).  
 - `self._default_alias`: Default alias is automatically generated, and it is used either with `_get_path()` function or when adding implicitly a required argument. Default alias is the first alias provided by developer in arguments' definition with property `_aliases`.
 - `self._dfn`: This is the related definition node for the current command-line argument node. This node gives access to the arguments' definition tree. `NodeDfn` class is available at `src/dev/nodes.py`. Most of Nargs internals rely on that definition tree. Developers maybe want to use the NodeDfn class attribute `dy` to access all the CliArg properties i.e.: `pprint(args._dfn.dy)`. Other class members may be useful if developer wants to generate its own help and usage. In order to overload the built-in help and usage, developer must set Nargs option `raise_exc` to `True` and he or she must disable at least help and usage built-in arguments with Nargs option `builtins`. Then developers is going to create the needed arguments in a definition file. Then developer is going to be able to filter Nargs exceptions `EndUserError` and `DeveloperError`. Most of developers will probably want to rely on built-in help and usage and thus they may want to ignore `self._dfn`. For developers who want to overload help and usage, they may read the `src/dev/help.py` sources as a reference. Creating help and usage, consists in recursively looping through the definition tree and to display information mainly with `node_dfn.dy` (see also [Properties Explained /`_is_usage`](#properties-explained) to set the usage node for custom usage or [Developer custom Help and Usage](#developer-custom-help-and-usage) for an example).  
 - `self._dy_indexes`: It provides a dictionary with one key `aliases` and another key `values`. `self._dy_indexes["aliases"]` is a dictionary that have for keys command-line indexes as int and for values arguments aliases. This dictionary allows to know the command-line index and alias used for each occurrence of an argument. `self._dy_indexes["values"]` is a command-line indexes list for each argument values. The main purpose of `self._dy_indexes` is for developers to be able to throw errors with the exact location on the command-line of an argument alias(es) or one of its values. Implicit argument provides the argument's default alias, and command-line index is always the last explicit argument command-line index. Implicit argument default values are added implicitly but no indexes are added to `self._dy_indexes["values"]` (see [Nargs get_args /`_implicit`](#nargs-getargs)).  
@@ -614,7 +615,7 @@ args._["child_arg"][3] # for third branch
 
 **_get_cmd_line**: It is a method that provides current argument command-line. It is the same as `print(arg._root._branches[0]._cmd_line[arg._cmd_line_index])`. A command-line index can be provided to print a different command-line. `_get_cmd_line` is used most of the time when to print the exact argument's path when Nargs throws an error. Note that for implicit arguments, `_get_cmd_line` can't return the command-line path of the current argument because implicit arguments have been added implicitly and they don't exist on the command-line. Instead `_get_cmd_line` returns the last explicit argument from where implicit arguments have been added. In order to print implicit arguments paths in code context developer can use `self._get_path()` (see also [Nargs get_args /`_implicit`](#nargs-getargs)).  
 
-**_get_path**: argument `_get_path()` returns all parent aliases joined with spaces. For each returned alias, alias is returned with index notation if the alias related argument has multiple branches i.e. `--arg-one+1 --arg-one+2`. Explicit notation is set when an alias conflict with parents' aliases or children' aliases. If `wvalues=True` then argument's values are returned after the argument alias. `_get_path` is provided to developer for custom use, it is also used in help or sometimes when nargs throws an error to give arguments paths. Arguments aliases are provided by end-user through command-line but sometimes developer may want to get an argument's path that is not present on the command-line. In this context, `_get_path()` returns argument and parent arguments default aliases see [Properties Explained _aliases](#properties-explained). Path can also be forced to be printed with arguments default aliases by using option `keep_default_alias=True`. `_get_path` is different than `_get_cmd_line` because it gives the shortest path to an argument in the arguments tree whereas `_get_cmd_line` provides the whole command-line until the end of the selected argument alias is reached.  
+**_get_path**: argument `_get_path()` returns all parent aliases joined with spaces. For each returned alias, alias is returned with index notation if the alias related argument has multiple branches i.e. `--arg-one --arg-one`. Explicit notation is set when an alias conflict with parents' aliases or children' aliases. If `wvalues=True` then argument's values are returned after the argument alias. `_get_path` is provided to developer for custom use, it is also used in help or sometimes when nargs throws an error to give arguments paths. Arguments aliases are provided by end-user through command-line but sometimes developer may want to get an argument's path that is not present on the command-line. In this context, `_get_path()` returns argument and parent arguments default aliases see [Properties Explained _aliases](#properties-explained). Path can also be forced to be printed with arguments default aliases by using option `keep_default_alias=True`. `_get_path` is different than `_get_cmd_line` because it gives the shortest path to an argument in the arguments tree whereas `_get_cmd_line` provides the whole command-line until the end of the selected argument alias is reached.  
 
 ### Developer Custom Help and Usage
 This is a very basic example on how to implement custom help and usage in order to overload built-in help and usage.
@@ -638,7 +639,6 @@ try:
 
     if args.usage._here:
         if args.usage._previous_dfn is None:
-            msg.error('args.usage._previous_dfn is None', trace=True, exit=1)
             print("Custom help for '{}'".format(args.usage._previous_dfn.name))
             sys.exit(0)
 
@@ -703,7 +703,7 @@ Nargs(args=dict(
         "nested_arg_one": {
         "nested_nested_arg": {}
         },
-        "nested_arg_two": {
+        "nested": {
         "nested_nested_arg": {}
         }
     },
@@ -711,11 +711,11 @@ Nargs(args=dict(
         // notation one (a string for one node)
         "@": "arg_one.nested_arg_one",
         // or notation two (a string with commas to split multiple nodes)
-        "@": "arg_one.nested_arg_one,arg_one.nested_arg_two",
+        "@": "arg_one.nested_arg_one,arg_one.nested",
         // or notation three (a nodes list)
         "@": [
-        "arg_one.nested_arg_one",
-        "arg_one.nested_arg_two"
+          "arg_one.nested_arg_one",
+          "arg_one.nested"
         ]
     }
 }
@@ -743,7 +743,6 @@ Property | Default Value | Allowed Types | Information | NodeDfn().dy keys
 `_default` | null | null, string (comma split), or strings list | argument's default value(s) | default
 `_enabled` | true | null, or bool | Enable/Disable argument | enabled
 `_examples` | null | null, string, or strings list | Argument's examples | examples
-`_fork` | false | null, or bool | Allow/Deny argument to fork | fork
 `_hint` | null | null, or string | Argument's short description | hint
 `_in` | null | null, string (comma split), strings list, or dictionary | Argument's list of authorized values  | in, in_labels
 `_info` | null | null, or string | Argument's long description | info
@@ -797,19 +796,6 @@ One char aliases with or without prefix can be set as flag aliases if conditions
 **_examples**: Property provides argument's command examples. It accepts a string or a strings list. Developer can provide command examples for a particular argument. Argument examples are then printed on the screen if any when end-user types `--help`, `--examples` or `--usage --examples`.  
 `_examples` creates the `NodeDfn().dy` dictionary key: `examples`.  
 
-**_fork**: Property defines if argument can be duplicated. At start the command-line arguments tree is fully created, then when end-user types an argument on the command-line the argument is activated. To activate an argument means adding it on the command-line (see function activate_arg in get_args.py file for implementation). If argument's property `_fork=True` then argument can be duplicated using argument's branch index notation. `Argument's branch index notation` applies on the command-line and it consists of the argument alias followed by a plus sign and an optional index. If only the plus sign is used, it means create an argument's branch. If index is used then end-user can accurately select a particular instance of an argument. For instance two branches have been created for `arg_one` with command `prog.py --arg-one --arg-one+`. End-user can provide `Argument's branch notation` to get the same result i.e. `prog.py --arg-one+1 --arg-one+2`. If end-user wants to provide a second argument's occurrence of argument's first branch then end-user uses notation plus sign with index i.e. `prog.py --arg-one --arg-one+ --arg-one+1 --arg-one+2`. Here `--arg-one+` means create another branch and `--arg-one+1` means goes back to the first `--arg-one` argument (aka: `--arg-one` first branch second occurrence) and `--arg-one+2` to the second `--arg-one+` argument. In branch index notation the highest index that can be use is equal to `number of existing branches length plus one`. If the highest index is used then a new branch is created. It means that `--arg-one+1` will always work but `--arg-one+2` or greater may not work. `_fork` property can also be set for root argument. It means that end-user will be able to branch the whole program as many times as needed. i.e.:  
-```bash
-# here --args is root argument alias
-# explicit
-prog.py + --arg-one - --args+ + --arg-one - --args+1 + --arg-one
-# implicit
-prog.py --arg-one --args+ --arg-one --args+1 --arg-one
-```
-
-To create a branch means to duplicate an argument with all its child arguments. Thus an argument's branch is composed of an argument and all its child arguments. The duplicated argument is then activated. An argument's branch is different than an argument's occurrence. An argument's occurrence is when an argument is used multiple times at the same branch (see [Properties Explained / `_repeat`](#properties-explained)). i.e. argument's branches can be typed as `prog.py --arg-one+ --arg-one+ or prog.py --arg-one+1 --arg-one+2`. Argument's occurrences can be typed as `prog.py --arg-one --arg-one or prog.py --arg-one+1 --arg-one+1 or prog.py --arg-one+2 --arg-one+2`.  
-
-`_fork` creates the `NodeDfn().dy` dictionary key: `fork`.  
-
 **_hint**: Property provides a short description of the argument's purpose. It accepts a string or a strings list. `_hint` length is limited to 100 char.  
 `_hint` creates the `NodeDfn().dy` dictionary key: `hint`.  
 
@@ -847,7 +833,7 @@ To create a branch means to duplicate an argument with all its child arguments. 
 **_is_custom_builtin**: Property defines if argument `is_custom_builtin`. The main use for this attribute is when developer creates special arguments like usage and help. Argument with `is_custom_builtin=True` do not trigger parent error if parent is root argument, argument `need_child` is True, no child arguments are provided and all child arguments have `is_custom_builtin=True`.  
 `_is_custom_builtin` creates the `NodeDfn().dy` dictionary key: `is_custom_builtin`.  
 
-**_is_usage**: Property sets the usage argument for the arguments' definition tree. It is only useful if developer disables built-in usage in order to create his or her own usage. `_is_usage` can only be assigned to one argument and this argument has to be on node level 2. In order to set a usage node the following node properties are enforced: `allow_parent_fork=True, allow_siblings=True, is_custom_builtin=True, fork=False, repeat="replace", required=False`. When `_is_usage` is set to True, argument can have an alias with a question mark and any of the authorized alias's prefixes i.e. `?, +?, -?, --?, /?, :?, _?`. The usage argument has its CliArg attribute `_previous_dfn` set with the previous NodeDfn argument used before the usage argument (see also [Nargs get_args /`_dfn`](#nargs-getargs) to have more information on how to set custom help and usage).  
+**_is_usage**: Property sets the usage argument for the arguments' definition tree. It is only useful if developer disables built-in usage in order to create his or her own usage. `_is_usage` can only be assigned to one argument and this argument has to be on node level 2. In order to set a usage node the following node properties are enforced: `allow_parent_fork=True, allow_siblings=True, is_custom_builtin=True, fork=False, preset=False, repeat="replace", required=False`. When `_is_usage` is set to True, argument can have an alias with a question mark and any of the authorized alias's prefixes i.e. `?, +?, -?, --?, /?, :?, _?`. The usage argument has its CliArg attribute `_previous_dfn` set with the previous NodeDfn argument used before the usage argument (see also [Nargs get_args /`_dfn`](#nargs-getargs) to have more information on how to set custom help and usage).  
 `_is_usage` creates the `NodeDfn().dy` dictionary key: `is_usage`.  
 
 **_label**: Property provides a label for argument's values. Label is printed with help or usage commands i.e. for `label: FRUIT` help prints `[--item [<str:FRUIT>]]`. `_label` must be a string or null. `_label` can't be set when property `_in` is set. More information on `_label` property when `_values` is not set is available at [Properties Explained / `_values` / `Values implicit logic` ](#properties-explained).  
@@ -856,16 +842,25 @@ To create a branch means to duplicate an argument with all its child arguments. 
 **_need_child**: Property defines if Nargs throws an error when child arguments are not provided. If `_need_child` is set to True argument is present on the command-line and none of its children are present then Nargs throws an error. For root argument `_need_child` is set to False if definition child arguments are only built-in arguments. `_need_child` is set to True by default for root argument only. For other arguments `_need_child` is set to False by default.  
 `_need_child` creates the `NodeDfn().dy` dictionary key: `need_child`.  
 
-**_repeat**: Property defines argument behavior when end-user types multiple occurrences of an argument on the command-line. Unlike `_fork` property that is related to argument's branches number, `_repeat` property is related to argument's occurrences number per argument's branches. `_repeat` default value is `replace`. `_repeat` property is also related to command-line argument property `_count` (see [Nargs get_args / argument properties / `self._count`](#nargs-getargs)). There are 3 actions for `_repeat` property:  
+**_repeat**: Property defines argument behavior when end-user types multiple occurrences of an argument on the command-line. `_repeat` default value is `replace`. `_repeat` property is also related to command-line argument property `_count` (see [Nargs get_args / argument properties / `self._count`](#nargs-getargs)). There are 3 actions for `_repeat` property:  
 - **append**: It means that only one argument is kept, and each repeated argument's values are appended to a values list for the argument. In this context, `arg._alias` is set with the latest alias developer input in the terminal. CliArg `_count` property is incremented each time a new argument's occurrence is added.    
 - **error**: It means that an error is triggered if the argument has more than one occurrence. CliArg `_count` property is always equal to 1.  
+- **fork**: Property defines if argument can be duplicated. At start the command-line arguments tree is fully created, then when end-user types an argument on the command-line the argument is activated. To activate an argument means adding it on the command-line (see function activate_arg in get_args.py file for implementation). If argument's property `_repeat="fork"` then argument can be duplicated by repeating it on the command-line. Duplicate an argument means creating a new branch. To create a branch means to duplicate an argument with all its child arguments. Thus an argument's branch is composed of an argument and all its child arguments. The duplicated argument is then activated.  CliArg `_count` property is always equal to 1. For instance two branches have been created for `arg_one` with command `prog.py --arg-one --arg-one`. When `_repeat="fork"` property is set for the root argument then end-user will be able to branch the whole program as many times as needed. i.e.:  
+```bash
+# here --args is root argument alias
+# explicit
+prog.py + --arg-one - --args + --arg-one - --args + --arg-one
+# implicit
+prog.py --arg-one --args --arg-one --args --arg-one
+```
+
 - **replace**: It means that only one argument is kept but for each argument's occurrence then argument's values replace the previous argument's occurrence values. In this context, the last alias used is the one kept for the argument. If nested arguments have already been selected on the command-line with previous argument's occurrence, then nested arguments are cleared. i.e.: `_repeat:"replace"` means that basically you re-create an argument branch as if it has not already been selected on the command-line. CliArg `_count` property is always equal to 1.
 
 `_repeat` creates the `NodeDfn().dy` dictionary key: `repeat`.  
 
-**_preset**: Property defines if argument is added implicitly when end-user adds argument's parent to command-line without argument's parent children. If end-user types an argument that has a child argument with property `_preset` set to True and end-user does not type the child argument then the preset argument is added implicitly with its default alias either:
-    -  if argument has no values
-    -  if argument has default value(s). In that case default value(s) is/are set.
+**_preset**: Property defines if argument is added implicitly when end-user adds argument's parent to command-line without argument's parent children. If end-user types an argument that has a child argument with property `_preset` set to True and end-user does not type the child argument then the preset argument is added implicitly with its default alias either:  
+- if argument has no values
+- if argument has default value(s). In that case default value(s) is/are set.
 
 Multiple sibling arguments can have their property `_preset` set to true. Preset arguments are added implicitly and recursively if their children have their property `_preset=True`. 
 
@@ -873,7 +868,7 @@ Multiple sibling arguments can have their property `_preset` set to true. Preset
 
 Arguments with property `_preset=True` follow certain rules to prevent runtime error due to arguments' definition:
 - if `_preset=True` and argument's has required values but property `_default` is not set then Nargs throws an error. Reason: if a preset argument had a required values but no default values then it would throw an error when implicitly added. Implicitly added arguments can't throw error because end-user didn't add them explicitly so he or she wouldn't understand the issue.  
-- if `_preset=True` and argument's property `_allow_parent_fork=False` then Nargs throws an error. Reason: if a preset argument is implicitly added and it doesn't allow parent fork, then a parent argument with `_fork=True` will never be able to fork.  
+- if `_preset=True` and argument's property `_allow_parent_fork=False` then Nargs throws an error. Reason: if a preset argument is implicitly added and it doesn't allow parent fork, then a parent argument with `_repeat="fork"` will never be able to fork.  
 - if `_preset=True`, argument's property `_allow_siblings=False` and at least one sibling has property `_preset=True` then Nargs throws an error. Reason: if a preset argument argument does not allow siblings then a conflict would appear if another sibling was also a preset and argument and both preset arguments would be added implicitly.  
 - if `_preset=True` and argument's property `_need_child=True` then Nargs throws an error. Reason: preset arguments may be added implicitly but if `_need_child=True` then implicitly added arguments may trigger an error. Implicitly added argument should never triggers an error and end-user should only have to solve errors that he or she triggers.  
 - if two sibling arguments have `_preset=True` and they are both in the same `_xor` group then Nargs throws an error. Reason: preset siblings may be added implicitly at the same time so they can't exclude each other.  
@@ -894,7 +889,7 @@ For an omitted required argument, the two scenarios process repeats recursively.
 
 Arguments with property `_required=True` follow certain rules to prevent runtime error due to arguments' definition:
 - if `_required=True` and argument's name is present in parent `_xor` property then Nargs throws an error. Reason: if an argument is both required and present in parent xor property then the other arguments from the xor groups can never be added to the command-line because one of the required argument is always needed.
-- if `_required=True` and argument's property `_allow_parent_fork=False` then Nargs throws an error. Reason: if an argument is required and don't allow parent fork, then a parent argument with `_fork=True` will never be able to fork.  
+- if `_required=True` and argument's property `_allow_parent_fork=False` then Nargs throws an error. Reason: if an argument is required and don't allow parent fork, then a parent argument with `_repeat="fork"` will never be able to fork.  
 - if `_required=True` and argument's property `_allow_siblings=False` then Nargs throws an error. Reason: if an argument is required and it does not allow siblings, then siblings can never be added.  
 - if `_required=True` and argument's property `_need_child=True` then Nargs throws an error (This rule does not apply to root argument.). Reason: Some required argument may be added implicitly but if `_need_child=True` then implicitly added arguments may trigger an error. Implicitly added argument should never triggers an error and end-user should only have to solve errors that he or she triggers.  
 - if `_required=True`, values are required, no default values are provided and parent argument property `_preset` is set to True and  then Nargs throws an error. Reason: A preset argument always has default values if values are required. A required argument may not have default values when values are required. It may create an issue of implicitly added argument asking for required values. That is why a required argument must always have no values or default values when child of a preset argument.  
@@ -1114,7 +1109,7 @@ args:
       _aliases: "-n,--nested-arg-one"
       nested_nested_arg_one:
         _aliases: "-n,--nested-nested-arg-one"
-    nested_arg_two:
+    nested:
       _aliases: "-b,--nested-arg-two"
   arg_two:
     _aliases: -b,--arg-two
@@ -1134,7 +1129,7 @@ main.py + --arg-one = --arg-two
 main.py --arg-one --arg-two
 
 # explicit notation is needed in some scenarios.
-main.py -a -n -b # -b selects nested_arg_two
+main.py -a -n -b # -b selects nested
 # explicit 
 main.py -a -n - -b # -b selects arg_two
 ```
@@ -1280,7 +1275,6 @@ Logical rules for arguments' combinations are enforced first because of the argu
 Then there are multiple arguments' definition properties that enforce basic logical rules:  
 - `_allow_parent_fork` prevents or authorize the parent argument to branch when argument is present on the command-line.  
 - `_allow_siblings` prevents or authorize argument's siblings when argument is present on the command-line.  
-- `_fork` with branch index notation allows any argument to be duplicated. It creates a whole branch with the duplicated argument because all of the nested children are also recreated.   
 - `_need_child` forces end-user to add at least one child argument when argument is present on the command-line.  
 - `_repeat` defines the behavior of multiple argument's occurrences on the command-line.  
 - `_preset` defines argument that are added implicitly when parent argument has been provided on the command-line but no children have been provided. It is very similar to `_required` property. One difference is that if any argument sibling is explicitly added on the command-line then other siblings with `preset=True` won't be added implicitly. Another difference with `_required` property is that `_preset` arguments can't have required values and no default values, thus unlike `_required` arguments, `_preset` arguments never trigger a prompt for missing argument values.  

@@ -49,8 +49,6 @@ def test_implementation(
         args=nargs.get_args("{}args {}arg-one".format(prefix, prefix))
         if args.arg_one._here is False: err()
 
-
-
     for alias_style in ["camelcase", "camelcase-hyphen", "lowercase", "lowercase-hyphen", "pascalcase", "pascalcase-hyphen", "uppercase", "uppercase-hyphen",]:
         nargs=Nargs(auto_alias_style=alias_style, metadata=dy_metadata, args=dict(arg_one=dict()), builtins=dict(usage=None), cache=False, raise_exc=True)
         alias=nargs.dfn.dy_nodes["arg_one"].dy["default_alias"]
@@ -287,9 +285,9 @@ def test_implementation(
     pprint(nargs.get_default_theme())
 
 
-    nargs=Nargs(metadata=dy_metadata, args=dict(_fork=True), builtins=dict(), cache=False, raise_exc=False, substitute=True)
+    nargs=Nargs(metadata=dy_metadata, args=dict(_repeat="fork"), builtins=dict(), cache=False, raise_exc=False, substitute=True)
 
-    args=nargs.get_args("--args+ --args+ --args+")
+    args=nargs.get_args("--args --args --args")
     
     if len(args._branches) != 3: err()
 
@@ -329,11 +327,11 @@ def test_implementation(
 
     args="""
         _aliases: "--arg-1,--arg-2,--arg-3"
-        _fork: true
+        _repeat: fork
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), builtins=dict(), cache=False, raise_exc=False, substitute=True)
 
-    args=nargs.get_args("--arg-1+ --arg-2+ --arg-3+")
+    args=nargs.get_args("--arg-1 --arg-2 --arg-3")
     index=1
     for branch in args._branches:
         alias="--arg-{}".format(index)
@@ -345,7 +343,7 @@ def test_implementation(
         index+=1
 
     args="""
-        _fork: true
+        _repeat: fork
         arg1:
             _repeat: append
         arg2:
@@ -355,7 +353,7 @@ def test_implementation(
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), cache=False, raise_exc=False, substitute=True)
 
-    args=nargs.get_args("args+ arg4 arg3 arg2 arg1 args+ arg3 arg2 arg1 arg4 args+ arg1 arg2 arg3 arg2 arg1")
+    args=nargs.get_args("args arg4 arg3 arg2 arg1 args arg3 arg2 arg1 arg4 args arg1 arg2 arg3 arg2 arg1")
 
     for arg in args._branches[0]._args:
         if arg._alias == "arg1":
@@ -389,7 +387,7 @@ def test_implementation(
 
     if "arg4" in [arg._alias for arg in args._branches[2]._args]: err()
 
-    args=nargs.get_args("args+ arg4 arg3 arg2 arg1 args+ arg3 arg2 arg1 arg4 args+ arg1 arg2 arg3 arg2 arg1")
+    args=nargs.get_args("args arg4 arg3 arg2 arg1 args arg3 arg2 arg1 arg4 args arg1 arg2 arg3 arg2 arg1")
 
     for arg in args._branches[0]._args:
         if arg._alias == "arg1":
@@ -426,7 +424,7 @@ def test_implementation(
     args="""
         _need_child: false
         arg1:
-            _fork: true
+            _repeat: fork
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), cache=False, raise_exc=False, substitute=True)
 
@@ -465,10 +463,10 @@ def test_implementation(
     args="""
         _need_child: false
         arg:
-            _fork: true
+            _repeat: fork
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), cache=False, raise_exc=False, substitute=True)
-    args=nargs.get_args("args arg+ arg+ arg+")
+    args=nargs.get_args("args arg arg arg")
     if len(args._args) != 3: err()
 
     args="""
@@ -498,7 +496,7 @@ def test_implementation(
     if args._cmd_line != "args + arg + arg args + arg": err()
 
     args="""
-        _fork: true
+        _repeat: fork
         _need_child: false
         _repeat: replace
         arg:
@@ -509,14 +507,14 @@ def test_implementation(
     args=nargs.get_args("args + arg + arg args + arg")
     if args._cmd_line != "args + arg + arg args + arg": err()
 
-    args=nargs.get_args("args+ + arg + arg args+ + arg")
-    if args._cmd_line != "args+ + arg + arg args+ + arg": err()
+    args=nargs.get_args("args + arg + arg args + arg")
+    if args._cmd_line != "args + arg + arg args + arg": err()
 
-    args=nargs.get_args("args+ args+ args+ args+ args+ args+ args+5")
-    if args._cmd_line != "args+ args+ args+ args+ args+ args+ args+5": err()
+    args=nargs.get_args("args args args args args args args")
+    if args._cmd_line != "args args args args args args args": err()
 
     args="""
-        _fork: true
+        _repeat: fork
         _repeat: append
         arg:
             arg:
@@ -526,8 +524,8 @@ def test_implementation(
     args=nargs.get_args("args + arg + arg args + arg")
     if args._cmd_line != "args + arg + arg args + arg": err()
 
-    args=nargs.get_args("args+ + arg + arg args+ + arg")
-    if args._cmd_line != "args+ + arg + arg args+ + arg": err()
+    args=nargs.get_args("args + arg + arg args + arg")
+    if args._cmd_line != "args + arg + arg args + arg": err()
 
     args="""
         arg1:
@@ -794,18 +792,17 @@ def test_implementation(
     args="""
         arg:
             _aliases: "--other,arg"
-            _fork: true
-            _repeat: append
+            _repeat: fork
             _values: '*'
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True)    
-    args=nargs.get_args("args arg+ arg+ arg+")
+    args=nargs.get_args("args arg arg arg")
     
     if args.arg._branches[2]._get_path() != "args arg+3": err()
     
     args=nargs.get_args("args arg arg")
 
-    if args.arg._get_path() != "args arg": err()
+    if args.arg._branches[1]._get_path() != "args arg+2": err()
     
     if args.arg._get_path(keep_default_alias=True) != "args --other": err()
 
@@ -816,7 +813,7 @@ def test_implementation(
     args="""
         arg:
             arg:
-                _fork: true
+                _repeat: fork
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True)
     if nargs.dfn.dy_nodes["arg"].dy_nodes["arg"].current_arg._get_path() != "args arg + arg": err()
@@ -824,8 +821,8 @@ def test_implementation(
     args=nargs.get_args("args arg + arg")
     if args.arg.arg._get_path() != "args arg + arg": err()
 
-    args=nargs.get_args("args arg + arg+ = arg+")
-    if args.arg.arg._branches[0]._get_path() != "args arg + arg+1": err()
+    args=nargs.get_args("args arg + arg = arg")
+    if args.arg.arg._branches[0]._get_path() != "args arg + arg": err()
 
     if args.arg.arg._branches[1]._get_path() != "args arg + arg+2": err()
 
@@ -868,12 +865,12 @@ def test_implementation(
     if nargs.dfn.dy_nodes["arg5"].dy_nodes["safe"].dy["hint"] != "this is a safe location": err()
 
     args="""
-        _fork: true
+        _repeat: fork
         arg:
-            _fork: true
+            _repeat: fork
             _allow_parent_fork: false
             narg:
-                _fork: true
+                _repeat: fork
                 nnarg:
                     _allow_parent_fork: false
     """
@@ -881,21 +878,21 @@ def test_implementation(
 
     with CatchEx(EndUserError) as c:
         c.text="parent argument has more than one branch"
-        nargs.get_args("args+ args+ arg")
+        nargs.get_args("args args arg")
 
     with CatchEx(EndUserError) as c:
         c.text="'args' can't be forked"
-        nargs.get_args("args+ arg args+")
+        nargs.get_args("args arg args")
 
-    args=nargs.get_args("args arg+ arg+")
+    args=nargs.get_args("args arg arg")
     if len(args.arg._branches) != 2: err()
 
-    args=nargs.get_args("args arg+ arg+ narg+ narg+ narg+")
+    args=nargs.get_args("args arg arg narg narg narg")
     if len(args.arg._branches[1].narg._branches) != 3: err()
 
     with CatchEx(EndUserError) as c:
         c.text="parent argument has more than one branch"
-        args=nargs.get_args("args arg+ arg+ narg+ narg+ narg+ nnarg")
+        args=nargs.get_args("args arg arg narg narg narg nnarg")
 
     args="""
         arg1:
@@ -984,29 +981,29 @@ def test_implementation(
         err()
 
     args="""
-        _fork: true
+        _repeat: fork
         _need_child: false
         arg:
-            _fork: true
+            _repeat: fork
             narg:
-                _fork: true
+                _repeat: fork
                 nnarg:
-                    _fork: true
+                    _repeat: fork
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True)
 
-    args=nargs.get_args("args+ args+ args+")
+    args=nargs.get_args("args args args")
     if len(args._branches) != 3:
         err()
 
-    args=nargs.get_args("args+ args+ arg+ arg+ arg+ arg+ narg")
+    args=nargs.get_args("args args arg arg arg arg narg")
     if len(args._branches[1].arg._branches) != 4:
         err()
 
     if args._branches[1].arg._branches[3].narg._here is False:
         err()
 
-    args=nargs.get_args("args+ args+ arg+ arg+ arg+ arg+ narg args+1 arg narg nnarg+ nnarg+")
+    args=nargs.get_args("args arg narg nnarg nnarg args arg arg arg arg narg args arg narg nnarg nnarg")
     if len(args._branches[0].arg.narg.nnarg._branches) != 2:
         err()
 
@@ -1017,7 +1014,7 @@ def test_implementation(
     if len(args._branches) != 1:
         err()
 
-    args=nargs.get_args("args+1 args+2 arg+1 arg+2 args+1 arg+1 narg+1 nnarg+1 nnarg+2")
+    args=nargs.get_args("args arg narg nnarg nnarg args arg arg args arg narg nnarg nnarg")
     if len(args.arg._branches) != 1:
         err()
 
@@ -1965,9 +1962,8 @@ def test_implementation(
     # concatenated flags set
     args="""
         _aliases: "args,r"
-        _fork: true
+        _repeat: fork
         _need_child: false
-        _repeat: append
         _values: '*'
         arg:
             _aliases: "arg,a"
@@ -1977,73 +1973,72 @@ def test_implementation(
                 _repeat: append
                 nnarg:
                     _aliases: "nnarg,o"
-                    _fork: true
-                    _repeat: append
+                    _repeat: fork
                     _values: '*'
     """
     nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(), raise_exc=True, cache=False)
-    args=nargs.get_args("args arg narg nnarg orran")
-    if args._count != 3: err()
+    args=nargs.get_args("args arg narg nnarg nnarg narg arg args args")
+    if len(args._branches) != 3: err()
     if args.arg._count != 2: err()
     if args.arg.narg._count != 2: err()
-    if args.arg.narg.nnarg._count != 2: err()
+    if args.arg.narg.nnarg._count != 1: err()
 
-    args=nargs.get_args("args rano")
-    if args._count != 2: err()
-    if args.arg._count != 1: err()
+    args=nargs.get_args("args ranoo")
+    if args._branches[1]._count != 1: err()
+    if args._branches[1].arg._count != 1: err()
+    if args._branches[1].arg.narg._count != 1: err()
+    if args._branches[1].arg.narg.nnarg._count != 1: err()
+
+    args=nargs.get_args("args arg arg narg nnarg rano")
+    if args._count != 1: err()
+    if args.arg._count != 2: err()
     if args.arg.narg._count != 1: err()
     if args.arg.narg.nnarg._count != 1: err()
 
-    args=nargs.get_args("args arg narg nnarg rano")
-    if args._count != 2: err()
-    if args.arg._count != 2: err()
-    if args.arg.narg._count != 2: err()
-    if args.arg.narg.nnarg._count != 2: err()
-
     # values notation
     args=nargs.get_args("args r=val1")
-    if args._value != "val1": err()
+    if args._branches[1]._value != "val1": err()
     args=nargs.get_args("args r='val1 val2'")
-    if args._values[0] != "val1": err()
-    if args._values[1] != "val2": err()
+    if args._branches[1]._values[0] != "val1": err()
+    if args._branches[1]._values[1] != "val2": err()
     args=nargs.get_args("args r='val1 val2 \"val 3\"'")
-    if args._values[0] != "val1": err()
-    if args._values[1] != "val2": err()
-    if args._values[2] != "val 3": err()
+    if args._branches[1]._values[0] != "val1": err()
+    if args._branches[1]._values[1] != "val2": err()
+    if args._branches[1]._values[2] != "val 3": err()
 
     args=nargs.get_args("args arg narg nnarg rano=val1")
-    if args.arg.narg.nnarg._value != "val1": err()
+    if args._branches[1].arg.narg.nnarg._value != "val1": err()
     args=nargs.get_args("args arg narg nnarg rano='val1 val2'")
-    if args.arg.narg.nnarg._values[0] != "val1": err()
-    if args.arg.narg.nnarg._values[1] != "val2": err()
+    if args._branches[1].arg.narg.nnarg._values[0] != "val1": err()
+    if args._branches[1].arg.narg.nnarg._values[1] != "val2": err()
     args=nargs.get_args("args arg narg nnarg rano='val1 val2 \"val 3\"'")
-    if args.arg.narg.nnarg._values[0] != "val1": err()
-    if args.arg.narg.nnarg._values[1] != "val2": err()
-    if args.arg.narg.nnarg._values[2] != "val 3": err()
+    if args._branches[1].arg.narg.nnarg._values[0] != "val1": err()
+    if args._branches[1].arg.narg.nnarg._values[1] != "val2": err()
+    if args._branches[1].arg.narg.nnarg._values[2] != "val 3": err()
 
     # branch index notation
-    args=nargs.get_args("args r+")
+    args=nargs.get_args("args r args")
+    if len(args._branches) != 3: err()
+    args=nargs.get_args("args r")
     if len(args._branches) != 2: err()
-    args=nargs.get_args("args r+2")
-    if len(args._branches) != 2: err()
-    args=nargs.get_args("args r+2:val1")
+    args=nargs.get_args("args r:val1")
     if len(args._branches) != 2: err()
     if args._value is not None: err()
     if args._branches[1]._value != "val1": err()
 
-    args=nargs.get_args("args arg narg nnarg rano+")
-    if len(args.arg.narg.nnarg._branches) != 2: err()
+    args=nargs.get_args("args arg narg nnarg rano")
+    if len(args._branches[1].arg.narg.nnarg._branches) != 1: err()
 
-    args=nargs.get_args("args arg narg nnarg rano+2")
-    if len(args.arg.narg.nnarg._branches) != 2: err()
+    args=nargs.get_args("args arg narg nnarg raannoo")
+    if len(args.arg.narg.nnarg._branches) != 1: err()
     if args.arg.narg.nnarg._branches[0]._count != 1: err()
-    if args.arg.narg.nnarg._branches[1]._count != 1: err()
+    if len(args.arg.narg.nnarg._branches) != 1: err()
     if len(args.arg.narg._branches) != 1: err()
-    if args.arg.narg._count != 2: err()
+    if args._branches[1].arg.narg._count != 2: err()
     if len(args.arg._branches) != 1: err()
-    if args.arg._count != 2: err()
-    if len(args._branches) != 1: err()
-    if args._count != 2: err()
+    if args._branches[1].arg._count != 2: err()
+    if len(args._branches) != 2: err()
+    if args._count != 1: err()
 
     for c in ["a", "r"]:
         if c not in args._dfn.get_dy_flags(): err()

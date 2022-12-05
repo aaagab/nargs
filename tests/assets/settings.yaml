@@ -1,13 +1,12 @@
 args:
-  _fork: true
+  _repeat: fork
   arg_one:
-    _fork: true
+    _repeat: fork
+    _values: "?"
     narg_one:
   arg_two:
-    _fork: true
     _repeat: append
     _values: "?"
   arg_three:
-    _fork: true
     _repeat: replace
     _values: "?"

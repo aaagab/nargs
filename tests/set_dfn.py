@@ -561,17 +561,10 @@ def test_set_dfn(
         nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, builtins=dict())
     
     arg_def="""
-        _fork: 1
-    """
-    with CatchEx(DeveloperError)as c:
-        c.text="'_fork': value type <class 'int'> must be of type <class 'bool'>"
-        nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(arg_def), builtins=dict(usage=None), cache=False, raise_exc=True)
-    
-    arg_def="""
         _repeat: 23.34
     """
     with CatchEx(DeveloperError)as c:
-        c.text="'_repeat': value '23.34' not found in ['append', 'error', 'replace']"
+        c.text="'_repeat': value '23.34' not found in ['append', 'error', 'fork', 'replace']"
         nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(arg_def), builtins=dict(usage=None), cache=False, raise_exc=True)
     
     arg_def="""
