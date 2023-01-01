@@ -18,6 +18,7 @@ def test_implementation(
     dy_metadata,
     filenpa_cache_json,
     filenpa_cache_pickle,
+    filenpa_tmp_query,
     manual=False,
 ):
     elapsed=Elapsed()
@@ -82,14 +83,14 @@ def test_implementation(
         if alias not in aliases: err()
 
     nargs=Nargs(metadata=dy_metadata, builtins=dict(
-        cmd="+cmd",
         help="+help",
         path_etc="+path-etc",
+        query="+query",
         usage="+usage", 
         version="+version",
     ), cache=False, path_etc="/tmp", raise_exc=True)
 
-    for alias in ["+cmd", "+help", "+path-etc", "+usage", "+version"]:
+    for alias in ["+help", "+path-etc", "+query", "+usage", "+version"]:
         if alias not in nargs.dfn.explicit_aliases: err()
         
 
@@ -2095,7 +2096,7 @@ def test_implementation(
         other:
             _aliases: "-4"
     """
-    nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(cmd=None), raise_exc=True, cache=False)
+    nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(query=None), raise_exc=True, cache=False)
     with CatchEx(EndUserError) as c:
         c.text="not an explicit notation '-4'"
         args=nargs.get_args("args arg -4")
@@ -2115,19 +2116,72 @@ def test_implementation(
     args=nargs.get_args("args arg=-value")
     if args.arg._value != "-value": err()
 
-    args="""
-        arg:
-            _values: "*"
-        other:
-            _values: "*"
-            nested:
-                _values: "*"
-    """
-    nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(args), auto_alias_prefix="", builtins=dict(cmd=None), raise_exc=True, cache=False)
+    dy_args=dict(
+        fruit=dict(
+            _type="str",
+        ),
+        hobby=dict(
+            _type="str",
+            _values="*",
+        ),
+    )
 
-    args=nargs.get_args("args cmd='tests/assets/cmd2.txt'")
-    if len(args.arg._values) != 3: err()
-    if "val 3" not in args.arg._values: err()
-    if len(args.other._values) != 1: err()
-    if len(args.other.nested._values) != 4: err()
-    if "".join(args.other.nested._values) != "1234": err()
+    with open(filenpa_tmp_query, "w") as f:
+        f.write(json.dumps(dict()))
+    nargs=Nargs(args=dy_args, metadata=dy_metadata, raise_exc=True)
+
+    args=nargs.get_args("--args --fruit ?", values=["--fruit"])
+    if args.fruit._value != "--fruit": err()
+
+    args=nargs.get_args(["--args", "--fruit", "?"], values=["--fruit"])
+    if args.fruit._value != "--fruit": err()
+
+    args=nargs.get_args("--args --hobby ? ? ? ?", values=["--fruit", "--hobby", "sport", "3d printing"])
+    if "--fruit" not in args.hobby._values: err()
+    if "--hobby" not in args.hobby._values: err()
+    if "sport" not in args.hobby._values: err()
+    if "3d printing" not in args.hobby._values: err()
+
+    args=nargs.get_args(["--args", "--hobby", "?", "?", "?", "?"], values=["--fruit", "--hobby", "sport", "3d printing"])
+    if "--fruit" not in args.hobby._values: err()
+    if "--hobby" not in args.hobby._values: err()
+    if "sport" not in args.hobby._values: err()
+    if "3d printing" not in args.hobby._values: err()
+
+    with open(filenpa_tmp_query, "w") as f:
+        f.write(json.dumps(dict(
+            cmd="--args --fruit ?",
+            values=["--fruit"],
+        )))
+    args=nargs.get_args("--args --query {}".format(filenpa_tmp_query))
+    if args.fruit._value != "--fruit": err()
+
+    with open(filenpa_tmp_query, "w") as f:
+        f.write(json.dumps(dict(
+            cmd=["--args", "--fruit", "?"],
+            values=["--fruit"],
+        )))
+    args=nargs.get_args("--args --query {}".format(filenpa_tmp_query))
+    if args.fruit._value != "--fruit": err()
+
+    with open(filenpa_tmp_query, "w") as f:
+        f.write(json.dumps(dict(
+            cmd="--args --hobby ? ? ? ?",
+            values=["--fruit", "--hobby", "sport", "3d printing"],
+        )))
+    args=nargs.get_args("--args --query {}".format(filenpa_tmp_query))
+    if "--fruit" not in args.hobby._values: err()
+    if "--hobby" not in args.hobby._values: err()
+    if "sport" not in args.hobby._values: err()
+    if "3d printing" not in args.hobby._values: err()
+
+    with open(filenpa_tmp_query, "w") as f:
+        f.write(json.dumps(dict(
+            cmd=["--args", "--hobby", "?", "?", "?", "?"],
+            values=["--fruit", "--hobby", "sport", "3d printing"],
+        )))
+    args=nargs.get_args("--args --query {}".format(filenpa_tmp_query))
+    if "--fruit" not in args.hobby._values: err()
+    if "--hobby" not in args.hobby._values: err()
+    if "sport" not in args.hobby._values: err()
+    if "3d printing" not in args.hobby._values: err()

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pprint import pprint
+import json
 import os
 import sys
 import traceback
@@ -15,5 +16,8 @@ import yaml
 def single_test(
     dy_metadata,
     filenpa_cache,
+    _args,
+    filenpa_tmp_query,
+    manual,
 ):
     pass

@@ -581,8 +581,12 @@ def get_show(dy_props, dy_err, pnode_dfn):
         else:
             return True
 
-def is_node_required_implicit(node_dy, is_required):
-    if is_required is True:
+def is_node_required_implicit(pnode, node_dy, is_required):
+    if pnode is None:
+        return False
+    elif pnode.is_root:
+        return False
+    elif is_required is True:
         if node_dy["values_authorized"] is True:
             if node_dy["values_required"] is True:
                 if node_dy["default"] is not None:
@@ -622,8 +626,8 @@ def get_required(dy_props, tmp_dy_props, dy_err, pnode_dfn, arg_name):
             is_required=False
 
     if is_required is True and is_root is False:
-        is_parent_implicit=is_node_required_implicit(pnode_dfn.dy, pnode_dfn.dy["required"])
-        is_implicit=is_node_required_implicit(tmp_dy_props, is_required)
+        is_parent_implicit=is_node_required_implicit(pnode_dfn.parent, pnode_dfn.dy, pnode_dfn.dy["required"])
+        is_implicit=is_node_required_implicit(pnode_dfn, tmp_dy_props, is_required)
         if is_parent_implicit is True:
             if is_implicit is False:
                 msg.error([

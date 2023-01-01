@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
+from json.decoder import JSONDecodeError
 from pprint import pprint
 import ast
 import json
 import os
-import getpass
 import re
 import sys
 import traceback
 
-from ..gpkgs import message as msg
+from .exceptions import EndUserError, ErrorTypes
 
 has_yaml_module=True
 try:
@@ -16,12 +16,9 @@ try:
 except:
     has_yaml_module=False
 
-def get_arg_prefix(dy_err, cmd_line_index):
-    return "{} '{}'".format(dy_err["prefix"], dy_err["cmd_line"][:cmd_line_index])
-
 def get_json(
     value,
-    node,
+    node_dfn,
     dy_err,
     cmd_line_index,
     search_file=False, 
@@ -47,24 +44,73 @@ def get_json(
                         try:
                             with open(filenpa, "r") as f:
                                 dy=json.load(f)
-                        except BaseException:
-                            msg.error("json syntax error in file '{}'".format(filenpa), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+                        except JSONDecodeError:
+                            raise EndUserError(dict(
+                                attributes=dict(
+                                    filenpa=filenpa,
+                                ),
+                                cmd_line=dy_err["cmd_line"][:cmd_line_index],
+                                error_type=ErrorTypes().JsonSyntaxError,
+                                message="json syntax error in file '{filenpa}'",
+                                node_usage=node_dfn,
+                                show_usage=False,
+                                stack_trace=traceback.format_exc(),
+                                show_stack=True,
+                                prefix=dy_err["prefix"],
+                            ))
+
                     elif ext in ["yml", "yaml"]:
                         if has_yaml_module is True:
                             try:
                                 with open(filenpa, "r") as f:
                                     dy=yaml.safe_load(f)
                             except BaseException:
-                                msg.error("yaml syntax error in file '{}'".format(filenpa), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+                                raise EndUserError(dict(
+                                    attributes=dict(
+                                        filenpa=filenpa,
+                                    ),
+                                    cmd_line=dy_err["cmd_line"][:cmd_line_index],
+                                    error_type=ErrorTypes().YamlSyntaxError,
+                                    message="yaml syntax error in file '{filenpa}'",
+                                    node_usage=node_dfn,
+                                    show_usage=False,
+                                    stack_trace=traceback.format_exc(),
+                                    show_stack=True,
+                                    prefix=dy_err["prefix"],
+                                ))
                         else:
-                            msg.error(r"""
-                                yaml module not found to import file '{}'.
-                                Either do:
-                                - pip install pyyaml
-                                - use a json file or a json string as argument
-                            """.format(filenpa), heredoc=True, prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+                            raise EndUserError(dict(
+                                attributes=dict(
+                                    filenpa=filenpa,
+                                ),
+                                cmd_line=dy_err["cmd_line"][:cmd_line_index],
+                                error_type=ErrorTypes().YamlSyntaxError,
+                                message=[
+                                    "yaml module not found to import file '{filenpa}'.",
+                                    "Either do:",
+                                    "- pip install pyyaml",
+                                    "- use a json file or a json string as argument",
+                                ],
+                                node_usage=node_dfn,
+                                show_usage=False,
+                                stack_trace=traceback.format_exc(),
+                                show_stack=False,
+                                prefix=dy_err["prefix"],
+                            ))
                 else:
-                    msg.error("File not found '{}'".format(filenpa), prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+                    raise EndUserError(dict(
+                        attributes=dict(
+                            filenpa=filenpa,
+                        ),
+                        cmd_line=dy_err["cmd_line"][:cmd_line_index],
+                        error_type=ErrorTypes().FileNotFound,
+                        message="File not found '{filenpa}'",
+                        node_usage=node_dfn,
+                        show_usage=False,
+                        stack_trace=traceback.format_exc(),
+                        show_stack=False,
+                        prefix=dy_err["prefix"],
+                    ))
 
         if json_set is False:
             failed=False
@@ -100,9 +146,21 @@ def get_json(
 
 
             if failed is True:
-                msg.error([
-                    "Error when trying to load dict from '{}'.".format(value[:50]),
-                    *errors,
-                ], prefix=get_arg_prefix(dy_err, cmd_line_index), pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+                raise EndUserError(dict(
+                    attributes=dict(
+                        value=value[:50],
+                    ),
+                    cmd_line=dy_err["cmd_line"][:cmd_line_index],
+                    error_type=ErrorTypes().LoadDictionaryError,
+                    message=[
+                        "Error when trying to load dict from '{value}'.",
+                        *errors,
+                    ],
+                    node_usage=None,
+                    show_usage=False,
+                    stack_trace=traceback.format_exc(),
+                    show_stack=False,
+                    prefix=dy_err["prefix"],
+                ))
 
     return dy

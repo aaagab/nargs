@@ -28,9 +28,9 @@
 `installer:` gpm<br>
 `licenses:` MIT<br>
 `name:` Nested Arguments<br>
-`timestamp:` 1668022515.0723553<br>
+`timestamp:` 1670271546.655436<br>
 `uuid4:` 89d8676a-6b02-43fa-8694-e97de5680cd0<br>
-`version:` 3.1.0<br>
+`version:` 4.0.0<br>
 
 ### Nargs Options State
 - pretty_help: `enabled`
@@ -59,7 +59,7 @@
 - A flag is an argument with at least a one char alias that is selected according to rules defined in Nargs developer's documentation at section 'Concatenated Flag Aliases'.
 - In order to see available flag sets end-user can provide command-line '`prog.py --usage --flags`'
 - A flag set is a group of flags related to a particular argument. Each argument may have a different flag set. Some arguments may not have a flag set depending on arguments definition.
-- A flag set starts with a one char alias and its prefix if any and it contains at least another char. i.e. '`-chuv`' where '`c`' is 'cmd', '`h`' is 'help', '`u`' is 'usage' and '`v`' is 'version'.
+- A flag set starts with a one char alias and its prefix if any and it contains at least another char. i.e. '`-huv`' where '`h`' is 'help', '`u`' is 'usage' and '`v`' is 'version'.
 - Root argument aliases may start with a flag set. In that case this flag set is the one available on first command-line argument or when explicit notation reaches level 0.
 - A flag may be repeated in a flag set depending on argument's definition. Flags order may not matter.
 - Only the latest flag of a flag set may accept a value and may have branch index notation.

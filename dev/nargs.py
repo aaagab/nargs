@@ -54,7 +54,7 @@ class Nargs():
             cache_file="nargs-cache.json"
 
         
-        dy_options=locals()
+        dy_options=deepcopy(locals())
 
         self._from_cache=True
         self._reset_dfn_tree=None
@@ -67,7 +67,6 @@ class Nargs():
         del dy_options["self"]
 
         md5_options=hashlib.md5(json.dumps(dy_options, sort_keys=True).encode()).hexdigest()
-
 
         filenpa_caller=inspect.stack()[1].filename
         if not os.path.isabs(filenpa_caller):
@@ -297,11 +296,12 @@ class Nargs():
         return styles
 
     def get_args(self, 
-        cmd=None, 
+        cmd=None,
+        values=None, 
     ):
-        exc=None
-        if self._raise_exc is True:
-            exc=EndUserError
+        # exc=None
+        # if self._raise_exc is True:
+        #     exc=EndUserError
 
         if self._reset_dfn_tree is None:
             self._reset_dfn_tree=False
@@ -311,7 +311,6 @@ class Nargs():
         args=get_args(
             app_name=self._app_name,
             cmd=cmd,
-            exc=exc,
             dy_metadata=self.metadata,
             node_dfn=self.dfn,
             path_etc=self._path_etc,
@@ -321,6 +320,8 @@ class Nargs():
             theme=self._theme,
             get_documentation=self.get_documentation,
             reset_dfn_tree=self._reset_dfn_tree,
+            query_values=values,
+            raise_exc=self._raise_exc,
         )
         return args
             

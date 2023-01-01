@@ -21,7 +21,7 @@ def get_location(pnode_dfn, arg_name):
     if pnode_dfn is None:
         return arg_name
     else:
-        return "{} > {}".format(pnode_dfn.location, arg_name)
+        return "{}.{}".format(pnode_dfn.location, arg_name)
 
 def verify_name(name, verified_names, dy_err):
     if isinstance(name, str):
@@ -288,7 +288,7 @@ def duplicate_node(tmp_prefix, dy_err, node_to_copy, pnode_at, dy_chk, first_nod
         )
 
 def set_dy_replicate(node_dfn, dy_replicate, addresses):
-    at_address=".".join(node_dfn.location.split(" > "))
+    at_address=".".join(node_dfn.location.split("."))
     dy_replicate[at_address]=dict(
         at_addresses=addresses,
         pnode=node_dfn,
@@ -314,7 +314,7 @@ def get_node_to_copy(tmp_prefix, dy_err, at_path, root_node, pnode=None):
             else:
                 return get_node_to_copy(tmp_prefix, dy_err, at_path, root_node, ref_node) 
 
-    msg.error("argument path '{}' does not exist in arguments tree.".format(" > ".join(at_path)), prefix=tmp_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
+    msg.error("argument path '{}' does not exist in arguments tree.".format(".".join(at_path)), prefix=tmp_prefix, pretty=dy_err["pretty"], exc=dy_err["exc"], exit=1)
 
 def get_recursive_loops(dy_unsolved, at_address, loops=None, loop=None, addresses_done=None):
     is_root=False
@@ -453,14 +453,6 @@ def add_builtins(builtins, dy_args, arg_name, verified_names, dy_attr_aliases, d
     properties=sorted([prop for prop, dy in get_arg_properties().items() if dy["for_help"] is True])
 
     dy_builtins={
-        "_cmd_": {
-            "_aliases": "{}".format(get_auto_alias(dy_attr_aliases, "cmd")),
-            "_allow_parent_fork": False,
-            "_allow_siblings": False, 
-            "_hint": "Load program's arguments from a file.",
-            "_info": "Arguments can be typed with indentation and new lines in the text file. Lines are then striped and new lines are joined with spaces and the whole text is split with shlex and fed again to the program. Root argument alias needs to be provided as first argument. Empty lines and lines starting with '#' are ignored.",
-            "_type": "file",
-        },
         "_help_": {
             "_aliases": "{},{}h".format(get_auto_alias(dy_attr_aliases, "help"), flag_prefix),
             "_allow_parent_fork": False,
@@ -518,6 +510,14 @@ def add_builtins(builtins, dy_args, arg_name, verified_names, dy_attr_aliases, d
             "_allow_siblings": False, 
             "_hint": "Print program configuration path and exit.",
         },
+        "_query_": {
+            "_aliases": "{}".format(get_auto_alias(dy_attr_aliases, "query")),
+            "_allow_parent_fork": False,
+            "_allow_siblings": False, 
+            "_hint": "Load program's arguments from a json file with optional parameterized values.",
+            "_info": "query argument allows to execute safe command-line arguments query on the program. Command-line arguments are collected through a JSON file. The JSON file has two attributes 'command' and 'params'. 'command' accepts a list of command-line arguments with values where each value may be replaced with a question mark. 'params' accepts a list of values. The number of values in 'params' must match the number of question marks in 'command'. 'command' arguments are only parsed as arguments and 'params' are only parsed as argument values. It allows a safe way to pass values collected from a third party program like a web application to the command-line program. All errors are returned as a json dump for better communication with third party program.(see Nargs developer documentation)",
+            "_type": "file",
+        },
         "_usage_": {
             "_aliases": "{},{}u,?".format(get_auto_alias(dy_attr_aliases, "usage"), flag_prefix),
             "_hint": "Print program usage and exit.",
@@ -537,7 +537,7 @@ def add_builtins(builtins, dy_args, arg_name, verified_names, dy_attr_aliases, d
                 "_type": "int",
                 "_values": "1",
             },
-            "from_": {
+            "from": {
                 "_aliases": "{},{}f".format(get_auto_alias(dy_attr_aliases, "from"), flag_prefix),
                 "_default": 0,
                 "_required": True,
