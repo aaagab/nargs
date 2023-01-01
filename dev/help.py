@@ -114,6 +114,7 @@ def get_help_usage(
     top_node=True,
     only_syntax=False,
     top_flags=False,
+    _previous_node=None,
     
 ):
     if only_syntax is False:
@@ -156,12 +157,19 @@ def get_help_usage(
 
 
                 executable=style.escape(".", dy_metadata["executable"])
-                str_alias_value+="{}{} {}".format(
+                str_alias_value+="{} {}".format(
                     style.get_text(executable+":", "aliases"),
-                    root_flags_notation,
                     aliases,
                 )
             else:
+                if node_dfn.level == 2:
+                    if node_dfn.dy["is_builtin"] is True:
+                        if _previous_node is not None and _previous_node.dy["is_builtin"] is False:
+                            if output in ["cmd_help", "cmd_usage"]:
+                                print("\n{}".format(style.get_text("built-ins:", "aliases")))
+                            elif output in ["html", "text", "markdown", "asciidoc"]:
+                                usage.append(style.get_text("built-ins:", "aliases"))
+
                 str_alias_value+=aliases
 
             value_notation=get_values_notation(
@@ -343,46 +351,47 @@ def get_help_usage(
             help.append(dy_help)
 
             if process_children is True:
-                _explicit_aliases_sort=get_explicit_aliases_sort(node_dfn)
                 index_counter=0
-                for aliases_sort in sorted(_explicit_aliases_sort):
-                    for tmp_node in _explicit_aliases_sort[aliases_sort]:
-                        if tmp_node.dy["show"] is True:
-                            index_counter+=1
-                            tmp_index=None
-                            if index == "":
-                                tmp_index="{}".format(index_counter)
-                            else:
-                                tmp_index="{}.{}".format(index, index_counter)
+                _previous_node=None
+                for tmp_node in get_sorted_nodes(node_dfn):
+                    if tmp_node.dy["show"] is True:
+                        index_counter+=1
+                        tmp_index=None
+                        if index == "":
+                            tmp_index="{}".format(index_counter)
+                        else:
+                            tmp_index="{}.{}".format(index, index_counter)
 
-                            get_help_usage(
-                                dy_metadata=dy_metadata,
-                                node_ref=node_ref,
-                                output=output,
-                                style=style,
-                                about=about,
-                                columns=columns,
-                                examples=examples,
-                                help=help,
-                                index=tmp_index,
-                                keep_default_alias=keep_default_alias,
-                                node_dfn=tmp_node,
-                                usage=usage,
-                                max_sibling_level=max_sibling_level,
-                                user_options=user_options,
-                                allflags=allflags,
-                                allproperties=allproperties,
-                                properties=properties,
-                                wproperties=wproperties,
-                                wexamples=wexamples,
-                                whint=whint,
-                                winfo=winfo,
-                                wpath=wpath,
-                                wsyntax=wsyntax,
-                                top_node=False,
-                                only_syntax=only_syntax,
-                                top_flags=top_flags,
-                            )
+                        get_help_usage(
+                            dy_metadata=dy_metadata,
+                            node_ref=node_ref,
+                            output=output,
+                            style=style,
+                            about=about,
+                            columns=columns,
+                            examples=examples,
+                            help=help,
+                            index=tmp_index,
+                            keep_default_alias=keep_default_alias,
+                            node_dfn=tmp_node,
+                            usage=usage,
+                            max_sibling_level=max_sibling_level,
+                            user_options=user_options,
+                            allflags=allflags,
+                            allproperties=allproperties,
+                            properties=properties,
+                            wproperties=wproperties,
+                            wexamples=wexamples,
+                            whint=whint,
+                            winfo=winfo,
+                            wpath=wpath,
+                            wsyntax=wsyntax,
+                            top_node=False,
+                            only_syntax=only_syntax,
+                            top_flags=top_flags,
+                            _previous_node=_previous_node,
+                        )
+                        _previous_node=tmp_node
 
     if node_ref == node_dfn or only_syntax is True:
         only_syntax_title="NARGS END-USER DOCUMENTATION"
@@ -658,6 +667,20 @@ def get_aliases_sort(node):
 
     return aliases_sort
 
+def get_sorted_nodes(node_dfn):
+    tmp_nodes=[]
+    builtins=[]
+    _explicit_aliases_sort=get_explicit_aliases_sort(node_dfn)
+    for aliases_sort in sorted(_explicit_aliases_sort):
+        for tmp_node in _explicit_aliases_sort[aliases_sort]:
+            if tmp_node.dy["is_builtin"] is True:
+                builtins.append(tmp_node)
+            else:
+                tmp_nodes.append(tmp_node)
+
+    tmp_nodes.extend(builtins)
+    return tmp_nodes
+
 def get_explicit_aliases_sort(node_dfn):
     if node_dfn._explicit_aliases_sort is None:
         node_dfn._explicit_aliases_sort=dict()
@@ -666,6 +689,7 @@ def get_explicit_aliases_sort(node_dfn):
             if aliases_sort not in node_dfn._explicit_aliases_sort:
                 node_dfn._explicit_aliases_sort[aliases_sort]=[]
             node_dfn._explicit_aliases_sort[aliases_sort].append(node)
+
     return node_dfn._explicit_aliases_sort
 
 def get_md_text(sections, title):

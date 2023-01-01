@@ -15,7 +15,7 @@ def test_aliases(
 
 ):
     with CatchEx(DeveloperError) as c:
-        c.text="'explicitly set' alias '--arg-one' has already been 'auto-generated' for sibling argument 'args > arg_one'"
+        c.text="'explicitly set' alias '--arg-one' has already been 'auto-generated' for sibling argument 'args.arg_one'"
         nargs=Nargs(
             metadata=dy_metadata,
             args=dict(
