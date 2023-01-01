@@ -1,0 +1,8 @@
+{
+    "cmd": [
+        "--args",
+        "--query",
+        "tests/assets/query.json"
+    ]
+}
+

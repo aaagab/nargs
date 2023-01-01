@@ -59,7 +59,7 @@ def test_set_options(
         f.write("{}}")
     with CatchEx(DeveloperError) as c:
         c.text="when setting options at option 'metadata': JSON syntax error in gpm file"
-        nargs=Nargs(builtins=dict(cmd=dict()), cache=False, raise_exc=True)
+        nargs=Nargs(builtins=dict(query=dict()), cache=False, raise_exc=True)
     os.remove(filenpa_gpm)
 
     with CatchEx(DeveloperError) as c:
@@ -75,16 +75,16 @@ def test_set_options(
         nargs=Nargs(metadata=dy_metadata, auto_alias_prefix="@", cache=False, raise_exc=True)
 
     with CatchEx(DeveloperError) as c:
-        c.text="At Nargs when setting options: option 'builtins' key 'apple' is not in ['cmd', 'help', 'path_etc', 'usage', 'version']."
+        c.text="At Nargs when setting options: option 'builtins' key 'apple' is not in ['help', 'path_etc', 'query', 'usage', 'version']."
         nargs=Nargs(metadata=dy_metadata, builtins=dict(apple=None), cache=False, raise_exc=True)
 
     with CatchEx(DeveloperError) as c:
-        c.text="option 'builtins' at key 'cmd' for values '[1]' with value '1' wrong type <class 'int'> it must be <class 'str'> for alias"
-        nargs=Nargs(metadata=dy_metadata, builtins=dict(cmd=[1]), cache=False, raise_exc=True)
+        c.text="option 'builtins' at key 'query' for values '[1]' with value '1' wrong type <class 'int'> it must be <class 'str'> for alias"
+        nargs=Nargs(metadata=dy_metadata, builtins=dict(query=[1]), cache=False, raise_exc=True)
 
     with CatchEx(DeveloperError) as c:
-        c.text="option 'builtins' for key 'cmd' value '{}' type <class 'dict'> is not in [<class 'NoneType'>, <class 'str'>, <class 'list'>"
-        nargs=Nargs(metadata=dy_metadata, builtins=dict(cmd=dict()), cache=False, raise_exc=True)
+        c.text="option 'builtins' for key 'query' value '{}' type <class 'dict'> is not in [<class 'NoneType'>, <class 'str'>, <class 'list'>"
+        nargs=Nargs(metadata=dy_metadata, builtins=dict(query=dict()), cache=False, raise_exc=True)
 
     with CatchEx(DeveloperError) as c:
         c.text="at option 'metadata': key 'name' not set."

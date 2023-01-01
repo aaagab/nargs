@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pprint import pprint
+import json
 import os
 import sys
 import tempfile
@@ -14,7 +15,84 @@ from .helpers import CatchEx, err
 def test_get_args(
     dy_metadata,
     filenpa_cache,
+    filenpa_tmp_query,
+    manual,
 ):
+    args=dict(
+        logout=dict(),
+        poweroff=dict(),
+        restart=dict(),
+    )
+
+    with CatchEx(EndUserError) as c:
+        c.text="option query values must be of type <class 'list'>"            
+        Nargs(args=args, metadata=dy_metadata, raise_exc=True).get_args("--args --logout", values=1)
+
+    with CatchEx(EndUserError) as c:
+        c.text="cmd type <class 'int'> must be of type <class 'str'>"            
+        Nargs(args=args, metadata=dy_metadata, raise_exc=True).get_args(cmd=1)
+
+
+    args=dict(
+        logout=dict(
+            _values="*"
+        ),
+    )
+
+    os.environ["fruit"]="apple"
+    os.environ["reason"]="for the best"
+    nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, substitute=True)
+    args=nargs.get_args("--args --logout __fruit__ __reason__")
+
+
+    if "apple" not in args.logout._values: err()
+    if "for the best" not in args.logout._values: err()
+    
+    if manual is True:
+        args=dict(
+            password=dict(
+                _type="str"
+            ),
+            user=dict(
+                _type="str"
+            ),
+        )
+        nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, substitute=True)
+        args=nargs.get_args("--args --user __input:user__ --password __hidden:password__")
+        if args.user._value != "user": err()
+        if args.password._value != "password": err()
+
+        args=nargs.get_args("--args --user __input__")
+        if args.user._value != "input": err()
+
+        args=nargs.get_args("--args --password __hidden__")
+        if args.password._value != "hidden": err()
+
+    args=dict(
+        user=dict(
+            _type="str",
+        ),
+        password=dict(
+            _type="str",
+        ),
+    )
+    nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True)
+    with CatchEx(EndUserError) as c:
+        c.text="first list element can't be a question mark"
+        args=nargs.get_args("? --user", values=["user"])
+
+    with CatchEx(EndUserError) as c:
+        c.text="there are less query values than the number of cmd question marks"
+        args=nargs.get_args("--args --user ? --password ?", values=["user"])
+
+    with CatchEx(EndUserError) as c:
+        c.text="type not found in authorized types"
+        args=nargs.get_args("--args --user ? --password ?", values=["user", dict(fruit="apple")])
+
+    with CatchEx(EndUserError) as c:
+        c.text="there are more query values than the number of cmd question marks"
+        args=nargs.get_args("--args --user ? --password ?", values=["user", "password", "other"])
+
     args=dict(
         with_deps=dict(
             _type="bool",
@@ -168,7 +246,6 @@ def test_get_args(
 
     print(
         args.arg_one._here,
-        args._cmd_._here,
         args._help_._here,
         args._help_.export.overwrite._here,
         args._help_.export.to._here,
@@ -176,10 +253,11 @@ def test_get_args(
         args._help_.metadata.keys._here,
         args._help_.metadata.values._here,
         args._help_.syntax._here,
+        args._query_._here,
         args._usage_.depth._here,
         args._usage_.examples._here,
         args._usage_.flags._here,
-        args._usage_.from_._here,
+        args._usage_._["from"]._here,
         args._usage_.hint._here,
         args._usage_.info._here,
         args._usage_.path._here,
@@ -222,12 +300,32 @@ def test_get_args(
         nargs.get_args("--args --arg-one <tag>")
 
     with CatchEx(EndUserError) as c:
-        c.text="'--cmd' can't be provided more than once."
-        nargs.get_args("--args --cmd tests/assets/cmd.txt")
+        c.text="'--query' can't be provided more than once."
+        nargs.get_args("--args --query tests/assets/query.json")
+
+
+    with open(filenpa_tmp_query, "w") as f:
+        f.write(json.dumps(dict()))
+    nargs2=Nargs(args=dict(
+        user=dict(
+            _type="str",
+        ),
+        password=dict(
+            _type="str",
+        ),
+    ), metadata=dy_metadata, raise_exc=True)
+
+    with CatchEx(EndUserError) as c:
+        c.text="attribute 'cmd' not found"
+        nargs2.get_args("--args --query {}".format(filenpa_tmp_query))
+
+    with CatchEx(EndUserError) as c:
+        c.text="JSON syntax error in query file"
+        nargs2.get_args("--args --query {}".format("tests/assets/bad-file.json"))
 
     with CatchEx(EndUserError) as c:
         c.text="metadata key 'unknown-key' not found"
-        nargs.get_args("--args --help --metadata unknown-key")
+        nargs2.get_args("--args --help --metadata unknown-key")
 
     with CatchEx(EndUserError) as c:
         c.text="from LEVEL '-2' must be greater or equal than '-1'"
@@ -397,7 +495,7 @@ def test_get_args(
     if not (args.arg_height.n_arg._here is True): err()
 
     with CatchEx(EndUserError) as c:
-        c.text="'--args --arg-nine': required argument '--n-arg' is missing"
+        c.text="'--args --arg-nine' required argument '--n-arg' is missing"
         args=nargs.get_args("--args --arg-nine")
 
     tmp_dy_args=dict(
@@ -626,3 +724,46 @@ def test_get_args(
     with CatchEx(EndUserError) as c:
         c.text="There is no closing quotation for value(s)"
         args=nargs.get_args("args arg=\"val1'\"")
+
+    args=dict(
+        with_deps=dict(
+            other=dict()
+        ),
+    )
+    nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True)
+    args=nargs.get_args("--args --with-deps ?f=-1 -d=-1 --other +")
+
+
+    args=dict(
+        with_deps=dict(
+            other=dict(
+                _required=True,
+                _type="str"
+            )
+        ),
+    )
+    with CatchEx(EndUserError) as c:
+        c.text="at least one child argument is needed"
+        Nargs(args=args, metadata=dy_metadata, raise_exc=True).get_args("--args")
+
+    with CatchEx(EndUserError) as c:
+        c.text="required argument '--other' is missing"
+        Nargs(args=args, metadata=dy_metadata, raise_exc=True).get_args("--args --with-deps")
+
+    with CatchEx(EndUserError) as c:
+        c.text="needs at least one value"
+        Nargs(args=args, metadata=dy_metadata, raise_exc=True).get_args("--args --with-deps --other")
+
+    args=dict(
+        with_deps=dict(
+            _required=True,
+            _type="str"
+        ),
+    )
+    with CatchEx(EndUserError) as c:
+        c.text="required argument '--with-deps' is missing"
+        Nargs(args=args, metadata=dy_metadata, raise_exc=True).get_args("--args")
+
+    with CatchEx(EndUserError) as c:
+        c.text="needs at least one value"
+        Nargs(args=args, metadata=dy_metadata, raise_exc=True).get_args("--args --with-deps")

@@ -16,9 +16,9 @@ from ..gpkgs import message as msg
 
 def get_default_builtins():
     return dict(
-        cmd=None,
         help=None,
         path_etc=None,
+        query=None,
         usage=None,
         version=None,
     )

@@ -43,8 +43,9 @@ There are two documentation files:
   - JSON definition file and Python dictionary can have their nodes arguments duplicated with `@` notation.
   - Definition is cached to JSON file to improve Nargs arguments' definition loading.
   - Definition can also be retrieved from cache only.
-- Built-in command-line Arguments (cmd, help, path_etc, usage, version).
+- Built-in command-line Arguments (help, path_etc, query, usage, version).
 - Built-in arguments usage and help are color themeable.
+- Built-in query command allows to pass safe command from third party program in the same way as sql parameterized query.
 - Multiple arguments aliases prefixes: `"", "+", "-", "--", "/", ":", "_"`.
 - Concatenated flag aliases i.e. `-123aAbBcC`. 
 - Flags are context-sensitive.
@@ -99,7 +100,8 @@ There are two documentation files:
 - Nargs empowers users by providing them a notation for infinite arguments nesting.
 - Nargs notation follows command-line arguments' notation standard practice with its implicit arguments' notation.  
 - Nargs can be used to easily wrap existing command-line programs. It provides them all the Nargs bells and whistles from auto-generated documentation, arguments error checking, auto-aliases, multiple-forms aliases, ...
-- Nargs built-in arguments ensure that programs provide a consistent argument set for program identification with cmd, help, usage and version.
+- Nargs built-in arguments ensure that programs provide a consistent argument set for program identification with help, query, usage and version.
+- Nargs built-in query argument ensures a safe one-way communication from third-party program to host program. 
 
 ## Get Started
 **Context: Arguments' definition. Developer creates arguments' definition with either**:  
@@ -250,7 +252,7 @@ program.py --help --metadata --uuid4
 - **arguments aliases**: End-user calls arguments on the command-line with arguments' aliases. For a given argument `arg_one` aliases may be `--arg-one, -a, argone, arg-one`. Argument's aliases are only unique among siblings arguments aliases.  
 - **arguments names**: An argument name is a string chosen by developer to identify an argument at the argument's node level in the arguments' definition tree. An argument's name is unique among siblings arguments names. Argument's name is later used in code by developer to set program's logic.  
 - **arguments branches**: An argument's branch consists of both the argument and all its children. A new argument's branch consists of both a new instance of the argument and new instances of its children. Argument's branches are independent. It means that when an argument's branch is modified, it does not modify any other branches of the same argument.  
-- **command-line**: It is the end-user's terminal command-line from `sys.argv`, developer providing a command-line string with Nargs get_args `cmd` option, or end-user providing a command-line with Nargs built-in `cmd` argument value.  
+- **command-line**: It is the end-user's terminal command-line from `sys.argv`, developer providing a command-line string with Nargs get_args `cmd` option, or end-user providing a command-line with Nargs built-in `query` argument value.  
 - **Nargs Arguments' contexts**:
     - **command-line arguments**: Arguments are provided through the command-line i.e. `program.py --my-argument my_value my_other_value --my-other argument`. Any command-line syntax errors trigger Nargs exception `EndUserError`.
     - **arguments' definition**: Arguments are defined in a JSON file, YAML file, or a Python dictionary. i.e. `{"args": {"arg_one": {"nested_arg":{}}}}`. Any definition syntax errors trigger Nargs exception `DeveloperError`.
@@ -266,7 +268,7 @@ class Nargs():
     args=None,
     auto_alias_prefix="--",
     auto_alias_style="lowercase-hyphen",
-    builtins=None, # if None then it is set with dict(cmd=None, help=None, path_etc=None, usage=None, version=None),
+    builtins=None, # if None then it is set with dict(help=None, path_etc=None, query=None, usage=None, version=None),
     cache=True,
     cache_file="nargs-cache.json",
     metadata=None, # if None then it is set with dict(),
@@ -311,7 +313,7 @@ class Nargs():
     - **pascalcase-hyphen**: i.e. My-Alias
     - **uppercase**: i.e. MYALIAS
     - **uppercase-hyphen**: i.e. MY-ALIAS
-- **builtins**: This option allows to select which [built-in arguments](#built-in-arguments) are going to be added to developer program. Developer can add any built-in arguments from list`["cmd", "help", "usage", "version"]`. If `builtins` is None or an empty list built-in arguments are omitted. If only some built-in arguments are selected then only these selected built-in arguments are added to developer's program.  
+- **builtins**: This option allows to select which [built-in arguments](#built-in-arguments) are going to be added to developer program. Developer can add any built-in arguments from list`["help", "query", "usage", "version"]`. If `builtins` is None or an empty list built-in arguments are omitted. If only some built-in arguments are selected then only these selected built-in arguments are added to developer's program.  
 - **cache_file**: This option provides a file path to cache Nargs options. Default value is `nargs-dump.json`.  Cache file path can be relative or absolute. Relative path is relative to `Nargs()` class caller file path. Developer can choose either `.json` or `.pickle` extension to cache Nargs options once they have been parsed. There are 3 main elements that are checked to recreate the cache file: options provided with Nargs(), gpm.json file for metadata, and an options file. If any of these three elements are modified then the cache file is recreated. If cache file already exists, and none of the three elements have been modified then Nargs options are extracted from the cache file instead of being parsed with Nargs module. Caching improves speed when parsing because it allows having all the options and arguments' definition grammar checked only once. JSON format is the safest (1.5 to 2 times faster) and PICKLE format is the fastest because unlike JSON cache, arguments' definition objects are already stored in the PICKLE cache. However PICKLE files may be compromised, and arguments' definition tree size may be limited to a certain number (approximately 850 nodes when testing) before throwing a `Recursion Error`.  
 - **metadata**: This option accepts a dictionary that helps populating built-in arguments, usage, help, and version. Developer can get common metadata fields with Nargs function `Nargs.get_metadata_template()`. Any metadata field that is null or empty is discarded. Provided fields are trimmed. Program fields `name` and `executable` are mandatory, and they need to be provided in metadata parameter i.e. `Nargs(metadata=dict(name="My Program", executable="prog"))`. Nargs class member metadata is set and available to developer with `Nargs().metadata`  (see also [built-in arguments](#built-in-arguments))   
 - **only_cache**: This option allows to load the cache_file definition without checking changes on the developer provided definition. Parsing speed should be the fastest when only_cache is set to True. If the cached definition returns null Nargs throws an error and prevents the cache_file to be regenerated. If that error happens developer can regenerate the cache by either manually deleting the cache file or by setting only_cache to False.  
@@ -328,7 +330,17 @@ For options_file, and users file, if they provide both `.json` and `.yaml` files
 - **pretty_help**: If set to True usage and help are printed with ANSI escape sequences formatting in terminal as set by default theme or developer theme.  
 - **pretty_msg**: If set to True system message are printed with ANSI escape sequences formatting in terminal.  
 - **raise_exc**: If set to True Nargs raise Exception for each known errors. If set to False Nargs print an error message for each known errors and exit. `raise_exc=True` may be useful when testing Nargs software or if developer creates custom help and usage commands. There are two custom exceptions returned by Nargs:
-    - `EndUserError`: Only happens when a command-line is provided to `get_args` either through `sys.argv` or `get_args cmd option`. These errors are not Nargs errors, but they are command syntax errors provided on the command-line by end-user.
+    - `EndUserError`: Only happens when a command-line is provided to `get_args` either through `sys.argv` or `get_args query option`. These errors are not Nargs errors, but they are command syntax errors provided on the command-line by end-user. `EndUserError` has an `self.errors` member that is a dictionary of errors information that allows developer to provide custom error message to end-user. `self.errors` has the following attributes:
+        - `attributes`: (dictionary) It is a dictionary of variables that are substituted in the error message.  
+        - `cmd_line`: (string) It returns the command-line at the point of error.  
+        - `error_type`: (string) It returns the error type (cf. dev/exceptions.py ErrorTypes class for a list of error types).  
+        - `message`: (string) It returns the error message with variable placeholders that must be substituted with attributes dictionary.
+        - `node_usage`: (string) It returns the definition node location.
+        - `prefix`: (string) It returns the error message prefix.
+        - `show_usage`: (boolean) It describes if the node_usage should be provided to end-user.
+        - `stack_trace`: (string) It returns the internal error stack trace.
+        - `show_trace`: (boolean) It describes if the stack_trace should be provided to end-user.
+        
     - `DeveloperError`: Only happens when developer either provides syntax errors on Nargs options or syntax errors on arguments tree definition.  
     - All other exceptions are not expected and may be due to Nargs bugs, cache tampering, or modifications of the Nargs NodeDfn objects when using multiple get_args call. Nargs have multiple tests that covers all the expected errors and most of the implementation. Tests are only available with the Nargs sources. Tests are not included for production releases. Tests files are listed in `src/__init__.py`.  
 
@@ -339,7 +351,8 @@ For options_file, and users file, if they provide both `.json` and `.yaml` files
     - If string starts with word either input or hidden:
         - end-user is prompted to provide a value and string is substituted on the command-line with typed value.
         - If colon and label is provided after word either input or hidden (i.e. `__input:username__`) then prompted text is going to be set with label value. Label value starts with a single letter then optional next characters are either letters (uppercase or lowercase) or numbers.
-    - If string does not start with either input or hidden then string must start with a single letter then optional next characters are either letters (uppercase or lowercase) or numbers. In that case string without underscores is substituted with value of any matching environment variable names if any without underscores.
+    - If string does not start with either input or hidden then string must start with a single letter then optional next characters are either letters (uppercase or lowercase) or numbers. In that case string without underscores is substituted with value of any matching environment variable names if any without underscores.  
+Note: substitute function never applies to "_query_" values.
 ```bash
 # developer prompted
 > prog.py __input__
@@ -490,8 +503,10 @@ Developer can customize command-line help, command-line usage and html exported 
 Theme is only used for output format `cmd_usage` (if pretty is True), `cmd_help` (if pretty is True), `html`. Other formats like `asciidoc`, `markdown`, and `text` do not rely on theme. `html` format has global CSS rules that are hard-coded and can only be modified manually by the developer in the exported help i.e.:`body { background-color: #2b2b2b;}`.  
 
 #### Nargs get_args
-`Nargs.get_args()` returns the root command-line argument node for developer to create in code logic.  
-**cmd**: It is provided implicitly from end-user typing arguments on the command-line, explicitly from developer providing Nargs cmd parameter, or implicitly from end-user providing Nargs built-in cmd. When `Nargs().get_args()` cmd parameter is provided either explicitly from developer providing Nargs cmd parameter or implicitly from end-user providing Nargs built-in cmd then root parameter must be provided with one of its argument alias. Argument's aliases are either explicitly provided by developer in arguments' definition or implicitly automatically generated by Nargs. In order to know root argument aliases, usage can be printed by either end-user or developer. When end-user types arguments on the command-line, `cmd` is provided implicitly with `sys.argv` and the root argument is the first argument of the command-line. When `cmd` is provided by `sys.argv` then the first occurrence of root argument does not need to match the root argument's alias. In this context root argument matches the name of the executable that launches the program i.e. `program.py`. `Nargs().get_args()` can be used multiple times with different command-lines. If get_args is called more than once then for each new call the arguments tree is reset. If developer modifies the arguments tree when setting-up program's in code logic then unexpected behavior may happen when using `get_args()` multiple times.  
+`Nargs.get_args(cmd=None, values=None)` returns the root command-line argument node for developer to create in code logic.  
+**cmd**: It is provided implicitly from end-user typing arguments on the command-line, explicitly from developer providing Nargs cmd parameter, or implicitly from end-user providing Nargs built-in query. `cmd` may be a string or a list of string. When `Nargs().get_args()` cmd parameter is provided either explicitly from developer providing Nargs cmd parameter or implicitly from end-user providing Nargs built-in query then root parameter must be provided with one of its argument alias. Argument's aliases are either explicitly provided by developer in arguments' definition or implicitly automatically generated by Nargs. In order to know root argument aliases, usage can be printed by either end-user or developer. When end-user types arguments on the command-line, `cmd` is provided implicitly with `sys.argv` and the root argument is the first argument of the command-line. When `cmd` is provided by `sys.argv` then the first occurrence of root argument does not need to match the root argument's alias. In this context root argument matches the name of the executable that launches the program i.e. `program.py`. `Nargs().get_args()` can be used multiple times with different command-lines. If get_args is called more than once then for each new call the arguments tree is reset. If developer modifies the arguments tree when setting-up program's in code logic then unexpected behavior may happen when using `get_args()` multiple times.  
+
+**values**: `values` accept a list of elements. An elements can be of type boolean, float, integer, string. Each value should replace a question mark element in `cmd` option. An error is triggered when `values` option is provided and its length does not match the number of question marks in `cmd` option. The purpose of `values` is to provide a sql parameterized like function to Nargs. `values` is always matched as a value and never as an argument. It makes it safe to receive values from a third-party application. When using `values` the `EndUserError`
 
 For each argument on the command-line Nargs create a CliArg object with `argument's children` and `argument's properties`.  
 ```python
@@ -669,6 +684,7 @@ except DeveloperError as e:
     sys.exit(1)
 except EndUserError as e:
     print("Managed EndUserError \"{}\"".format(e))
+    # see also EndUserError for providing custom errors with error information dictionary.
     sys.exit(1)
 ```
 
@@ -728,8 +744,8 @@ In arguments' definition, argument's properties start with an underscore and nes
 ```shell
 research: --args ?huv
   [--analyze]
-  [--cmd <file>]
  *[--help, -h]
+  [--query <file>]
  *[--usage, ?, -u]
   [--version, -v]
 ```
@@ -1031,8 +1047,6 @@ Nargs provides end-user built-in arguments. Built-in arguments' definition is av
 
 Main built-in arguments are available at node level 2. Built-in arguments aliases are set according to Nargs options `auto_alias_prefix` and `auto_alias_style` (except if end-user provided the aliases through `Nargs builtins` option). If developer change `auto_alias_prefix` and `auto_alias_style` options then built-in arguments aliases are also modified to match developer aliases style.  
 
-`_cmd_` built-in argument allows end-user to write command-line arguments in a file with newlines, empty lines, indentation, and comments using '#'. `cmd` goal is to overcome terminal command length limitation and/or to allow developer to write commands in a readable way. When command-line is provided through built-in argument `cmd` then the root argument must match its argument's alias(es). Root argument's alias is provided in the arguments' definition either implicitly by Nargs auto-alias generation or explicitly by developer through arguments' definition. Root argument alias equals `--args` when provided implicitly by default options.  
-
 `_help_` built-in argument generates host program minimum help from Nargs arguments' definition and metadata. Users and end-users can print help to terminal with `prog.py --help` or export it in 4 different formats `asciidoc`, `html`, `markdown`, and `text`. A file path can also be provided. i.e.: `prog.py --help --export html --to ../userpath.html`. Help can be printed or exported with arguments `syntax` explained. `--help --syntax` gives end-user the essential information to understand how to read and use Nargs Notation. Help has multiple sections:  
 - About Section: It provides metadata information from the program. Metadata is provided implicitly with `gpm.json` and/or explicitly by developer with `Nargs metadata` parameter. The printed fields are all the metadata keys provided to Nargs.
 - Usage Section: It provides program's usage. 
@@ -1049,7 +1063,31 @@ Main built-in arguments are available at node level 2. Built-in arguments aliase
 
 `_path_etc_` only exists if developer sets `Nargs()` option `path_etc` value. It provides the program's configuration path.    
 
-`_usage_` built-in argument prints all the arguments in a tree structure with Nargs notation. The nested argument `from_` selects the starting argument and it can be either the current argument or a parent. The printed nested arguments depth can be set with nested argument `depth`. For each printed arguments the following data can be provided: `examples`, `flags`, `hint`, `info`, `path`, and `properties`. For instance end-user can type `prog.py -ueFhipr`, `prog.py --usage --examples --flags --hint --info --path --properties` or `prog.py --help --usage --depth 1 --from 0 -eFhipr`. Built-in argument `_usage_` is the only built-in argument that can use question mark `?` as an alias. Question mark is useful, but it has limited on some systems. For instance on bash terminals, question mark is a bash wildcard, and it is going to be replaced by the name of a file or a directory if any directory or file has only one char for name in the current directory.  
+`_query_` argument allows to execute safe command-line arguments query on the program. Command-line arguments are collected through a JSON file. The JSON file has two attributes 'command' and 'params'. 'command' accepts a list of command-line arguments with values where each value may be replaced with a question mark. 'params' accepts a list of values. The number of values in 'params' must match the number of question marks in 'command'. 'command' arguments are only parsed as arguments and 'params' are only parsed as argument values. It allows a safe way to pass values collected from a third party program like a web application to the command-line program. All errors are returned as a json dump for better communication with third party program. For instance a developer creates a web application that communicates with a host program. In the web application developer creates a query with arguments and optionally values. Then other values are left with a question mark for web application's end-users to provide through developer's web application GUI or API. All arguments and values provided to the host program are going to be matched against nargs module and not the command-line. Values provided by the end-user are going to be matched as values only. Developer arguments and values are going to be matched both as arguments or values. Note: Nargs 'substitute' option does not apply on query values. When `_query_` argument is used and an error is Trigger then `EndUserError` errors are returned as a json dump that will allow developer to provide end-user custom error messages. For instance developer can have certain `EndUserError` error types filtered and forwarded to end-user.
+
+```json
+// query.json example
+{
+  "command": [
+    "--args",
+    "--systems",
+    "?",
+    "?",
+    "--power",
+    "--on",
+    "--save",
+    "--user",
+    "?"
+  ],
+  "params": [
+    "debian",
+    "windows",
+    "anonymous",
+  ]
+}
+```
+
+`_usage_` built-in argument prints all the arguments in a tree structure with Nargs notation. The nested argument `from` selects the starting argument and it can be either the current argument or a parent. The printed nested arguments depth can be set with nested argument `depth`. For each printed arguments the following data can be provided: `examples`, `flags`, `hint`, `info`, `path`, and `properties`. For instance end-user can type `prog.py -ueFhipr`, `prog.py --usage --examples --flags --hint --info --path --properties` or `prog.py --help --usage --depth 1 --from 0 -eFhipr`. Built-in argument `_usage_` is the only built-in argument that can use question mark `?` as an alias. Question mark is useful, but it has limited on some systems. For instance on bash terminals, question mark is a bash wildcard, and it is going to be replaced by the name of a file or a directory if any directory or file has only one char for name in the current directory. `_usage` built-in argument nevers triggers an `EndUserError`. All errors related to `_usage_` are silently ignored. That property allows to nest usage argument in any location of a command-line and still have information for the preceding command-line argument.  
 
 `_version_` returns program version if it has been provided into metadata. If not provided into metadata then Nargs throws an error whenever built-in version argument is used.  
 
@@ -1095,7 +1133,7 @@ Implicit notation allows to navigate through the arguments tree without using **
 
 ### Note
 Both explicit notation and implicit notation are hard to read for long command-line. It is not specific to Nargs but to any program that accepts command-line. To improve terminal commands readability, Nargs use the following features:  
-- [Built-in argument cmd](#built-in-arguments).
+- [Built-in argument query](#built-in-arguments).
 - Nargs `cmd` parameter.
 - Multiple alias prefixes
 

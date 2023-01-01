@@ -69,7 +69,7 @@ def test_get_node_dfn(
         )
 
     with CatchEx(DeveloperError) as c:
-        c.text="for argument 'args > @': Wrong value type <class 'int'> in list. It must be <class 'str'>"
+        c.text="for argument 'args.@': Wrong value type <class 'int'> in list. It must be <class 'str'>"
         Nargs(
             metadata=dy_metadata,
             args={
@@ -79,7 +79,7 @@ def test_get_node_dfn(
         )
 
     with CatchEx(DeveloperError) as c:
-        c.text="argument 'args > @': Wrong value type <class 'dict'>. It must be either <class 'str'> or <class 'list'>"
+        c.text="argument 'args.@': Wrong value type <class 'dict'>. It must be either <class 'str'> or <class 'list'>"
         Nargs(
             metadata=dy_metadata,
             args={
