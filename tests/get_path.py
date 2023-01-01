@@ -23,11 +23,11 @@ def test_get_path(
     )
 
     with CatchEx(EndUserError) as c:
-        c.text="'--args folder/': Path not found"
+        c.text="'--args folder/' Path not found"
         nargs.get_args("--args folder/")
 
     with CatchEx(EndUserError) as c:
-        c.text="'--args tests/': Path is not a file"
+        c.text="'--args tests/' Path is not a file"
         nargs.get_args("--args tests/")
 
     nargs=Nargs(
@@ -40,5 +40,5 @@ def test_get_path(
     )
 
     with CatchEx(EndUserError) as c:
-        c.text="'--args tests/aliases.py': Path is not a directory"
+        c.text="'--args tests/aliases.py' Path is not a directory"
         nargs.get_args("--args tests/aliases.py")

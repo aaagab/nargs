@@ -27,22 +27,22 @@ def test_get_json(
 
     with CatchEx(EndUserError) as c:
         c.text="argument '--args' needs at least one value"
-        nargs.get_args("--args")
+        args=nargs.get_args("--args")
 
     with CatchEx(EndUserError) as c:
-        c.text="'--args tests/assets/bad.json': File not found"
+        c.text="'--args tests/assets/bad.json' File not found"
         nargs.get_args("--args tests/assets/bad.json")
 
     with CatchEx(EndUserError) as c:
-        c.text="bad-file.json': json syntax error"
+        c.text="bad-file.json' json syntax error"
         nargs.get_args("--args tests/assets/bad-file.json")
 
     with CatchEx(EndUserError) as c:
-        c.text="bad-file.yaml': yaml syntax error"
+        c.text="bad-file.yaml' yaml syntax error"
         nargs.get_args("--args tests/assets/bad-file.yaml")
 
     with CatchEx(EndUserError) as c:
-        c.text="'--args {{marc}}': Error when trying to load dict"
+        c.text="'--args {marc}' Error when trying to load dict"
         nargs.get_args("--args '{{marc}}'")
 
     # with CatchEx(EndUserError) as c:

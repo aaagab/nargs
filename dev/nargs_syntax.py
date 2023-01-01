@@ -178,9 +178,8 @@ def get_nargs_syntax(style, user_options, print_options=True):
             style.get_text("prog.py --usage --flags", "emphasize"),
         ),
         "A flag set is a group of flags related to a particular argument. Each argument may have a different flag set. Some arguments may not have a flag set depending on arguments definition.",
-        "A flag set starts with a one char alias and its prefix if any and it contains at least another char. i.e. '{}' where '{}' is 'cmd', '{}' is 'help', '{}' is 'usage' and '{}' is 'version'.".format(
-            style.get_text("-chuv", "flags"),
-            style.get_text("c", "flags"),
+        "A flag set starts with a one char alias and its prefix if any and it contains at least another char. i.e. '{}' where '{}' is 'help', '{}' is 'usage' and '{}' is 'version'.".format(
+            style.get_text("-huv", "flags"),
             style.get_text("h", "flags"),
             style.get_text("u", "flags"),
             style.get_text("v", "flags"),

@@ -408,7 +408,7 @@ def test_set_dfn(
             _required: -1
     """
     with CatchEx(DeveloperError)as c:
-        c.text="'args > arg_one' at property '_required': value type <class 'int'> must be of type <class 'bool'>"
+        c.text="'args.arg_one' at property '_required': value type <class 'int'> must be of type <class 'bool'>"
         nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(arg_def), builtins=dict(usage=None), cache=False, raise_exc=True)
     
     arg_def="""
@@ -416,7 +416,9 @@ def test_set_dfn(
             _required: true
             narg:
                 _required: true
-                _values: 1
+                nnarg:
+                    _required: true
+                    _values: 1
     """
     with CatchEx(DeveloperError)as c:
         c.text="set current argument properties so it may be implicitly added on the command-line"
@@ -459,7 +461,7 @@ def test_set_dfn(
                 _required: true
     """
     with CatchEx(DeveloperError)as c:
-        c.text="'_required': argument name 'narg' can't be both required and part of parent xor group at 'args > arg'"
+        c.text="'_required': argument name 'narg' can't be both required and part of parent xor group at 'args.arg'"
         nargs=Nargs(metadata=dy_metadata, args=yaml.safe_load(arg_def), builtins=dict(usage=None), cache=False, raise_exc=True)
 
     args=dict(
