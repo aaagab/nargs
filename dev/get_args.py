@@ -681,7 +681,7 @@ def get_args(
         if substitute is True:
             tmp_cmd = []
             for elem in cmd:
-                elem = re.sub(r"^(?:__(?!:)(?P<input>input|hidden)?(?::)?(?P<label>[a-zA-Z][a-zA-Z0-9]*)?(?<!:)__$)", lambda m: get_substitute_var(m), elem)
+                elem = re.sub(r"(?:__(?!:)(?P<input>input|hidden)?(?::)?(?P<label>[a-zA-Z][a-zA-Z0-9]*)?(?<!:)__)", lambda m: get_substitute_var(m), elem)
                 tmp_cmd.append(elem)
             cmd=tmp_cmd
 
