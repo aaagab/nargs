@@ -47,6 +47,25 @@ def test_get_args(
 
     if "apple" not in args.logout._values: err()
     if "for the best" not in args.logout._values: err()
+
+    args=dict(
+        logout=dict(
+            _values="*"
+        ),
+    )
+
+    os.environ["fruit"]="apple"
+    os.environ["reason"]="for the best"
+    nargs=Nargs(args=args, metadata=dy_metadata, raise_exc=True, substitute=True)
+
+    args=nargs.get_args("--args --logout mygrocerystore/__fruit__/__reason__")
+    if args.logout._value != "mygrocerystore/apple/for the best": err()
+
+    args=nargs.get_args("--args --logout mygrocerystore/__fruit__/cart")
+    if args.logout._value != "mygrocerystore/apple/cart": err()
+
+    args=nargs.get_args("--args --logout __fruit__/cart")
+    if args.logout._value != "apple/cart": err()
     
     if manual is True:
         args=dict(
