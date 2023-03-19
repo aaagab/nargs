@@ -1254,6 +1254,7 @@ def get_args(
                     winfo=builtin_arg.info._here,
                     wexamples=builtin_arg.examples._here,
                     keep_default_alias=True,
+                    show_builtins=builtin_arg.builtins._here,
                 )
                 sys.exit(0)
             elif builtin_arg._name == "_version_":
