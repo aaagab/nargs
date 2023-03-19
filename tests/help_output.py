@@ -17,6 +17,8 @@ def help_output(
 ):
     args="""
         _hint: This is the main program
+        delete:
+        upgrade:
         command:
             _hint: Manage computer state
             hibernate:
@@ -83,5 +85,19 @@ def help_output(
     
     try:
         nargs.get_args("--args --usage --hint --depth=-1")
+    except:
+        pass
+
+    print("\n########################################################\n")
+    
+    try:
+        nargs.get_args("--args --usage --hint --builtins")
+    except:
+        pass
+    
+    print("\n########################################################\n")
+    
+    try:
+        nargs.get_args("--args --usage ?")
     except:
         pass

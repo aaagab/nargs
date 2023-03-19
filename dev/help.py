@@ -266,10 +266,13 @@ def get_help_usage(
             if output == "cmd_help":
                 print(usage_alias_value)
             elif output == "cmd_usage":
-                if max_sibling_level in [0, 1]:
-                    len_alias=style.get_len_text(usage_alias_value)
-                    if len_alias <= max_alias_len:
-                        print(usage_alias_value, end="")
+                if whint is True:
+                    if max_sibling_level in [0, 1]:
+                        len_alias=style.get_len_text(usage_alias_value)
+                        if len_alias <= max_alias_len:
+                            print(usage_alias_value, end="")
+                        else:
+                            print(usage_alias_value)
                     else:
                         print(usage_alias_value)
                 else:
@@ -284,8 +287,6 @@ def get_help_usage(
                     elif output == "cmd_usage":
                         if max_sibling_level in [0, 1]:
                             if columns >= min_columns:
-                                # if len_alias == 0:
-                                    # len_alias=start_hint
                                 if len_alias > max_alias_len:
                                     len_alias=0
                                 print(style.get_text(get_wrap_text_hint(columns, ": {}".format(node_dfn.dy["hint"]), " "*start_hint, len_alias), "hint"))
@@ -296,10 +297,10 @@ def get_help_usage(
                             print(style.get_text(get_wrap_text(columns, node_dfn.dy["hint"], indent+"     "), "hint"))
                     elif output in ["html", "text", "markdown", "asciidoc"]:
                         dy_help["hint"]=style.get_text(node_dfn.dy["hint"], "hint")
-            else:
-                if output == "cmd_usage" and max_sibling_level in [0, 1]:
-                    if len_alias <= max_alias_len:
-                        print()
+                else:
+                    if output == "cmd_usage" and max_sibling_level in [0, 1]:
+                        if len_alias <= max_alias_len:
+                            print()
 
             if wproperties is True:
                 selected_properties=[]
