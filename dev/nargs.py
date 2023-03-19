@@ -299,10 +299,6 @@ class Nargs():
         cmd=None,
         values=None, 
     ):
-        # exc=None
-        # if self._raise_exc is True:
-        #     exc=EndUserError
-
         if self._reset_dfn_tree is None:
             self._reset_dfn_tree=False
         else:
