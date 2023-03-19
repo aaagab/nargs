@@ -75,6 +75,23 @@ class Style():
                     elif isinstance(value, str):
                         text=self.get_cmd_style(text, prop, value)
         return text
+    
+    def get_len_text(self, text):
+        tmp_text=text
+        for pattern in [
+            r"\x1b\[48;2;.+?m",
+            r"\x1b\[49m",
+            r"\x1b\[1m",
+            r"\x1b\[22m",
+            r"\x1b\[38;2;.+?m",
+            r"\x1b\[39m",
+            r"\x1b\[3m",
+            r"\x1b\[23m",
+            r"\x1b\[4m",
+            r"\x1b\[24m",
+        ]:
+            tmp_text=re.sub(pattern, "", tmp_text)
+        return len(tmp_text)
 
     def get_cmd_style(self, text, style, color=None):
         if not hasattr(self, "dy_cmd_styles"):

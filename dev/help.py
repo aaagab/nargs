@@ -114,11 +114,11 @@ def get_help_usage(
     top_node=True,
     only_syntax=False,
     top_flags=False,
+    show_builtins=True,
     _previous_node=None,
     
 ):
     if only_syntax is False:
-        prefix="Nargs at Usage"
         dy_help=dict()
         if node_dfn is None:
             about=[]
@@ -143,6 +143,12 @@ def get_help_usage(
                     usage.append(text)
         
         if node_dfn is not None and node_dfn.dy["show"] is True:
+            # if output == "cmd_usage" and max_sibling_level in [0, 1]:
+                # whint=True
+            max_alias_len=26
+            start_hint=max_alias_len+2
+            min_columns=50
+
             str_alias_value=""
             node_dfn_aliases=deepcopy(node_dfn.dy["aliases"])
             aliases=style.get_text(", ".join(node_dfn_aliases), "aliases")
@@ -165,7 +171,10 @@ def get_help_usage(
                 if node_dfn.level == 2:
                     if node_dfn.dy["is_builtin"] is True:
                         if _previous_node is not None and _previous_node.dy["is_builtin"] is False:
-                            if output in ["cmd_help", "cmd_usage"]:
+                            if output == "cmd_help":
+                                print("\n{}".format(style.get_text("built-ins:", "aliases")))
+                            elif output == "cmd_usage":
+                                # if show_builtins is True:
                                 print("\n{}".format(style.get_text("built-ins:", "aliases")))
                             elif output in ["html", "text", "markdown", "asciidoc"]:
                                 usage.append(style.get_text("built-ins:", "aliases"))
@@ -252,8 +261,19 @@ def get_help_usage(
                     str_alias_value,
                 )
 
-            if output in ["cmd_help", "cmd_usage"]:
+
+            len_alias=None
+            if output == "cmd_help":
                 print(usage_alias_value)
+            elif output == "cmd_usage":
+                if max_sibling_level in [0, 1]:
+                    len_alias=style.get_len_text(usage_alias_value)
+                    if len_alias <= max_alias_len:
+                        print(usage_alias_value, end="")
+                    else:
+                        print(usage_alias_value)
+                else:
+                    print(usage_alias_value)
             elif output in ["html", "text", "markdown", "asciidoc"]:
                 usage.append(usage_alias_value)
 
@@ -262,9 +282,24 @@ def get_help_usage(
                     if output == "cmd_help":
                         dy_help["hint"]=style.get_text(get_wrap_text(columns, node_dfn.dy["hint"], "    "), "hint")
                     elif output == "cmd_usage":
-                        print(style.get_text(get_wrap_text(columns, node_dfn.dy["hint"], indent+"     "), "hint"))
+                        if max_sibling_level in [0, 1]:
+                            if columns >= min_columns:
+                                # if len_alias == 0:
+                                    # len_alias=start_hint
+                                if len_alias > max_alias_len:
+                                    len_alias=0
+                                print(style.get_text(get_wrap_text_hint(columns, ": {}".format(node_dfn.dy["hint"]), " "*start_hint, len_alias), "hint"))
+                            else:
+                                print()
+                                print(style.get_text(get_wrap_text(columns, ": {}".format(node_dfn.dy["hint"]), " "*start_hint), "hint"))
+                        else:
+                            print(style.get_text(get_wrap_text(columns, node_dfn.dy["hint"], indent+"     "), "hint"))
                     elif output in ["html", "text", "markdown", "asciidoc"]:
                         dy_help["hint"]=style.get_text(node_dfn.dy["hint"], "hint")
+            else:
+                if output == "cmd_usage" and max_sibling_level in [0, 1]:
+                    if len_alias <= max_alias_len:
+                        print()
 
             if wproperties is True:
                 selected_properties=[]
@@ -353,7 +388,7 @@ def get_help_usage(
             if process_children is True:
                 index_counter=0
                 _previous_node=None
-                for tmp_node in get_sorted_nodes(node_dfn):
+                for tmp_node in get_sorted_nodes(node_dfn, show_builtins):
                     if tmp_node.dy["show"] is True:
                         index_counter+=1
                         tmp_index=None
@@ -389,10 +424,23 @@ def get_help_usage(
                             top_node=False,
                             only_syntax=only_syntax,
                             top_flags=top_flags,
+                            show_builtins=show_builtins,
                             _previous_node=_previous_node,
                         )
                         _previous_node=tmp_node
 
+            if output == "cmd_usage":
+                if node_dfn.is_root is True:
+                    if show_builtins is False:
+                        if "_usage_" in node_dfn.dy_nodes:
+                            if "builtins" in node_dfn.dy_nodes["_usage_"].dy_nodes:
+                                print("\n  {}".format(style.get_text("Type {} {} to show built-in arguments".format(
+                                    node_dfn.dy_nodes["_usage_"].dy["default_alias"],
+                                    node_dfn.dy_nodes["_usage_"].dy_nodes["builtins"].dy["default_alias"],
+                                ), "info")))
+                if node_ref == node_dfn:
+                    print()
+                    
     if node_ref == node_dfn or only_syntax is True:
         only_syntax_title="NARGS END-USER DOCUMENTATION"
 
@@ -667,14 +715,18 @@ def get_aliases_sort(node):
 
     return aliases_sort
 
-def get_sorted_nodes(node_dfn):
+def get_sorted_nodes(node_dfn, show_builtins):
     tmp_nodes=[]
     builtins=[]
     _explicit_aliases_sort=get_explicit_aliases_sort(node_dfn)
     for aliases_sort in sorted(_explicit_aliases_sort):
         for tmp_node in _explicit_aliases_sort[aliases_sort]:
             if tmp_node.dy["is_builtin"] is True:
-                builtins.append(tmp_node)
+                if node_dfn.level == 1:
+                    if show_builtins is True:
+                        builtins.append(tmp_node)
+                else:
+                    builtins.append(tmp_node)
             else:
                 tmp_nodes.append(tmp_node)
 
@@ -718,14 +770,50 @@ def get_md_text(sections, title):
 def get_title(dy_metadata):
     return dy_metadata["name"]
 
+def get_wrap_text_hint(columns, text, indent, first_indent_len):
+    max_width=columns-len(indent)
+
+    data=""
+    lines=[]
+    tmp_indent=(len(indent)-first_indent_len)*" "
+    for i, char in enumerate(text):
+        data+=char
+
+        if len(lines) > 0:
+            tmp_indent=indent+"  "
+            max_width=columns-len(tmp_indent)
+
+
+        if len(data) == max_width:
+            if i < len(text)-1:
+                if text[i+1] == " ":
+                    lines.append(get_formatted_text(tmp_indent, data))
+                    data=""
+                else:
+                    if " " in data:
+                        index=data.rfind(" ")
+                        remain=data[index+1:i+1]
+                        data=data[:index]
+                        lines.append(get_formatted_text(tmp_indent, data))
+                        data=remain
+                    else:
+                        lines.append(get_formatted_text(tmp_indent, data))
+                        data=""
+
+    if data:
+        lines.append(get_formatted_text(tmp_indent, data))
+
+    return "\n".join(lines)
+
+
+
 def get_wrap_text(columns, text, indent):
     screen_width=columns
     max_width=screen_width-len(indent)
 
     data=""
-    start_index=0
     lines=[]
-    for c, char in enumerate(text):
+    for i, char in enumerate(text):
         data+=char
         if len(indent) > (screen_width/2):
             indent=" "*int(screen_width/3)
@@ -735,14 +823,14 @@ def get_wrap_text(columns, text, indent):
                 data=""
         else:    
             if len(data) == max_width:
-                if c < len(text)-1:
-                    if text[c+1] == " ":
+                if i < len(text)-1:
+                    if text[i+1] == " ":
                         lines.append(get_formatted_text(indent, data))
                         data=""
                     else:
                         if " " in data:
                             index=data.rfind(" ")
-                            remain=data[index+1:c+1]
+                            remain=data[index+1:i+1]
                             data=data[:index]
                             lines.append(get_formatted_text(indent, data))
                             data=remain
