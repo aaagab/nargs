@@ -523,9 +523,13 @@ def add_builtins(builtins, dy_args, arg_name, verified_names, dy_attr_aliases, d
             "_hint": "Print program usage and exit.",
             "_info": "LEVEL is an integer >= 0. LEVEL number describes the number of nested node levels to print. LEVEL number is relative to current argument node level. If LEVEL == 0 then all nested node levels are printed. If LEVEL == 1 then only current argument is printed. If LEVEL > 1 current argument's node levels are printed and LEVEL sets the depth of node levels nesting.",
             "_is_usage": True,
+            "builtins": {
+                "_aliases": "{},{}b".format(get_auto_alias(dy_attr_aliases, "builtins"), flag_prefix),
+                "_hint": "Print built-ins arguments.",
+            },
             "examples": {
                 "_aliases": "{},{}e".format(get_auto_alias(dy_attr_aliases, "examples"), flag_prefix),
-                "_hint": "Print argument(s) examples if any",
+                "_hint": "Print argument(s) examples if any.",
             },
             "depth": {
                 "_aliases": "{},{}d".format(get_auto_alias(dy_attr_aliases, "depth"), flag_prefix),
