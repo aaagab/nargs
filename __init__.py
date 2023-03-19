@@ -2,7 +2,7 @@
 # authors: Gabriel Auger
 # name: Nested Arguments
 # licenses: MIT 
-__version__= "5.0.1"
+__version__= "5.1.0"
 
 from .dev.nargs import Nargs
 from .dev.exceptions import EndUserError, DeveloperError
@@ -18,6 +18,7 @@ try:
     from .tests.set_options import test_set_options
     from .tests.style import test_style
     from .tests.implementation import test_implementation
+    from .tests.help_output import help_output
     from .tests.single_test import single_test
     from .tests.performance import test_performance
     from .gpkgs import message as msg

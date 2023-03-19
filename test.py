@@ -49,6 +49,7 @@ if __name__ == "__main__":
     try:
         with Chk() as chk:
             chk.exc(pkg.single_test, dy_metadata, filenpa_cache_json, args, filenpa_tmp_query, manual)
+            chk.exc(pkg.help_output, dy_metadata)
             chk.exc(pkg.test_aliases, dy_metadata)
             chk.exc(pkg.test_set_options, dy_metadata)
             chk.exc(pkg.test_get_json, dy_metadata)
@@ -59,7 +60,6 @@ if __name__ == "__main__":
             chk.exc(pkg.test_nargs, dy_metadata, filenpa_cache_json, filenpa_cache_pickle)
             chk.exc(pkg.test_style, dy_metadata)
             chk.exc(pkg.test_implementation, dy_metadata, filenpa_cache_json, filenpa_cache_pickle, filenpa_tmp_query, manual)
-            
             chk.exc(pkg.test_performance, dy_metadata, direpa_tmp, filenpa_cache_json)
 
     finally:
