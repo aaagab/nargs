@@ -2,7 +2,7 @@
 # authors: Gabriel Auger
 # name: Nested Arguments
 # licenses: MIT 
-__version__= "5.1.1"
+__version__= "5.1.2"
 
 from .dev.nargs import Nargs
 from .dev.exceptions import EndUserError, DeveloperError
