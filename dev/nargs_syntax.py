@@ -50,8 +50,8 @@ def get_nargs_syntax(style, user_options, print_options=True):
         dul="+__"
         dur="__+"
     elif style.output == "markdown":
-        dul="\_\_"
-        dur="\_\_"
+        dul=r"\_\_"
+        dur=r"\_\_"
 
     text=[]
     if style.output == "html":
