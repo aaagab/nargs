@@ -1,9 +1,5 @@
 # NARGS DEVELOPER DOCUMENTATION
 
-There are two documentation files:
-- [Nargs developer's documentation](developer.md) is for developers who create programs that use Nargs as a module. 
-- [Nargs end-user's documentation](end-user.md) describes Nargs command-line syntax to interact with programs using Nargs as a module.
-
 ## Table of Contents
 - [Specifications](#specifications)
 - [Why Nargs?](#why-nargs)
